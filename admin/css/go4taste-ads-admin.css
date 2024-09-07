@@ -1,0 +1,11 @@
+/**
+ * All of the CSS for your admin-specific functionality should be
+ * included in this file.
+ */
+
+ .g4t-ad-preview {
+    width: 260px;
+    padding: 20px;
+    border: 1px solid lightgrey;
+    margin: 20px 0;
+}

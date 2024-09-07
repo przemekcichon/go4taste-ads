@@ -1,0 +1,191 @@
+.g4t-ads-banner {
+    display: flex;
+    flex-direction: column; /* Vertical layout by default (above 1023px) */
+    padding: 20px;
+    border: 1px solid #c1d6c8;
+    background-color: #f0f8f5;
+    transition: transform 0.3s ease-in-out;
+}
+
+.g4t-ads-content {
+    display: flex;
+    flex-direction: column; /* Ensure content is vertical above 1023px */
+    align-items: center; /* Center content */
+    justify-content: center; /* Center content */
+    gap: 10px;
+    width: 100%; /* Ensure content takes full width */
+}
+
+.g4t-ads-image img {
+    width: 100%; /* Image should fill the width of the container */
+    height: auto;
+    background-color: white;
+    padding: 10px 0;
+}
+
+.g4t-ads-details {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+    padding: 0 5px;
+}
+
+.g4t-ads-name {
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.g4t-ads-prices {
+    font-size: 12px;
+    margin-top: 5px;
+    text-align: center;
+}
+
+.g4t-ads-old-price {
+    text-decoration: line-through;
+    margin-right: 5px;
+}
+
+.g4t-ads-sale-price {
+    color: #28a745;
+    font-weight: bold;
+}
+
+a.g4t-ads-button {
+    background-color: #28a745;
+    color: #fff;
+    padding: 8px 16px;
+    text-align: center;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 14px;
+    width: 100%; /* Button takes full width */
+    box-sizing: border-box; /* Ensures padding is included within width */
+    transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition for hover effect */
+    font-style:normal;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+}
+
+.g4t-ads-button:hover {
+    background-color: #218838;
+    color: #fff; /* Restore hover text color to white */
+}
+
+.g4t-ads-button.md {
+    display: none;
+}
+
+/* Sticky banner for screens above 1023px */
+@media (min-width: 1024px) {
+    .sidebar-primary.widget-area {
+        position: relative;
+    }
+    
+    .widget.g4t-ads-sidebar-regular-widget  {
+        position: -webkit-sticky; /* For Safari */
+        position: sticky;
+        top: 10px; /* Stick to the top of the viewport when scrolling */
+        z-index: 1000;
+    }
+}
+
+/* Responsive Styles */
+@media (max-width: 1023px) {
+    /* Switch to a horizontal layout for tablets and below */
+    .g4t-ads-banner {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        padding: 10px 12px;
+        flex-direction: row; /* Horizontal layout below 1023px */
+        align-items: center;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+    }
+
+    .g4t-ads-content {
+        flex-direction: row; /* Make the content horizontal */
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .g4t-ads-image img {
+        width: 5em;
+    }
+
+    .g4t-ads-button.lg {
+        display: none;
+    }
+
+    .g4t-ads-button.md {
+        display: block;
+    }
+
+    a.g4t-ads-button {
+        width:fit-content;
+    }
+
+    .g4t-ads-button {
+        padding: 6px 12px;
+        font-size: 12px;
+        margin-top: 0; /* Remove top margin in horizontal layout */
+        width: auto; /* Button width should auto adjust in horizontal layout */
+    }
+
+    .g4t-ads-name {
+        font-size: 12px;
+        text-align: left; /* Align text to the left for horizontal layout */
+    }
+
+    .g4t-ads-prices {
+        font-size: 10px;
+        text-align: left; /* Align text to the left for horizontal layout */
+    }
+}
+
+@media (max-width: 940px) {
+    /* For smaller tablets */
+    .g4t-ads-banner {
+        padding: 8px 12px;
+    }
+}
+
+@media (max-width: 767px) {
+    /* For mobile phones */
+
+    .g4t-ads-button {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .g4t-ads-name {
+        font-size: 12px;
+    }
+
+    .g4t-ads-prices {
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 420px) {
+    /* For small phones */
+    .g4t-ads-button {
+        padding: 4px 8px;
+        font-size: 10px;
+    }
+
+    .g4t-ads-name {
+        font-size: 10px;
+    }
+
+    .g4t-ads-prices {
+        font-size: 8px;
+    }
+}
