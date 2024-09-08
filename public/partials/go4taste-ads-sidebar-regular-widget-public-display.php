@@ -22,11 +22,11 @@ global $post;
 // Original price format
 $price = esc_attr( $product_data->price );
 
-// Remove the currency symbol and any whitespace
-$price_without_currency = preg_replace('/\s*zł$/', '', $price);
+// Replace comma with a dot and remove the currency symbol and non-breaking space
+$formatted_price = str_replace( array( ',', '&nbsp;', 'zł' ), array( '.', '', '' ), $price );
 
-// Replace the comma with a dot
-$formatted_price = str_replace(',', '.', $price_without_currency);
+// Trim any remaining spaces
+$formatted_price = trim( $formatted_price );
 
 /**
  * Format price_tax_exc paramater
@@ -34,11 +34,11 @@ $formatted_price = str_replace(',', '.', $price_without_currency);
 // Original price_tax_exc format
 $price_tax_exc = esc_attr( $product_data->price_tax_exc );
 
-// Remove the currency symbol and any whitespace
-$price_tax_exc_without_currency = preg_replace('/\s*zł$/', '', $price_tax_exc);
+// Replace comma with a dot and remove the currency symbol and non-breaking space
+$formatted_price_tax_exc = str_replace( array( ',', '&nbsp;', 'zł' ), array( '.', '', '' ), $price_tax_exc );
 
-// Replace the comma with a dot
-$formatted_price_tax_exc = str_replace(',', '.', $price_tax_exc_without_currency);
+// Trim any remaining spaces
+$formatted_price_tax_exc = trim( $formatted_price_tax_exc );
 
 /**
  * Format item_category2 parameter
@@ -50,7 +50,7 @@ $category = esc_attr( $product_data->category );
 $category_with_spaces = str_replace('-', ' ', $category);
 
 // Capitalize the first letter of each word
-$formatted_category = ucwords($category_with_spaces);
+$formatted_category = ucfirst(strtolower($category_with_spaces));
 
 ?>
 <div class="g4t-ads-banner g4t-banner-sidebar-regular">
