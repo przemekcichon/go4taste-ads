@@ -33,8 +33,8 @@ global $post;
                 <?php endif; ?>
             </div>
         </div>
-        <a href="<?php echo esc_url( $product_data->link ); ?>" data-price="<?php echo esc_attr( $product_data->price )?>" data-item-name="<?php echo esc_attr( $product_data->name )?>" data-item-id="<?php echo esc_attr( $product_data->id )?>" data-creative-slot="sidebar-primary" data-creative-name="Product Widget Image" data-promotion-name="Go4Taste Product Ads" data-promotion-id="g4t-ads-<?php echo $post->ID?>-<?php echo esc_attr( $product_data->id ); ?>" class="g4t-ads-button lg">Kup w sklepie</a>
-        <a href="<?php echo esc_url( $product_data->link ); ?>" data-price="<?php echo esc_attr( $product_data->price )?>" data-item-name="<?php echo esc_attr( $product_data->name )?>" data-item-id="<?php echo esc_attr( $product_data->id )?>" data-creative-slot="sidebar-primary" data-creative-name="Product Widget Image" data-promotion-name="Go4Taste Product Ads" data-promotion-id="g4t-ads-<?php echo $post->ID?>-<?php echo esc_attr( $product_data->id ); ?>" class="g4t-ads-button md">Kup</a>
+        <a href="<?php echo esc_url( $product_data->link ); ?>" data-object-type="promotion" data-price="<?php echo esc_attr( $product_data->price )?>" data-item-name="<?php echo esc_attr( $product_data->name )?>" data-item-id="<?php echo esc_attr( $product_data->id )?>" data-creative-slot="sidebar-primary" data-creative-name="Product Widget Image" data-promotion-name="Go4Taste Product Ads" data-promotion-id="g4t-ads-<?php echo $post->ID?>-<?php echo esc_attr( $product_data->id ); ?>" class="g4t-ads-button lg">Kup w sklepie</a>
+        <a href="<?php echo esc_url( $product_data->link ); ?>" data-object-type="promotion" data-price="<?php echo esc_attr( $product_data->price )?>" data-item-name="<?php echo esc_attr( $product_data->name )?>" data-item-id="<?php echo esc_attr( $product_data->id )?>" data-creative-slot="sidebar-primary" data-creative-name="Product Widget Image" data-promotion-name="Go4Taste Product Ads" data-promotion-id="g4t-ads-<?php echo $post->ID?>-<?php echo esc_attr( $product_data->id ); ?>" class="g4t-ads-button md">Kup</a>
     </div>
 </div>
 
