@@ -62,8 +62,8 @@ $formatted_category = ucfirst(strtolower($category_with_spaces));
             <div class="g4t-ads-name"><?php echo esc_html( $product_data->name ); ?></div>
             <div class="g4t-ads-prices">
                 <?php if ( $product_data->price != $product_data->price_without_reduction ) : ?>
-                    <span class="g4t-ads-old-price"><?php echo esc_html( $product_data->price ); ?></span>
-                    <span class="g4t-ads-sale-price"><?php echo esc_html( $product_data->price_without_reduction ); ?></span>
+                    <span class="g4t-ads-old-price"><?php echo esc_html( $product_data->price_without_reduction ); ?></span>
+                    <span class="g4t-ads-sale-price"><?php echo esc_html( $product_data->price ); ?></span>
                 <?php else : ?>
                     <span class="g4t-ads-sale-price"><?php echo esc_html( $product_data->price ); ?></span>
                 <?php endif; ?>
