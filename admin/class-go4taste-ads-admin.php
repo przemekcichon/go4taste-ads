@@ -532,6 +532,7 @@ class Go4Taste_Ads_Admin {
      * Registers the settings for the plugin.
      *
      * @since    1.0.0
+     * @since    1.1.0 Added transient caching field
      */
     public function page_init() {
         register_setting(
@@ -610,12 +611,22 @@ class Go4Taste_Ads_Admin {
             'algolia_settings',
             'algolia_settings'
         );
+
+        add_settings_field(
+            'cache_duration', // Field ID
+            'Transient Cache Duration (hours)', // Field label
+            array($this, 'cache_duration_callback'), // Callback function
+            'go4taste-ads', // Page
+            'go4taste_ads_setting_section' // Section
+        );
+        
     }
 
     /**
      * Sanitize the input from the settings page.
      *
      * @since    1.0.0
+     * @since    1.1.0 Added sanitizator of transient caching field
      */
     public function sanitize($input) {
         $sanitized_input = array();
@@ -640,6 +651,9 @@ class Go4Taste_Ads_Admin {
         if (isset($input['algolia_api_key'])) {
             $sanitized_input['algolia_api_key'] = sanitize_text_field($input['algolia_api_key']);
         }
+        if (isset($input['cache_duration'])) {
+            $sanitized_input['cache_duration'] = intval($input['cache_duration']); // Ensure it is an integer
+        }        
         return $sanitized_input;
     }
 
@@ -764,6 +778,19 @@ class Go4Taste_Ads_Admin {
         echo '<input type="text" id="algolia_api_key" name="go4taste_ads_options[algolia_api_key]" value="' . $algolia_api_key . '" />';
     }
 
+    /**
+     * Callback function for the Algolia Search-Only API Key field.
+     *
+     * @since 1.0.1
+     */
+    public function cache_duration_callback() {
+        $options = get_option('go4taste_ads_options');
+        $cache_duration = isset($options['cache_duration']) ? esc_attr($options['cache_duration']) : '0'; // Default to 0 (disabled)
+        echo '<input type="number" id="cache_duration" name="go4taste_ads_options[cache_duration]" value="' . $cache_duration . '" min="0" />';
+        echo '<p class="description">Set to 0 to disable caching, or specify the number of hours for cache duration.</p>';
+    }
+    
+    
     /**
      * Update post meta with product ID from the first occurrence of the prestashop_data shortcode.
      *

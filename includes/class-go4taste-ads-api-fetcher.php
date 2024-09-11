@@ -17,6 +17,7 @@ class Go4Taste_Ads_API_Fetcher {
      * Fetch product data from the selected API.
      *
      * @since 1.0.0
+     * @since 1.1.0 Added transient caching with API fields filtering to avoid database overload
      * @param string $product_id The product ID.
      * @param string $p_value The "p" parameter for PrestaShop APIs.
      * @param string $lang The language for PrestaShop APIs.
@@ -25,6 +26,21 @@ class Go4Taste_Ads_API_Fetcher {
      * @return object|false The product data object, or false if not found.
      */
     public function fetch_product_data($product_id, $p_value, $lang, $api_type, $api_url) {
+        $transient_key = "product_data_{$api_type}_{$product_id}";
+    
+        // Fetch cache duration from options, default to 0 (cache disabled)
+        $options = get_option('go4taste_ads_options');
+        $cache_duration = isset($options['cache_duration']) ? intval($options['cache_duration']) : 0;
+
+        // If cache duration is more than 0, attempt to get cached data
+        if ($cache_duration > 0) {
+            $cached_product_data = get_transient($transient_key);
+            if ($cached_product_data !== false) {
+                return $cached_product_data;
+            }
+        }  
+    
+        // Proceed to fetch from the API if no cached data
         $url = '';
         
         switch ($api_type) {
@@ -54,7 +70,28 @@ class Go4Taste_Ads_API_Fetcher {
         $body = wp_remote_retrieve_body($response);
         $product_data = json_decode($body);
 
-        return $product_data && isset($product_data->datas) ? $product_data->datas : false;
+        if ($product_data && isset($product_data->datas)) {
+
+            // Only store the specific fields you need
+            $filtered_product_data = new stdClass();
+            $filtered_product_data->picture = $product_data->datas->picture ?? '';
+            $filtered_product_data->name = $product_data->datas->name ?? '';
+            $filtered_product_data->price = $product_data->datas->price ?? '';
+            $filtered_product_data->price_without_reduction = $product_data->datas->price_without_reduction ?? '';
+            $filtered_product_data->link = $product_data->datas->link ?? '';
+            $filtered_product_data->category = $product_data->datas->category ?? '';
+            $filtered_product_data->reference = $product_data->datas->reference ?? '';
+            $filtered_product_data->price_tax_exc = $product_data->datas->price_tax_exc ?? '';
+            $filtered_product_data->id = $product_data->datas->id ?? '';
+
+            // If cache duration is greater than 0, set the transient
+            if ($cache_duration > 0) {
+                set_transient($transient_key, $filtered_product_data, $cache_duration * HOUR_IN_SECONDS);
+            }
+            return $filtered_product_data;
+        }
+    
+        return false;
     }
 
     /**
