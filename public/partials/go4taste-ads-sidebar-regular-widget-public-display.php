@@ -59,7 +59,9 @@ $formatted_category = ucfirst(strtolower($category_with_spaces));
             <img src="<?php echo esc_url( $product_data->picture ); ?>" alt="<?php echo esc_attr( $product_data->name ); ?>">
         </div>
         <div class="g4t-ads-details">
-            <div class="g4t-ads-name"><?php echo esc_html( $product_data->name ); ?></div>
+            <div class="g4t-ads-name">
+                <a href="<?php echo esc_url( $product_data->link ); ?>" class="g4t-ads-name-link"><?php echo esc_html( $product_data->name ); ?></a>
+            </div>
             <div class="g4t-ads-prices">
                 <?php if ( $product_data->price != $product_data->price_without_reduction ) : ?>
                     <span class="g4t-ads-old-price"><?php echo esc_html( $product_data->price_without_reduction ); ?></span>
