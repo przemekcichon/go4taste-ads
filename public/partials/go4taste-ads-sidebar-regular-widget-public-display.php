@@ -52,11 +52,34 @@ $category_with_spaces = str_replace('-', ' ', $category);
 // Capitalize the first letter of each word
 $formatted_category = ucfirst(strtolower($category_with_spaces));
 
+/**
+ * Get image dimensions with caching
+ */
+$img_url = (string) $product_data->picture;
+$transient_key = 'g4t_img_' . md5( $img_url );
+$img_dimensions = get_transient( $transient_key );
+
+if ( false === $img_dimensions ) {
+    $img_size = @getimagesize( $img_url );
+    if ( $img_size ) {
+        $img_dimensions = array(
+            'width'  => $img_size[0],
+            'height' => $img_size[1],
+        );
+    } else {
+        $img_dimensions = array(
+            'width'  => 320,
+            'height' => 180,
+        );
+    }
+    set_transient( $transient_key, $img_dimensions, WEEK_IN_SECONDS );
+}
+
 ?>
 <div class="g4t-ads-banner g4t-banner-sidebar-regular">
     <div class="g4t-ads-content">
         <div class="g4t-ads-image">
-            <img src="<?php echo esc_url( $product_data->picture ); ?>" alt="<?php echo esc_attr( $product_data->name ); ?>">
+            <img src="<?php echo esc_url( $product_data->picture ); ?>" alt="<?php echo esc_attr( $product_data->name ); ?>" width="<?php echo esc_attr( $img_dimensions['width'] ); ?>" height="<?php echo esc_attr( $img_dimensions['height'] ); ?>" />
         </div>
         <div class="g4t-ads-details">
             <div class="g4t-ads-name">
