@@ -88,6 +88,42 @@ if ( ! empty( $attributes['cardBoxShadow'] ) && isset( $shadow_map[ $attributes[
 	$card_style_parts[] = 'box-shadow:' . $shadow_map[ $attributes['cardBoxShadow'] ];
 }
 $card_style = ! empty( $card_style_parts ) ? ' style="' . implode( ';', $card_style_parts ) . '"' : '';
+
+$btn_style_parts = array();
+if ( ! empty( $attributes['btnBackground'] ) ) {
+	$btn_style_parts[] = 'background-color:' . esc_attr( $attributes['btnBackground'] );
+}
+if ( ! empty( $attributes['btnColor'] ) ) {
+	$btn_style_parts[] = 'color:' . esc_attr( $attributes['btnColor'] );
+}
+if ( ! empty( $attributes['btnFontSize'] ) ) {
+	$btn_style_parts[] = 'font-size:' . esc_attr( $attributes['btnFontSize'] );
+}
+if ( ! empty( $attributes['btnFontWeight'] ) ) {
+	$btn_style_parts[] = 'font-weight:' . esc_attr( $attributes['btnFontWeight'] );
+}
+if ( ! empty( $attributes['btnTextTransform'] ) ) {
+	$btn_style_parts[] = 'text-transform:' . esc_attr( $attributes['btnTextTransform'] );
+}
+if ( ! empty( $attributes['btnLetterSpacing'] ) ) {
+	$btn_style_parts[] = 'letter-spacing:' . esc_attr( $attributes['btnLetterSpacing'] );
+}
+if ( ! empty( $attributes['btnPadding'] ) ) {
+	$btn_style_parts[] = 'padding:' . esc_attr( $attributes['btnPadding'] );
+}
+if ( ! empty( $attributes['btnBorderColor'] ) ) {
+	$btn_style_parts[] = 'border-color:' . esc_attr( $attributes['btnBorderColor'] );
+}
+if ( ! empty( $attributes['btnBorderWidth'] ) ) {
+	$btn_style_parts[] = 'border-width:' . esc_attr( $attributes['btnBorderWidth'] );
+}
+if ( ! empty( $attributes['btnBorderStyle'] ) ) {
+	$btn_style_parts[] = 'border-style:' . esc_attr( $attributes['btnBorderStyle'] );
+}
+if ( ! empty( $attributes['btnBorderRadius'] ) ) {
+	$btn_style_parts[] = 'border-radius:' . esc_attr( $attributes['btnBorderRadius'] );
+}
+$btn_style = ! empty( $btn_style_parts ) ? ' style="' . implode( ';', $btn_style_parts ) . '"' : '';
 ?>
 <div <?php echo $wrapper_attrs; ?>>
 	<div class="g4t-ads-inline-products"<?php echo $products_style; ?>>
@@ -142,7 +178,7 @@ $card_style = ! empty( $card_style_parts ) ? ' style="' . implode( ';', $card_st
 				</div>
 			</div>
 			<a href="<?php echo esc_url( $product_data->link ); ?>"
-			   class="g4t-ads-button"
+			   class="g4t-ads-button"<?php echo $btn_style; ?>
 			   data-object-type="promotion"
 			   data-item-category2="<?php echo esc_attr( $formatted_category ); ?>"
 			   data-reference="<?php echo esc_attr( $product_data->reference ); ?>"

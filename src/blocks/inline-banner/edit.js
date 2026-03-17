@@ -44,6 +44,23 @@ const SHADOW_VALUES = {
 	large: '0 8px 24px rgba(0,0,0,0.2)',
 };
 
+const FONT_WEIGHT_OPTIONS = [
+	{ value: '', label: __( 'Domyślny', 'go4taste-ads' ) },
+	{ value: '400', label: 'Normal (400)' },
+	{ value: '500', label: 'Medium (500)' },
+	{ value: '600', label: 'Semi Bold (600)' },
+	{ value: '700', label: 'Bold (700)' },
+	{ value: '800', label: 'Extra Bold (800)' },
+];
+
+const TEXT_TRANSFORM_OPTIONS = [
+	{ value: '', label: __( 'Domyślny', 'go4taste-ads' ) },
+	{ value: 'none', label: __( 'Brak', 'go4taste-ads' ) },
+	{ value: 'uppercase', label: __( 'WIELKIE LITERY', 'go4taste-ads' ) },
+	{ value: 'lowercase', label: __( 'małe litery', 'go4taste-ads' ) },
+	{ value: 'capitalize', label: __( 'Każde Słowo', 'go4taste-ads' ) },
+];
+
 function buildCardStyle( attributes ) {
 	const style = {};
 	if ( attributes.cardBackground ) {
@@ -67,9 +84,48 @@ function buildCardStyle( attributes ) {
 	return style;
 }
 
+function buildButtonStyle( attributes ) {
+	const style = {};
+	if ( attributes.btnBackground ) {
+		style.backgroundColor = attributes.btnBackground;
+	}
+	if ( attributes.btnColor ) {
+		style.color = attributes.btnColor;
+	}
+	if ( attributes.btnFontSize ) {
+		style.fontSize = attributes.btnFontSize;
+	}
+	if ( attributes.btnFontWeight ) {
+		style.fontWeight = attributes.btnFontWeight;
+	}
+	if ( attributes.btnTextTransform ) {
+		style.textTransform = attributes.btnTextTransform;
+	}
+	if ( attributes.btnLetterSpacing ) {
+		style.letterSpacing = attributes.btnLetterSpacing;
+	}
+	if ( attributes.btnPadding ) {
+		style.padding = attributes.btnPadding;
+	}
+	if ( attributes.btnBorderColor ) {
+		style.borderColor = attributes.btnBorderColor;
+	}
+	if ( attributes.btnBorderWidth ) {
+		style.borderWidth = attributes.btnBorderWidth;
+	}
+	if ( attributes.btnBorderStyle ) {
+		style.borderStyle = attributes.btnBorderStyle;
+	}
+	if ( attributes.btnBorderRadius ) {
+		style.borderRadius = attributes.btnBorderRadius;
+	}
+	return style;
+}
+
 export default function Edit( { attributes, setAttributes } ) {
 	const { products, mobileLayout, productsGap, productsWidth } = attributes;
 	const cardStyle = buildCardStyle( attributes );
+	const buttonStyle = buildButtonStyle( attributes );
 
 	const blockProps = useBlockProps( {
 		className: `g4t-ads-banner g4t-banner-inline g4t-banner-inline--mobile-${ mobileLayout }`,
@@ -212,6 +268,97 @@ export default function Edit( { attributes, setAttributes } ) {
 						}
 					/>
 				</PanelBody>
+				<PanelBody
+					title={ __( 'Styl przycisku', 'go4taste-ads' ) }
+					initialOpen={ false }
+				>
+					<p className="components-base-control__label">
+						{ __( 'Kolor tła', 'go4taste-ads' ) }
+					</p>
+					<ColorPalette
+						value={ attributes.btnBackground }
+						onChange={ ( value ) =>
+							setAttributes( { btnBackground: value || '' } )
+						}
+					/>
+					<p className="components-base-control__label">
+						{ __( 'Kolor tekstu', 'go4taste-ads' ) }
+					</p>
+					<ColorPalette
+						value={ attributes.btnColor }
+						onChange={ ( value ) =>
+							setAttributes( { btnColor: value || '' } )
+						}
+					/>
+					<UnitControl
+						label={ __( 'Rozmiar czcionki', 'go4taste-ads' ) }
+						value={ attributes.btnFontSize }
+						onChange={ ( value ) =>
+							setAttributes( { btnFontSize: value } )
+						}
+					/>
+					<SelectControl
+						label={ __( 'Grubość czcionki', 'go4taste-ads' ) }
+						value={ attributes.btnFontWeight }
+						options={ FONT_WEIGHT_OPTIONS }
+						onChange={ ( value ) =>
+							setAttributes( { btnFontWeight: value } )
+						}
+					/>
+					<SelectControl
+						label={ __( 'Wielkość liter', 'go4taste-ads' ) }
+						value={ attributes.btnTextTransform }
+						options={ TEXT_TRANSFORM_OPTIONS }
+						onChange={ ( value ) =>
+							setAttributes( { btnTextTransform: value } )
+						}
+					/>
+					<UnitControl
+						label={ __( 'Odstęp między literami', 'go4taste-ads' ) }
+						value={ attributes.btnLetterSpacing }
+						onChange={ ( value ) =>
+							setAttributes( { btnLetterSpacing: value } )
+						}
+					/>
+					<UnitControl
+						label={ __( 'Padding', 'go4taste-ads' ) }
+						value={ attributes.btnPadding }
+						onChange={ ( value ) =>
+							setAttributes( { btnPadding: value } )
+						}
+					/>
+					<p className="components-base-control__label">
+						{ __( 'Kolor obramowania', 'go4taste-ads' ) }
+					</p>
+					<ColorPalette
+						value={ attributes.btnBorderColor }
+						onChange={ ( value ) =>
+							setAttributes( { btnBorderColor: value || '' } )
+						}
+					/>
+					<UnitControl
+						label={ __( 'Grubość obramowania', 'go4taste-ads' ) }
+						value={ attributes.btnBorderWidth }
+						onChange={ ( value ) =>
+							setAttributes( { btnBorderWidth: value } )
+						}
+					/>
+					<SelectControl
+						label={ __( 'Styl obramowania', 'go4taste-ads' ) }
+						value={ attributes.btnBorderStyle }
+						options={ BORDER_STYLE_OPTIONS }
+						onChange={ ( value ) =>
+							setAttributes( { btnBorderStyle: value } )
+						}
+					/>
+					<UnitControl
+						label={ __( 'Zaokrąglenie rogów', 'go4taste-ads' ) }
+						value={ attributes.btnBorderRadius }
+						onChange={ ( value ) =>
+							setAttributes( { btnBorderRadius: value } )
+						}
+					/>
+				</PanelBody>
 			</InspectorControls>
 			<div { ...blockProps }>
 				<div
@@ -227,6 +374,7 @@ export default function Edit( { attributes, setAttributes } ) {
 							product={ product }
 							onRemove={ () => removeProduct( index ) }
 							cardStyle={ cardStyle }
+							buttonStyle={ buttonStyle }
 						/>
 					) ) }
 				</div>

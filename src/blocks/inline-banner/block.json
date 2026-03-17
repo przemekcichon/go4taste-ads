@@ -63,6 +63,53 @@
 			"type": "string",
 			"default": "",
 			"enum": [ "", "none", "small", "medium", "large" ]
+		},
+		"btnBackground": {
+			"type": "string",
+			"default": ""
+		},
+		"btnColor": {
+			"type": "string",
+			"default": ""
+		},
+		"btnFontSize": {
+			"type": "string",
+			"default": ""
+		},
+		"btnFontWeight": {
+			"type": "string",
+			"default": "",
+			"enum": [ "", "400", "500", "600", "700", "800" ]
+		},
+		"btnTextTransform": {
+			"type": "string",
+			"default": "",
+			"enum": [ "", "none", "uppercase", "lowercase", "capitalize" ]
+		},
+		"btnLetterSpacing": {
+			"type": "string",
+			"default": ""
+		},
+		"btnPadding": {
+			"type": "string",
+			"default": ""
+		},
+		"btnBorderColor": {
+			"type": "string",
+			"default": ""
+		},
+		"btnBorderWidth": {
+			"type": "string",
+			"default": ""
+		},
+		"btnBorderStyle": {
+			"type": "string",
+			"default": "",
+			"enum": [ "", "solid", "dashed", "dotted", "none" ]
+		},
+		"btnBorderRadius": {
+			"type": "string",
+			"default": ""
 		}
 	},
 	"supports": {

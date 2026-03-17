@@ -1,7 +1,7 @@
 import { Button } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 
-export default function ProductPreview( { product, onRemove, cardStyle } ) {
+export default function ProductPreview( { product, onRemove, cardStyle, buttonStyle } ) {
 	return (
 		<div className="g4t-ads-content g4t-ads-content--editor" style={ cardStyle }>
 			<Button
@@ -40,7 +40,7 @@ export default function ProductPreview( { product, onRemove, cardStyle } ) {
 					</span>
 				</div>
 			</div>
-			<div className="g4t-ads-button g4t-ads-button--preview">
+			<div className="g4t-ads-button g4t-ads-button--preview" style={ buttonStyle }>
 				Kup w sklepie
 			</div>
 		</div>
