@@ -58,6 +58,44 @@
     "productsWidth": {
       "type": "string",
       "default": ""
+    },
+    "cardBackground": {
+      "type": "string",
+      "default": ""
+    },
+    "cardBorderColor": {
+      "type": "string",
+      "default": ""
+    },
+    "cardBorderWidth": {
+      "type": "string",
+      "default": ""
+    },
+    "cardBorderStyle": {
+      "type": "string",
+      "default": "",
+      "enum": [
+        "",
+        "solid",
+        "dashed",
+        "dotted",
+        "none"
+      ]
+    },
+    "cardBorderRadius": {
+      "type": "string",
+      "default": ""
+    },
+    "cardBoxShadow": {
+      "type": "string",
+      "default": "",
+      "enum": [
+        "",
+        "none",
+        "small",
+        "medium",
+        "large"
+      ]
     }
   },
   "supports": {

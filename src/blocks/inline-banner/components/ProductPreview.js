@@ -1,9 +1,9 @@
 import { Button } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 
-export default function ProductPreview( { product, onRemove } ) {
+export default function ProductPreview( { product, onRemove, cardStyle } ) {
 	return (
-		<div className="g4t-ads-content g4t-ads-content--editor">
+		<div className="g4t-ads-content g4t-ads-content--editor" style={ cardStyle }>
 			<Button
 				className="g4t-product-remove"
 				icon="no-alt"

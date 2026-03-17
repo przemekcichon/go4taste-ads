@@ -60,6 +60,34 @@ if ( ! empty( $attributes['productsWidth'] ) ) {
 	$products_style_parts[] = 'width:' . esc_attr( $attributes['productsWidth'] );
 }
 $products_style = ! empty( $products_style_parts ) ? ' style="' . implode( ';', $products_style_parts ) . '"' : '';
+
+$shadow_map = array(
+	'none'   => 'none',
+	'small'  => '0 1px 3px rgba(0,0,0,0.12)',
+	'medium' => '0 4px 12px rgba(0,0,0,0.15)',
+	'large'  => '0 8px 24px rgba(0,0,0,0.2)',
+);
+
+$card_style_parts = array();
+if ( ! empty( $attributes['cardBackground'] ) ) {
+	$card_style_parts[] = 'background-color:' . esc_attr( $attributes['cardBackground'] );
+}
+if ( ! empty( $attributes['cardBorderColor'] ) ) {
+	$card_style_parts[] = 'border-color:' . esc_attr( $attributes['cardBorderColor'] );
+}
+if ( ! empty( $attributes['cardBorderWidth'] ) ) {
+	$card_style_parts[] = 'border-width:' . esc_attr( $attributes['cardBorderWidth'] );
+}
+if ( ! empty( $attributes['cardBorderStyle'] ) ) {
+	$card_style_parts[] = 'border-style:' . esc_attr( $attributes['cardBorderStyle'] );
+}
+if ( ! empty( $attributes['cardBorderRadius'] ) ) {
+	$card_style_parts[] = 'border-radius:' . esc_attr( $attributes['cardBorderRadius'] );
+}
+if ( ! empty( $attributes['cardBoxShadow'] ) && isset( $shadow_map[ $attributes['cardBoxShadow'] ] ) ) {
+	$card_style_parts[] = 'box-shadow:' . $shadow_map[ $attributes['cardBoxShadow'] ];
+}
+$card_style = ! empty( $card_style_parts ) ? ' style="' . implode( ';', $card_style_parts ) . '"' : '';
 ?>
 <div <?php echo $wrapper_attrs; ?>>
 	<div class="g4t-ads-inline-products"<?php echo $products_style; ?>>
@@ -91,7 +119,7 @@ $products_style = ! empty( $products_style_parts ) ? ' style="' . implode( ';', 
 				set_transient( $transient_key, $img_dimensions, WEEK_IN_SECONDS );
 			}
 		?>
-		<div class="g4t-ads-content">
+		<div class="g4t-ads-content"<?php echo $card_style; ?>>
 			<div class="g4t-ads-image">
 				<img
 					src="<?php echo esc_url( $product_data->picture ); ?>"

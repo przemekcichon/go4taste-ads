@@ -1,5 +1,5 @@
 import { useBlockProps, InspectorControls } from '@wordpress/block-editor';
-import { PanelBody, Placeholder, SelectControl, __experimentalUnitControl as UnitControl } from '@wordpress/components';
+import { ColorPalette, PanelBody, Placeholder, SelectControl, __experimentalUnitControl as UnitControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import AlgoliaProductSearch from './components/AlgoliaProductSearch';
 import ProductPreview from './components/ProductPreview';
@@ -21,8 +21,55 @@ const MOBILE_LAYOUT_OPTIONS = [
 	},
 ];
 
+const BORDER_STYLE_OPTIONS = [
+	{ value: '', label: __( 'Domyślny', 'go4taste-ads' ) },
+	{ value: 'solid', label: __( 'Ciągły', 'go4taste-ads' ) },
+	{ value: 'dashed', label: __( 'Kreskowany', 'go4taste-ads' ) },
+	{ value: 'dotted', label: __( 'Kropkowany', 'go4taste-ads' ) },
+	{ value: 'none', label: __( 'Brak', 'go4taste-ads' ) },
+];
+
+const SHADOW_OPTIONS = [
+	{ value: '', label: __( 'Domyślny', 'go4taste-ads' ) },
+	{ value: 'none', label: __( 'Brak', 'go4taste-ads' ) },
+	{ value: 'small', label: __( 'Mały', 'go4taste-ads' ) },
+	{ value: 'medium', label: __( 'Średni', 'go4taste-ads' ) },
+	{ value: 'large', label: __( 'Duży', 'go4taste-ads' ) },
+];
+
+const SHADOW_VALUES = {
+	none: 'none',
+	small: '0 1px 3px rgba(0,0,0,0.12)',
+	medium: '0 4px 12px rgba(0,0,0,0.15)',
+	large: '0 8px 24px rgba(0,0,0,0.2)',
+};
+
+function buildCardStyle( attributes ) {
+	const style = {};
+	if ( attributes.cardBackground ) {
+		style.backgroundColor = attributes.cardBackground;
+	}
+	if ( attributes.cardBorderColor ) {
+		style.borderColor = attributes.cardBorderColor;
+	}
+	if ( attributes.cardBorderWidth ) {
+		style.borderWidth = attributes.cardBorderWidth;
+	}
+	if ( attributes.cardBorderStyle ) {
+		style.borderStyle = attributes.cardBorderStyle;
+	}
+	if ( attributes.cardBorderRadius ) {
+		style.borderRadius = attributes.cardBorderRadius;
+	}
+	if ( attributes.cardBoxShadow && SHADOW_VALUES[ attributes.cardBoxShadow ] ) {
+		style.boxShadow = SHADOW_VALUES[ attributes.cardBoxShadow ];
+	}
+	return style;
+}
+
 export default function Edit( { attributes, setAttributes } ) {
 	const { products, mobileLayout, productsGap, productsWidth } = attributes;
+	const cardStyle = buildCardStyle( attributes );
 
 	const blockProps = useBlockProps( {
 		className: `g4t-ads-banner g4t-banner-inline g4t-banner-inline--mobile-${ mobileLayout }`,
@@ -112,6 +159,59 @@ export default function Edit( { attributes, setAttributes } ) {
 						) }
 					/>
 				</PanelBody>
+				<PanelBody
+					title={ __( 'Styl karty produktu', 'go4taste-ads' ) }
+					initialOpen={ false }
+				>
+					<p className="components-base-control__label">
+						{ __( 'Kolor tła', 'go4taste-ads' ) }
+					</p>
+					<ColorPalette
+						value={ attributes.cardBackground }
+						onChange={ ( value ) =>
+							setAttributes( { cardBackground: value || '' } )
+						}
+					/>
+					<p className="components-base-control__label">
+						{ __( 'Kolor obramowania', 'go4taste-ads' ) }
+					</p>
+					<ColorPalette
+						value={ attributes.cardBorderColor }
+						onChange={ ( value ) =>
+							setAttributes( { cardBorderColor: value || '' } )
+						}
+					/>
+					<UnitControl
+						label={ __( 'Grubość obramowania', 'go4taste-ads' ) }
+						value={ attributes.cardBorderWidth }
+						onChange={ ( value ) =>
+							setAttributes( { cardBorderWidth: value } )
+						}
+					/>
+					<SelectControl
+						label={ __( 'Styl obramowania', 'go4taste-ads' ) }
+						value={ attributes.cardBorderStyle }
+						options={ BORDER_STYLE_OPTIONS }
+						onChange={ ( value ) =>
+							setAttributes( { cardBorderStyle: value } )
+						}
+					/>
+					<UnitControl
+						label={ __( 'Zaokrąglenie rogów', 'go4taste-ads' ) }
+						value={ attributes.cardBorderRadius }
+						onChange={ ( value ) =>
+							setAttributes( { cardBorderRadius: value } )
+						}
+					/>
+					<SelectControl
+						label={ __( 'Cień', 'go4taste-ads' ) }
+						value={ attributes.cardBoxShadow }
+						options={ SHADOW_OPTIONS }
+						onChange={ ( value ) =>
+							setAttributes( { cardBoxShadow: value } )
+						}
+					/>
+				</PanelBody>
 			</InspectorControls>
 			<div { ...blockProps }>
 				<div
@@ -126,6 +226,7 @@ export default function Edit( { attributes, setAttributes } ) {
 							key={ product.id }
 							product={ product }
 							onRemove={ () => removeProduct( index ) }
+							cardStyle={ cardStyle }
 						/>
 					) ) }
 				</div>
