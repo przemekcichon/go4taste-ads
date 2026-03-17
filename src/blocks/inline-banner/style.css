@@ -103,7 +103,7 @@
 	font-size: 14px;
 	width: 100%;
 	box-sizing: border-box;
-	transition: background-color 0.3s ease, color 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 	font-style: normal;
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
@@ -111,8 +111,9 @@
 }
 
 .g4t-banner-inline a.g4t-ads-button:hover {
-	background-color: #218838;
-	color: #fff;
+	background-color: var(--btn-hover-bg, #218838);
+	color: var(--btn-hover-color, #fff);
+	border-color: var(--btn-hover-border-color, currentColor);
 }
 
 /* ---- Mobile layout variants ---- */

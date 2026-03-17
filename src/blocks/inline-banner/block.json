@@ -110,6 +110,18 @@
 		"btnBorderRadius": {
 			"type": "string",
 			"default": ""
+		},
+		"btnHoverBackground": {
+			"type": "string",
+			"default": ""
+		},
+		"btnHoverColor": {
+			"type": "string",
+			"default": ""
+		},
+		"btnHoverBorderColor": {
+			"type": "string",
+			"default": ""
 		}
 	},
 	"supports": {

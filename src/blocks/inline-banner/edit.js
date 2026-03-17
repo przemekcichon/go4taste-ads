@@ -119,6 +119,15 @@ function buildButtonStyle( attributes ) {
 	if ( attributes.btnBorderRadius ) {
 		style.borderRadius = attributes.btnBorderRadius;
 	}
+	if ( attributes.btnHoverBackground ) {
+		style[ '--btn-hover-bg' ] = attributes.btnHoverBackground;
+	}
+	if ( attributes.btnHoverColor ) {
+		style[ '--btn-hover-color' ] = attributes.btnHoverColor;
+	}
+	if ( attributes.btnHoverBorderColor ) {
+		style[ '--btn-hover-border-color' ] = attributes.btnHoverBorderColor;
+	}
 	return style;
 }
 
@@ -356,6 +365,38 @@ export default function Edit( { attributes, setAttributes } ) {
 						value={ attributes.btnBorderRadius }
 						onChange={ ( value ) =>
 							setAttributes( { btnBorderRadius: value } )
+						}
+					/>
+				</PanelBody>
+				<PanelBody
+					title={ __( 'Styl przycisku — hover', 'go4taste-ads' ) }
+					initialOpen={ false }
+				>
+					<p className="components-base-control__label">
+						{ __( 'Kolor tła', 'go4taste-ads' ) }
+					</p>
+					<ColorPalette
+						value={ attributes.btnHoverBackground }
+						onChange={ ( value ) =>
+							setAttributes( { btnHoverBackground: value || '' } )
+						}
+					/>
+					<p className="components-base-control__label">
+						{ __( 'Kolor tekstu', 'go4taste-ads' ) }
+					</p>
+					<ColorPalette
+						value={ attributes.btnHoverColor }
+						onChange={ ( value ) =>
+							setAttributes( { btnHoverColor: value || '' } )
+						}
+					/>
+					<p className="components-base-control__label">
+						{ __( 'Kolor obramowania', 'go4taste-ads' ) }
+					</p>
+					<ColorPalette
+						value={ attributes.btnHoverBorderColor }
+						onChange={ ( value ) =>
+							setAttributes( { btnHoverBorderColor: value || '' } )
 						}
 					/>
 				</PanelBody>

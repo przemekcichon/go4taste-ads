@@ -123,6 +123,15 @@ if ( ! empty( $attributes['btnBorderStyle'] ) ) {
 if ( ! empty( $attributes['btnBorderRadius'] ) ) {
 	$btn_style_parts[] = 'border-radius:' . esc_attr( $attributes['btnBorderRadius'] );
 }
+if ( ! empty( $attributes['btnHoverBackground'] ) ) {
+	$btn_style_parts[] = '--btn-hover-bg:' . esc_attr( $attributes['btnHoverBackground'] );
+}
+if ( ! empty( $attributes['btnHoverColor'] ) ) {
+	$btn_style_parts[] = '--btn-hover-color:' . esc_attr( $attributes['btnHoverColor'] );
+}
+if ( ! empty( $attributes['btnHoverBorderColor'] ) ) {
+	$btn_style_parts[] = '--btn-hover-border-color:' . esc_attr( $attributes['btnHoverBorderColor'] );
+}
 $btn_style = ! empty( $btn_style_parts ) ? ' style="' . implode( ';', $btn_style_parts ) . '"' : '';
 ?>
 <div <?php echo $wrapper_attrs; ?>>
