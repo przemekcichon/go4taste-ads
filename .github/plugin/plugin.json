@@ -1,0 +1,4 @@
+{
+  "name": "go4taste-ads",
+  "description": "WordPress plugin for displaying product ads in sidebars with Algolia search integration, multi-API support (PrestaShop, WooCommerce), and transient caching."
+}

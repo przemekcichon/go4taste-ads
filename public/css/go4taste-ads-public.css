@@ -114,10 +114,10 @@ a.g4t-ads-button {
     }
 }
 
-/* Responsive Styles */
+/* Responsive Styles – scoped to sidebar widget only */
 @media (max-width: 1023px) {
     /* Switch to a horizontal layout for tablets and below */
-    .g4t-ads-banner {
+    .g4t-banner-sidebar-regular {
         position: fixed;
         bottom: 0;
         left: 0;
@@ -130,41 +130,41 @@ a.g4t-ads-button {
         border-top-right-radius: 8px;
     }
 
-    .g4t-ads-content {
+    .g4t-banner-sidebar-regular .g4t-ads-content {
         flex-direction: row; /* Make the content horizontal */
         align-items: center;
         justify-content: space-between;
     }
 
-    .g4t-ads-image img {
+    .g4t-banner-sidebar-regular .g4t-ads-image img {
         width: 5em;
     }
 
-    .g4t-ads-button.lg {
+    .g4t-banner-sidebar-regular .g4t-ads-button.lg {
         display: none;
     }
 
-    .g4t-ads-button.md {
+    .g4t-banner-sidebar-regular .g4t-ads-button.md {
         display: block;
     }
 
-    a.g4t-ads-button {
+    .g4t-banner-sidebar-regular a.g4t-ads-button {
         width:fit-content;
     }
 
-    .g4t-ads-button {
+    .g4t-banner-sidebar-regular .g4t-ads-button {
         padding: 6px 12px;
         font-size: 12px;
         margin-top: 0; /* Remove top margin in horizontal layout */
         width: auto; /* Button width should auto adjust in horizontal layout */
     }
 
-    .g4t-ads-name {
+    .g4t-banner-sidebar-regular .g4t-ads-name {
         font-size: 12px;
         text-align: left; /* Align text to the left for horizontal layout */
     }
 
-    .g4t-ads-prices {
+    .g4t-banner-sidebar-regular .g4t-ads-prices {
         font-size: 10px;
         text-align: left; /* Align text to the left for horizontal layout */
     }
@@ -172,7 +172,7 @@ a.g4t-ads-button {
 
 @media (max-width: 940px) {
     /* For smaller tablets */
-    .g4t-ads-banner {
+    .g4t-banner-sidebar-regular {
         padding: 8px 12px;
     }
 }

@@ -97,6 +97,7 @@ class Go4Taste_Ads{
         $this->set_locale();
         $this->define_admin_hooks();
         $this->define_public_hooks();
+        $this->define_block_hooks();
 
         // Initialize the public instance
         $this->public_instance = new Go4Taste_Ads_Admin($this->get_plugin_name(), $this->get_version());
@@ -267,6 +268,46 @@ class Go4Taste_Ads{
 
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
+
+	}
+
+	/**
+	 * Register all of the hooks related to Gutenberg block functionality.
+	 *
+	 * @since    1.2.0
+	 * @access   private
+	 */
+	private function define_block_hooks() {
+
+		$this->loader->add_action( 'init', $this, 'register_blocks' );
+
+	}
+
+	/**
+	 * Register Gutenberg blocks bundled with this plugin.
+	 *
+	 * @since    1.2.0
+	 */
+	public function register_blocks() {
+
+		$block_path = plugin_dir_path( dirname( __FILE__ ) ) . 'build/blocks/inline-banner';
+
+		if ( ! file_exists( $block_path . '/block.json' ) ) {
+			return;
+		}
+
+		register_block_type( $block_path );
+
+		$options = get_option( 'go4taste_ads_options' );
+		wp_localize_script(
+			'go4taste-ads-inline-banner-editor-script',
+			'g4tAdsBlockData',
+			array(
+				'algoliaAppId'     => isset( $options['algolia_app_id'] ) ? esc_attr( $options['algolia_app_id'] ) : '',
+				'algoliaSearchKey' => isset( $options['algolia_api_key'] ) ? esc_attr( $options['algolia_api_key'] ) : '',
+				'algoliaIndexName' => 'go4taste_product_list',
+			)
+		);
 
 	}
 

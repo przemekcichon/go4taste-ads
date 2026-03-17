@@ -1,2 +1,5 @@
 composer.json
 composer.lock
+node_modules
+tmpclaude-*
+agent-skills/

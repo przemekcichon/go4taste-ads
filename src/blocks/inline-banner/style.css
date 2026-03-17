@@ -1,0 +1,177 @@
+/* ============================================
+   Go4Taste Inline Banner Block
+   Scoped under .g4t-banner-inline to avoid
+   conflicts with .g4t-banner-sidebar-regular
+   ============================================ */
+
+.g4t-banner-inline {
+	position: static;
+	display: block;
+	padding: 20px;
+	border: 1px solid #c1d6c8;
+	background-color: #f0f8f5;
+	margin: 24px auto;
+	border-radius: 4px;
+}
+
+/* Container width scales with product count so each card stays ~1/3 of parent.
+   Formula: N * card_width + (N-1) * gap + 2 * padding
+   where card_width = (100% - 2*padding - 2*gap) / 3 = (100% - 80px) / 3 */
+.g4t-banner-inline--count-1 {
+	max-width: calc((100% - 80px) / 3 + 40px);
+}
+
+.g4t-banner-inline--count-2 {
+	max-width: calc((100% - 80px) * 2 / 3 + 60px);
+}
+
+.g4t-banner-inline .g4t-ads-inline-products {
+	display: flex;
+	flex-direction: row;
+	gap: 20px;
+	width: 100%;
+}
+
+.g4t-banner-inline .g4t-ads-content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	flex: 1;
+	gap: 10px;
+}
+
+.g4t-banner-inline .g4t-ads-image {
+	width: 100%;
+}
+
+.g4t-banner-inline .g4t-ads-image img {
+	width: 100%;
+	height: auto;
+	background-color: #fff;
+	padding: 10px 0;
+}
+
+.g4t-banner-inline .g4t-ads-details {
+	flex-grow: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	width: 100%;
+	padding: 0 5px;
+}
+
+.g4t-banner-inline .g4t-ads-name {
+	font-size: 14px;
+	font-weight: bold;
+	text-align: center;
+}
+
+.g4t-banner-inline .g4t-ads-name-link {
+	color: inherit;
+	text-decoration: none;
+	transition: text-decoration 0.3s ease;
+	font-style: normal;
+}
+
+.g4t-banner-inline a.g4t-ads-name-link:hover {
+	text-decoration: underline;
+}
+
+.g4t-banner-inline .g4t-ads-prices {
+	font-size: 12px;
+	margin-top: 5px;
+	text-align: center;
+}
+
+.g4t-banner-inline .g4t-ads-old-price {
+	text-decoration: line-through;
+	margin-right: 5px;
+}
+
+.g4t-banner-inline .g4t-ads-sale-price {
+	color: #28a745;
+	font-weight: bold;
+}
+
+.g4t-banner-inline a.g4t-ads-button {
+	background-color: #28a745;
+	color: #fff;
+	padding: 8px 16px;
+	text-align: center;
+	border-radius: 4px;
+	text-decoration: none;
+	font-size: 14px;
+	width: 100%;
+	box-sizing: border-box;
+	transition: background-color 0.3s ease, color 0.3s ease;
+	font-style: normal;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	font-weight: 600;
+}
+
+.g4t-banner-inline a.g4t-ads-button:hover {
+	background-color: #218838;
+	color: #fff;
+}
+
+/* ---- Mobile layout variants ---- */
+@media (max-width: 1023px) {
+
+	/* Defence: inline banners must never be fixed-positioned */
+	.g4t-ads-banner.g4t-banner-inline {
+		position: static;
+		bottom: auto;
+		left: auto;
+		right: auto;
+		z-index: auto;
+	}
+}
+
+@media (max-width: 767px) {
+
+	/* Reset container max-width on mobile (column/carousel use full width) */
+	.g4t-banner-inline--mobile-column,
+	.g4t-banner-inline--mobile-carousel {
+		max-width: none;
+	}
+
+	/* Column: stack vertically (default) */
+	.g4t-banner-inline--mobile-column .g4t-ads-inline-products {
+		flex-direction: column;
+	}
+
+	/* Single: show only the first product */
+	.g4t-banner-inline--mobile-single .g4t-ads-content ~ .g4t-ads-content {
+		display: none;
+	}
+
+	/* Carousel: horizontal scroll with snap */
+	.g4t-banner-inline--mobile-carousel .g4t-ads-inline-products {
+		overflow-x: auto;
+		scroll-snap-type: x mandatory;
+		-webkit-overflow-scrolling: touch;
+		gap: 12px;
+		padding-bottom: 8px;
+	}
+
+	.g4t-banner-inline--mobile-carousel .g4t-ads-content {
+		scroll-snap-align: center;
+		min-width: 75%;
+		flex-shrink: 0;
+	}
+
+	/* Hide scrollbar but keep functionality */
+	.g4t-banner-inline--mobile-carousel .g4t-ads-inline-products::-webkit-scrollbar {
+		height: 4px;
+	}
+
+	.g4t-banner-inline--mobile-carousel .g4t-ads-inline-products::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	.g4t-banner-inline--mobile-carousel .g4t-ads-inline-products::-webkit-scrollbar-thumb {
+		background: #c1d6c8;
+		border-radius: 2px;
+	}
+}
