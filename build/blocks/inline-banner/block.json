@@ -17,7 +17,30 @@
   "attributes": {
     "products": {
       "type": "array",
-      "default": []
+      "default": [],
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "picture": {
+            "type": "string"
+          },
+          "price": {
+            "type": "string"
+          },
+          "price_without_reduction": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        }
+      }
     },
     "mobileLayout": {
       "type": "string",
@@ -27,6 +50,14 @@
         "carousel",
         "single"
       ]
+    },
+    "productsGap": {
+      "type": "string",
+      "default": ""
+    },
+    "productsWidth": {
+      "type": "string",
+      "default": ""
     }
   },
   "supports": {
@@ -34,7 +65,28 @@
     "align": [
       "wide",
       "full"
-    ]
+    ],
+    "color": {
+      "background": true,
+      "text": false,
+      "gradients": true
+    },
+    "__experimentalBorder": {
+      "color": true,
+      "radius": true,
+      "style": true,
+      "width": true,
+      "__experimentalDefaultControls": {
+        "color": true,
+        "radius": true,
+        "style": true,
+        "width": true
+      }
+    },
+    "spacing": {
+      "padding": true,
+      "margin": true
+    }
   },
   "editorScript": "file:./index.js",
   "editorStyle": "file:./index.css",

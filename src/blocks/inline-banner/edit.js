@@ -1,5 +1,5 @@
 import { useBlockProps, InspectorControls } from '@wordpress/block-editor';
-import { PanelBody, Placeholder, SelectControl } from '@wordpress/components';
+import { PanelBody, Placeholder, SelectControl, __experimentalUnitControl as UnitControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import AlgoliaProductSearch from './components/AlgoliaProductSearch';
 import ProductPreview from './components/ProductPreview';
@@ -22,7 +22,7 @@ const MOBILE_LAYOUT_OPTIONS = [
 ];
 
 export default function Edit( { attributes, setAttributes } ) {
-	const { products, mobileLayout } = attributes;
+	const { products, mobileLayout, productsGap, productsWidth } = attributes;
 
 	const blockProps = useBlockProps( {
 		className: `g4t-ads-banner g4t-banner-inline g4t-banner-inline--mobile-${ mobileLayout }`,
@@ -86,10 +86,40 @@ export default function Edit( { attributes, setAttributes } ) {
 						) }
 					/>
 				</PanelBody>
+				<PanelBody
+					title={ __( 'Układ produktów', 'go4taste-ads' ) }
+				>
+					<UnitControl
+						label={ __( 'Odstęp (gap)', 'go4taste-ads' ) }
+						value={ productsGap }
+						onChange={ ( value ) =>
+							setAttributes( { productsGap: value } )
+						}
+						help={ __(
+							'Odstęp między kartami produktów.',
+							'go4taste-ads'
+						) }
+					/>
+					<UnitControl
+						label={ __( 'Szerokość', 'go4taste-ads' ) }
+						value={ productsWidth }
+						onChange={ ( value ) =>
+							setAttributes( { productsWidth: value } )
+						}
+						help={ __(
+							'Szerokość kontenera produktów.',
+							'go4taste-ads'
+						) }
+					/>
+				</PanelBody>
 			</InspectorControls>
 			<div { ...blockProps }>
 				<div
 					className={ `g4t-ads-inline-products g4t-banner-inline--count-${ products.length }` }
+					style={ {
+						...( productsGap ? { gap: productsGap } : {} ),
+						...( productsWidth ? { width: productsWidth } : {} ),
+					} }
 				>
 					{ products.map( ( product, index ) => (
 						<ProductPreview

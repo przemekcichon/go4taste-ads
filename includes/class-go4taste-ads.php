@@ -280,6 +280,37 @@ class Go4Taste_Ads{
 	private function define_block_hooks() {
 
 		$this->loader->add_action( 'init', $this, 'register_blocks' );
+		$this->loader->add_filter( 'wp_theme_json_data_theme', $this, 'enable_border_settings' );
+
+	}
+
+	/**
+	 * Ensure border settings are enabled in theme.json so that
+	 * __experimentalBorder block supports render their controls.
+	 *
+	 * Classic themes (without theme.json) do not opt-in to border
+	 * settings by default, which hides the UI even when a block
+	 * declares support.
+	 *
+	 * @since  1.2.0
+	 * @param  WP_Theme_JSON_Data $theme_json Current theme JSON data.
+	 * @return WP_Theme_JSON_Data
+	 */
+	public function enable_border_settings( $theme_json ) {
+
+		$new_data = array(
+			'version'  => 3,
+			'settings' => array(
+				'border' => array(
+					'color'  => true,
+					'radius' => true,
+					'style'  => true,
+					'width'  => true,
+				),
+			),
+		);
+
+		return $theme_json->update_with( $new_data );
 
 	}
 
@@ -296,11 +327,20 @@ class Go4Taste_Ads{
 			return;
 		}
 
-		register_block_type( $block_path );
+		$block_type = register_block_type_from_metadata( $block_path );
+
+		if ( ! $block_type instanceof WP_Block_Type ) {
+			return;
+		}
+
+		$editor_handle = $block_type->editor_script_handles[0] ?? '';
+		if ( empty( $editor_handle ) ) {
+			return;
+		}
 
 		$options = get_option( 'go4taste_ads_options' );
 		wp_localize_script(
-			'go4taste-ads-inline-banner-editor-script',
+			$editor_handle,
 			'g4tAdsBlockData',
 			array(
 				'algoliaAppId'     => isset( $options['algolia_app_id'] ) ? esc_attr( $options['algolia_app_id'] ) : '',

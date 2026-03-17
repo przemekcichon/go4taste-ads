@@ -50,10 +50,19 @@ $wrapper_attrs  = get_block_wrapper_attributes( array(
 	'class' => 'g4t-ads-banner g4t-banner-inline g4t-banner-inline--count-' . $product_count . ' g4t-banner-inline--mobile-' . esc_attr( $mobile_layout ),
 ) );
 
-global $post;
+$post_id = get_the_ID();
+
+$products_style_parts = array();
+if ( ! empty( $attributes['productsGap'] ) ) {
+	$products_style_parts[] = 'gap:' . esc_attr( $attributes['productsGap'] );
+}
+if ( ! empty( $attributes['productsWidth'] ) ) {
+	$products_style_parts[] = 'width:' . esc_attr( $attributes['productsWidth'] );
+}
+$products_style = ! empty( $products_style_parts ) ? ' style="' . implode( ';', $products_style_parts ) . '"' : '';
 ?>
 <div <?php echo $wrapper_attrs; ?>>
-	<div class="g4t-ads-inline-products">
+	<div class="g4t-ads-inline-products"<?php echo $products_style; ?>>
 		<?php foreach ( $products_data as $product_data ) :
 			// Format price
 			$price           = htmlentities( $product_data->price, null, 'utf-8' );
@@ -116,7 +125,7 @@ global $post;
 			   data-creative-slot="inline-content"
 			   data-creative-name="Product Inline Banner"
 			   data-promotion-name="Go4Taste Product Ads"
-			   data-promotion-id="g4t-ads-<?php echo esc_attr( $post->ID ); ?>-<?php echo esc_attr( $product_data->id ); ?>"
+			   data-promotion-id="g4t-ads-<?php echo esc_attr( $post_id ); ?>-<?php echo esc_attr( $product_data->id ); ?>"
 			>Kup w sklepie</a>
 		</div>
 		<?php endforeach; ?>
