@@ -89,6 +89,14 @@
 	font-weight: 600;
 	cursor: default;
 	opacity: 0.8;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+.g4t-ads-button--preview:hover {
+	background-color: var(--btn-hover-bg, #218838) !important;
+	color: var(--btn-hover-color, #fff) !important;
+	border-color: var(--btn-hover-border-color, currentColor) !important;
+	opacity: 1;
 }
 
 .g4t-inline-banner-add-product {

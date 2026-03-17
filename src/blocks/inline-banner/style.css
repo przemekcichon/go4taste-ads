@@ -111,9 +111,9 @@
 }
 
 .g4t-banner-inline a.g4t-ads-button:hover {
-	background-color: var(--btn-hover-bg, #218838);
-	color: var(--btn-hover-color, #fff);
-	border-color: var(--btn-hover-border-color, currentColor);
+	background-color: var(--btn-hover-bg, #218838) !important;
+	color: var(--btn-hover-color, #fff) !important;
+	border-color: var(--btn-hover-border-color, currentColor) !important;
 }
 
 /* ---- Mobile layout variants ---- */
