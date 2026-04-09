@@ -248,11 +248,11 @@ class Go4Taste_Ads{
 		// Handle the update product IDs action from the admin page
 		$this->loader->add_action( 'admin_init', $plugin_admin, 'handle_update_product_ids' );
 
-		// Handle legacy shortcode banner migration action from admin page
-		$this->loader->add_action( 'admin_init', $plugin_admin, 'handle_migrate_legacy_banners' );
-
 		// Register AJAX handler for logged-in users
 		$this->loader->add_action( 'wp_ajax_g4t_fetch_product_preview', $plugin_admin, 'fetch_product_preview' );
+		$this->loader->add_action( 'wp_ajax_g4t_migration_start', $plugin_admin, 'ajax_migration_start' );
+		$this->loader->add_action( 'wp_ajax_g4t_migration_batch', $plugin_admin, 'ajax_migration_batch' );
+		$this->loader->add_action( 'wp_ajax_g4t_migration_status', $plugin_admin, 'ajax_migration_status' );
 
 		$this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_admin_preview_styles');
 

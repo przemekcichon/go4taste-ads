@@ -107,6 +107,18 @@ class Go4Taste_Ads_Admin {
             $this->version,
             true
         );
+
+        wp_localize_script(
+            $this->plugin_name,
+            'g4tAdsAdmin',
+            array(
+                'ajaxUrl'                => admin_url( 'admin-ajax.php' ),
+                'migrationNonce'         => wp_create_nonce( 'g4t_migrate_legacy_banners_ajax' ),
+                'migrationStartAction'   => 'g4t_migration_start',
+                'migrationBatchAction'   => 'g4t_migration_batch',
+                'migrationStatusAction'  => 'g4t_migration_status',
+            )
+        );
     }
 
     /**
@@ -545,7 +557,7 @@ class Go4Taste_Ads_Admin {
 
             <h2><?php _e( 'Migrate Legacy Shortcode Banners to Inline Banners', 'go4taste-ads' ); ?></h2>
             <p><?php _e( 'Scans post content for old prestashop_* shortcode banners and converts them to go4taste-ads/inline-banner blocks.', 'go4taste-ads' ); ?></p>
-            <form method="post">
+            <form method="post" id="g4t-migration-form">
                 <?php wp_nonce_field( 'go4taste_migrate_legacy_banners', 'go4taste_migrate_legacy_banners_nonce' ); ?>
                 <input type="hidden" name="go4taste_update_action" value="migrate_legacy_banners">
                 <p>
@@ -568,8 +580,23 @@ class Go4Taste_Ads_Admin {
                     <label><input type="checkbox" name="go4taste_migrate_post_statuses[]" value="publish" checked> <?php _e( 'Publish', 'go4taste-ads' ); ?></label><br>
                     <label><input type="checkbox" name="go4taste_migrate_post_statuses[]" value="draft" checked> <?php _e( 'Draft', 'go4taste-ads' ); ?></label>
                 </p>
-                <button type="submit" class="button-secondary"><?php _e( 'Run Migration', 'go4taste-ads' ); ?></button>
+
+                <p>
+                    <label for="go4taste_migrate_batch_size"><?php _e( 'Batch size:', 'go4taste-ads' ); ?></label>
+                    <input type="number" min="1" max="100" step="1" id="go4taste_migrate_batch_size" name="go4taste_migrate_batch_size" value="20" style="width:120px;">
+                </p>
+
+                <button type="button" class="button-secondary" id="g4t-migration-start"><?php _e( 'Run Migration', 'go4taste-ads' ); ?></button>
             </form>
+
+            <div id="g4t-migration-progress" class="g4t-migration-progress" style="display:none;">
+                <div class="g4t-migration-progress-bar-wrap">
+                    <div id="g4t-migration-progress-bar" class="g4t-migration-progress-bar" style="width:0%;"></div>
+                </div>
+                <p id="g4t-migration-progress-text" class="g4t-migration-progress-text"></p>
+                <ul id="g4t-migration-progress-stats" class="g4t-migration-progress-stats"></ul>
+                <div id="g4t-migration-log" class="g4t-migration-log"></div>
+            </div>
 
             <hr>
 
@@ -904,44 +931,8 @@ class Go4Taste_Ads_Admin {
      * @since 1.2.0
      */
     public function handle_migrate_legacy_banners() {
-        if ( ! isset( $_POST['go4taste_update_action'] ) || 'migrate_legacy_banners' !== $_POST['go4taste_update_action'] ) {
-            return;
-        }
-
-        if ( ! current_user_can( 'manage_options' ) ) {
-            return;
-        }
-
-        if ( ! isset( $_POST['go4taste_migrate_legacy_banners_nonce'] ) || ! wp_verify_nonce( $_POST['go4taste_migrate_legacy_banners_nonce'], 'go4taste_migrate_legacy_banners' ) ) {
-            return;
-        }
-
-        $dry_run      = ! empty( $_POST['go4taste_migrate_dry_run'] );
-        $limit        = isset( $_POST['go4taste_migrate_limit'] ) ? absint( $_POST['go4taste_migrate_limit'] ) : 0;
-        $post_types   = isset( $_POST['go4taste_migrate_post_types'] ) && is_array( $_POST['go4taste_migrate_post_types'] ) ? array_map( 'sanitize_key', wp_unslash( $_POST['go4taste_migrate_post_types'] ) ) : array( 'post', 'page' );
-        $post_statuses = isset( $_POST['go4taste_migrate_post_statuses'] ) && is_array( $_POST['go4taste_migrate_post_statuses'] ) ? array_map( 'sanitize_key', wp_unslash( $_POST['go4taste_migrate_post_statuses'] ) ) : array( 'publish', 'draft' );
-
-        if ( empty( $post_types ) ) {
-            $post_types = array( 'post', 'page' );
-        }
-
-        if ( empty( $post_statuses ) ) {
-            $post_statuses = array( 'publish', 'draft' );
-        }
-
-        $report = $this->migrate_legacy_shortcode_banners_to_inline( $dry_run, $limit, $post_types, $post_statuses );
-        set_transient( $this->get_migration_report_transient_key(), $report, 10 * MINUTE_IN_SECONDS );
-
-        $redirect_url = add_query_arg(
-            array(
-                'page'             => 'go4taste-ads',
-                'g4t_migrate_done' => 1,
-            ),
-            admin_url( 'admin.php' )
-        );
-
-        wp_safe_redirect( $redirect_url );
-        exit;
+        // Deprecated synchronous path intentionally disabled.
+        return;
     }
 
     /**
@@ -952,6 +943,214 @@ class Go4Taste_Ads_Admin {
      */
     private function get_migration_report_transient_key() {
         return 'g4t_migrate_inline_report_' . get_current_user_id();
+    }
+
+    /**
+     * Build transient key for async migration job state.
+     *
+     * @since 1.2.0
+     * @return string
+     */
+    private function get_migration_job_transient_key() {
+        return 'g4t_migrate_inline_job_' . get_current_user_id();
+    }
+
+    /**
+     * Start async migration job (AJAX).
+     *
+     * @since 1.2.0
+     */
+    public function ajax_migration_start() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
+        }
+
+        check_ajax_referer( 'g4t_migrate_legacy_banners_ajax', 'nonce' );
+
+        $existing_job = get_transient( $this->get_migration_job_transient_key() );
+        if ( is_array( $existing_job ) && isset( $existing_job['status'] ) && 'running' === $existing_job['status'] ) {
+            wp_send_json_error( array( 'message' => 'Migration is already running.' ), 409 );
+        }
+
+        $dry_run       = ! empty( $_POST['dry_run'] );
+        $limit         = isset( $_POST['limit'] ) ? absint( $_POST['limit'] ) : 0;
+        $batch_size    = isset( $_POST['batch_size'] ) ? absint( $_POST['batch_size'] ) : 20;
+        $batch_size    = max( 1, min( 100, $batch_size ) );
+        $post_types    = isset( $_POST['post_types'] ) && is_array( $_POST['post_types'] ) ? array_map( 'sanitize_key', wp_unslash( $_POST['post_types'] ) ) : array( 'post', 'page' );
+        $post_statuses = isset( $_POST['post_statuses'] ) && is_array( $_POST['post_statuses'] ) ? array_map( 'sanitize_key', wp_unslash( $_POST['post_statuses'] ) ) : array( 'publish', 'draft' );
+
+        if ( empty( $post_types ) ) {
+            $post_types = array( 'post', 'page' );
+        }
+
+        if ( empty( $post_statuses ) ) {
+            $post_statuses = array( 'publish', 'draft' );
+        }
+
+        $total_query = array(
+            'post_type'      => $post_types,
+            'post_status'    => $post_statuses,
+            'posts_per_page' => $limit > 0 ? $limit : 1,
+            'orderby'        => 'ID',
+            'order'          => 'ASC',
+            'fields'         => 'ids',
+            'no_found_rows'  => false,
+        );
+        $total_wp_query = new WP_Query( $total_query );
+        $total          = isset( $total_wp_query->found_posts ) ? (int) $total_wp_query->found_posts : 0;
+        if ( $limit > 0 ) {
+            $total = min( $total, $limit );
+        }
+        wp_reset_postdata();
+
+        $job_state = array(
+            'dry_run'                  => (bool) $dry_run,
+            'limit'                    => $limit,
+            'batch_size'               => $batch_size,
+            'post_types'               => $post_types,
+            'post_statuses'            => $post_statuses,
+            'total'                    => $total,
+            'offset'                   => 0,
+            'posts_scanned'            => 0,
+            'posts_matched'            => 0,
+            'posts_skipped_candidates' => 0,
+            'posts_changed'            => 0,
+            'groups_converted'         => 0,
+            'inline_banners_created'   => 0,
+            'errors'                   => 0,
+            'status'                   => 'running',
+        );
+
+        set_transient( $this->get_migration_job_transient_key(), $job_state, HOUR_IN_SECONDS );
+
+        wp_send_json_success( array( 'job' => $job_state ) );
+    }
+
+    /**
+     * Process one async migration batch (AJAX).
+     *
+     * @since 1.2.0
+     */
+    public function ajax_migration_batch() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
+        }
+
+        check_ajax_referer( 'g4t_migrate_legacy_banners_ajax', 'nonce' );
+
+        $job_key   = $this->get_migration_job_transient_key();
+        $job_state = get_transient( $job_key );
+
+        if ( ! is_array( $job_state ) || empty( $job_state['status'] ) ) {
+            wp_send_json_error( array( 'message' => 'Migration job not found.' ), 404 );
+        }
+
+        if ( 'done' === $job_state['status'] ) {
+            wp_send_json_success( array( 'job' => $job_state, 'done' => true ) );
+        }
+
+        $remaining = max( 0, (int) $job_state['total'] - (int) $job_state['offset'] );
+        if ( 0 === $remaining ) {
+            $job_state['status'] = 'done';
+            set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+            set_transient( $this->get_migration_report_transient_key(), $job_state, 10 * MINUTE_IN_SECONDS );
+            wp_send_json_success( array( 'job' => $job_state, 'done' => true ) );
+        }
+
+        $current_batch_size = min( (int) $job_state['batch_size'], $remaining );
+
+        $batch_query = array(
+            'post_type'      => $job_state['post_types'],
+            'post_status'    => $job_state['post_statuses'],
+            'posts_per_page' => $current_batch_size,
+            'offset'         => (int) $job_state['offset'],
+            'orderby'        => 'ID',
+            'order'          => 'ASC',
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+        );
+
+        $post_ids = get_posts( $batch_query );
+
+        if ( empty( $post_ids ) ) {
+            $job_state['status'] = 'done';
+            set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+            set_transient( $this->get_migration_report_transient_key(), $job_state, 10 * MINUTE_IN_SECONDS );
+            wp_send_json_success( array( 'job' => $job_state, 'done' => true ) );
+        }
+
+        foreach ( $post_ids as $post_id ) {
+            $job_state['posts_scanned']++;
+            $content = (string) get_post_field( 'post_content', $post_id );
+
+            if ( false === strpos( $content, 'prestashop_' ) ) {
+                continue;
+            }
+
+            $local_stats = array(
+                'groups_converted'       => 0,
+                'inline_banners_created' => 0,
+            );
+
+            $updated_content = $this->convert_legacy_shortcodes_to_inline_blocks( $content, $local_stats );
+            if ( $updated_content === $content ) {
+                $job_state['posts_skipped_candidates']++;
+                continue;
+            }
+
+            $job_state['posts_matched']++;
+            $job_state['groups_converted'] += (int) $local_stats['groups_converted'];
+            $job_state['inline_banners_created'] += (int) $local_stats['inline_banners_created'];
+
+            if ( ! empty( $job_state['dry_run'] ) ) {
+                $job_state['posts_changed']++;
+                continue;
+            }
+
+            $update_result = wp_update_post(
+                array(
+                    'ID'           => $post_id,
+                    'post_content' => $updated_content,
+                ),
+                true
+            );
+
+            if ( is_wp_error( $update_result ) ) {
+                $job_state['errors']++;
+                continue;
+            }
+
+            $job_state['posts_changed']++;
+        }
+
+        $job_state['offset'] += count( $post_ids );
+        if ( (int) $job_state['offset'] >= (int) $job_state['total'] ) {
+            $job_state['status'] = 'done';
+            set_transient( $this->get_migration_report_transient_key(), $job_state, 10 * MINUTE_IN_SECONDS );
+        }
+
+        set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+        wp_send_json_success( array( 'job' => $job_state, 'done' => 'done' === $job_state['status'] ) );
+    }
+
+    /**
+     * Read async migration status (AJAX).
+     *
+     * @since 1.2.0
+     */
+    public function ajax_migration_status() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
+        }
+
+        check_ajax_referer( 'g4t_migrate_legacy_banners_ajax', 'nonce' );
+
+        $job_state = get_transient( $this->get_migration_job_transient_key() );
+        if ( ! is_array( $job_state ) ) {
+            wp_send_json_error( array( 'message' => 'Migration job not found.' ), 404 );
+        }
+
+        wp_send_json_success( array( 'job' => $job_state ) );
     }
 
     /**
