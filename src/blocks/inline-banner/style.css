@@ -129,6 +129,11 @@
 	}
 }
 
+/* Dots hidden by default (shown on mobile via media query below) */
+.g4t-carousel-dots {
+	display: none;
+}
+
 @media (max-width: 767px) {
 
 	/* Reset container max-width on mobile (column/carousel use full width) */
@@ -195,9 +200,4 @@
 		background: #28a745;
 		transform: scale(1.25);
 	}
-}
-
-/* Dots hidden on desktop */
-.g4t-carousel-dots {
-	display: none;
 }
