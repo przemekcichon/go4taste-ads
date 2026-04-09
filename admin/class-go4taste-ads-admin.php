@@ -480,9 +480,42 @@ class Go4Taste_Ads_Admin {
      * @since    1.0.0
      */
     public function create_admin_page() {
+        $migration_report = null;
+        if ( isset( $_GET['g4t_migrate_done'] ) ) {
+            $report_key       = $this->get_migration_report_transient_key();
+            $migration_report = get_transient( $report_key );
+            delete_transient( $report_key );
+        }
         ?>
         <div class="wrap">
             <h1>Go4Taste Ads Settings</h1>
+
+            <?php if ( is_array( $migration_report ) ) : ?>
+                <div class="notice notice-success is-dismissible">
+                    <p>
+                        <?php
+                        echo esc_html(
+                            sprintf(
+                                'Legacy migration (%s): scanned %d entries, matched %d, converted %d groups into %d inline banners, %d entries changed.',
+                                ! empty( $migration_report['dry_run'] ) ? 'dry run' : 'write mode',
+                                (int) $migration_report['posts_scanned'],
+                                (int) $migration_report['posts_matched'],
+                                (int) $migration_report['groups_converted'],
+                                (int) $migration_report['inline_banners_created'],
+                                (int) $migration_report['posts_changed']
+                            )
+                        );
+                        ?>
+                    </p>
+                    <?php if ( isset( $migration_report['posts_skipped_candidates'] ) && $migration_report['posts_skipped_candidates'] > 0 ) : ?>
+                        <p><?php echo esc_html( sprintf( 'Skipped candidate entries: %d', (int) $migration_report['posts_skipped_candidates'] ) ); ?></p>
+                    <?php endif; ?>
+                    <?php if ( ! empty( $migration_report['errors'] ) ) : ?>
+                        <p><?php echo esc_html( sprintf( 'Errors: %d', (int) $migration_report['errors'] ) ); ?></p>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
             <form method="post" action="options.php">
                 <?php
                 settings_fields('go4taste_ads_options_group');
@@ -507,6 +540,36 @@ class Go4Taste_Ads_Admin {
                     <p><?php $this->update_product_ids_from_shortcode(); ?></p>
                 </div>
             <?php endif; ?>
+
+            <hr>
+
+            <h2><?php _e( 'Migrate Legacy Shortcode Banners to Inline Banners', 'go4taste-ads' ); ?></h2>
+            <p><?php _e( 'Scans post content for old prestashop_* shortcode banners and converts them to go4taste-ads/inline-banner blocks.', 'go4taste-ads' ); ?></p>
+            <form method="post">
+                <?php wp_nonce_field( 'go4taste_migrate_legacy_banners', 'go4taste_migrate_legacy_banners_nonce' ); ?>
+                <input type="hidden" name="go4taste_update_action" value="migrate_legacy_banners">
+                <p>
+                    <label>
+                        <input type="checkbox" name="go4taste_migrate_dry_run" value="1" checked>
+                        <?php _e( 'Dry run (no database writes)', 'go4taste-ads' ); ?>
+                    </label>
+                </p>
+                <p>
+                    <label for="go4taste_migrate_limit"><?php _e( 'Limit posts (0 = all):', 'go4taste-ads' ); ?></label>
+                    <input type="number" min="0" step="1" id="go4taste_migrate_limit" name="go4taste_migrate_limit" value="0" style="width:120px;">
+                </p>
+                <p>
+                    <strong><?php _e( 'Post types:', 'go4taste-ads' ); ?></strong><br>
+                    <label><input type="checkbox" name="go4taste_migrate_post_types[]" value="post" checked> <?php _e( 'Posts', 'go4taste-ads' ); ?></label><br>
+                    <label><input type="checkbox" name="go4taste_migrate_post_types[]" value="page" checked> <?php _e( 'Pages', 'go4taste-ads' ); ?></label>
+                </p>
+                <p>
+                    <strong><?php _e( 'Statuses:', 'go4taste-ads' ); ?></strong><br>
+                    <label><input type="checkbox" name="go4taste_migrate_post_statuses[]" value="publish" checked> <?php _e( 'Publish', 'go4taste-ads' ); ?></label><br>
+                    <label><input type="checkbox" name="go4taste_migrate_post_statuses[]" value="draft" checked> <?php _e( 'Draft', 'go4taste-ads' ); ?></label>
+                </p>
+                <button type="submit" class="button-secondary"><?php _e( 'Run Migration', 'go4taste-ads' ); ?></button>
+            </form>
 
             <hr>
 
@@ -833,6 +896,325 @@ class Go4Taste_Ads_Admin {
                 $this->update_product_ids_from_shortcode();
             }
         }
+    }
+
+    /**
+     * Handle migration from legacy prestashop shortcodes to inline banner blocks.
+     *
+     * @since 1.2.0
+     */
+    public function handle_migrate_legacy_banners() {
+        if ( ! isset( $_POST['go4taste_update_action'] ) || 'migrate_legacy_banners' !== $_POST['go4taste_update_action'] ) {
+            return;
+        }
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        if ( ! isset( $_POST['go4taste_migrate_legacy_banners_nonce'] ) || ! wp_verify_nonce( $_POST['go4taste_migrate_legacy_banners_nonce'], 'go4taste_migrate_legacy_banners' ) ) {
+            return;
+        }
+
+        $dry_run      = ! empty( $_POST['go4taste_migrate_dry_run'] );
+        $limit        = isset( $_POST['go4taste_migrate_limit'] ) ? absint( $_POST['go4taste_migrate_limit'] ) : 0;
+        $post_types   = isset( $_POST['go4taste_migrate_post_types'] ) && is_array( $_POST['go4taste_migrate_post_types'] ) ? array_map( 'sanitize_key', wp_unslash( $_POST['go4taste_migrate_post_types'] ) ) : array( 'post', 'page' );
+        $post_statuses = isset( $_POST['go4taste_migrate_post_statuses'] ) && is_array( $_POST['go4taste_migrate_post_statuses'] ) ? array_map( 'sanitize_key', wp_unslash( $_POST['go4taste_migrate_post_statuses'] ) ) : array( 'publish', 'draft' );
+
+        if ( empty( $post_types ) ) {
+            $post_types = array( 'post', 'page' );
+        }
+
+        if ( empty( $post_statuses ) ) {
+            $post_statuses = array( 'publish', 'draft' );
+        }
+
+        $report = $this->migrate_legacy_shortcode_banners_to_inline( $dry_run, $limit, $post_types, $post_statuses );
+        set_transient( $this->get_migration_report_transient_key(), $report, 10 * MINUTE_IN_SECONDS );
+
+        $redirect_url = add_query_arg(
+            array(
+                'page'             => 'go4taste-ads',
+                'g4t_migrate_done' => 1,
+            ),
+            admin_url( 'admin.php' )
+        );
+
+        wp_safe_redirect( $redirect_url );
+        exit;
+    }
+
+    /**
+     * Build transient key for storing per-user migration report.
+     *
+     * @since 1.2.0
+     * @return string
+     */
+    private function get_migration_report_transient_key() {
+        return 'g4t_migrate_inline_report_' . get_current_user_id();
+    }
+
+    /**
+     * Migrate legacy prestashop shortcode banners to inline banner blocks.
+     *
+     * @since 1.2.0
+     * @param bool             $dry_run       Whether to only simulate changes.
+     * @param int              $limit         Max number of posts to scan (0 = all).
+     * @param array<int,string> $post_types   Post types to scan.
+     * @param array<int,string> $post_statuses Post statuses to scan.
+     * @return array<string,int|bool>
+     */
+    public function migrate_legacy_shortcode_banners_to_inline( $dry_run = true, $limit = 0, $post_types = array( 'post', 'page' ), $post_statuses = array( 'publish', 'draft' ) ) {
+        $query_args = array(
+            'post_type'   => $post_types,
+            'post_status' => $post_statuses,
+            'numberposts' => $limit > 0 ? $limit : -1,
+        );
+
+        $report = array(
+            'dry_run'               => (bool) $dry_run,
+            'posts_scanned'         => 0,
+            'posts_matched'         => 0,
+            'posts_skipped_candidates' => 0,
+            'posts_changed'         => 0,
+            'groups_converted'      => 0,
+            'inline_banners_created' => 0,
+            'errors'                => 0,
+        );
+
+        $posts = get_posts( $query_args );
+        foreach ( $posts as $post ) {
+            $report['posts_scanned']++;
+            $content = (string) $post->post_content;
+
+            if ( false === strpos( $content, 'prestashop_' ) ) {
+                continue;
+            }
+
+            $local_stats = array(
+                'groups_converted'       => 0,
+                'inline_banners_created' => 0,
+            );
+
+            $updated_content = $this->convert_legacy_shortcodes_to_inline_blocks( $content, $local_stats );
+            if ( $updated_content === $content ) {
+                $report['posts_skipped_candidates']++;
+                continue;
+            }
+
+            $report['posts_matched']++;
+            $report['groups_converted'] += (int) $local_stats['groups_converted'];
+            $report['inline_banners_created'] += (int) $local_stats['inline_banners_created'];
+
+            if ( $dry_run ) {
+                $report['posts_changed']++;
+                continue;
+            }
+
+            $update_result = wp_update_post(
+                array(
+                    'ID'           => $post->ID,
+                    'post_content' => $updated_content,
+                ),
+                true
+            );
+
+            if ( is_wp_error( $update_result ) ) {
+                $report['errors']++;
+                continue;
+            }
+
+            $report['posts_changed']++;
+        }
+
+        return $report;
+    }
+
+    /**
+     * Convert legacy shortcode blocks into inline banner blocks.
+     *
+     * Scope is limited to Gutenberg shortcode blocks only.
+     *
+     * @since 1.2.0
+     * @param string             $content Original post content.
+     * @param array<string,int> &$stats   Conversion stats.
+     * @return string
+     */
+    private function convert_legacy_shortcodes_to_inline_blocks( $content, &$stats ) {
+        if ( ! function_exists( 'parse_blocks' ) || ! function_exists( 'serialize_blocks' ) ) {
+            return $content;
+        }
+
+        $blocks = parse_blocks( $content );
+        if ( empty( $blocks ) ) {
+            return $content;
+        }
+
+        $new_blocks = array();
+        $changed    = false;
+        $count      = count( $blocks );
+
+        for ( $i = 0; $i < $count; $i++ ) {
+            $block = $blocks[ $i ];
+            $ids   = $this->extract_legacy_product_ids_from_shortcode_block( $block );
+
+            if ( empty( $ids ) ) {
+                $new_blocks[] = $block;
+                continue;
+            }
+
+            $group_ids = $ids;
+            $j         = $i + 1;
+
+            while ( $j < $count ) {
+                $next_ids = $this->extract_legacy_product_ids_from_shortcode_block( $blocks[ $j ] );
+                if ( empty( $next_ids ) ) {
+                    break;
+                }
+
+                $group_ids = $this->normalize_product_ids( array_merge( $group_ids, $next_ids ) );
+                $j++;
+            }
+
+            $group_ids = $this->normalize_product_ids( $group_ids );
+            if ( empty( $group_ids ) ) {
+                $new_blocks[] = $block;
+                continue;
+            }
+
+            foreach ( array_chunk( $group_ids, 3 ) as $id_chunk ) {
+                $new_blocks[] = $this->build_inline_banner_block_array( $id_chunk );
+            }
+
+            $stats['groups_converted']++;
+            $stats['inline_banners_created'] += count( array_chunk( $group_ids, 3 ) );
+            $changed = true;
+            $i       = $j - 1;
+        }
+
+        if ( ! $changed ) {
+            return $content;
+        }
+
+        return serialize_blocks( $new_blocks );
+    }
+
+    /**
+     * Build dynamic Gutenberg inline banner block markup.
+     *
+     * @since 1.2.0
+     * @param array<int,string|int> $product_ids Product IDs.
+     * @return string
+     */
+    private function build_inline_banner_block_markup( $product_ids ) {
+        $products = array();
+        foreach ( $product_ids as $id ) {
+            $products[] = array( 'id' => (string) $id );
+        }
+
+        $attributes = array(
+            'products' => $products,
+        );
+
+        return '<!-- wp:go4taste-ads/inline-banner ' . wp_json_encode( $attributes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . ' /-->';
+    }
+
+    /**
+     * Build inline banner block array from product IDs.
+     *
+     * @since 1.2.0
+     * @param array<int,string|int> $product_ids Product IDs.
+     * @return array<string,mixed>
+     */
+    private function build_inline_banner_block_array( $product_ids ) {
+        $parsed_blocks = parse_blocks( $this->build_inline_banner_block_markup( $product_ids ) );
+        if ( ! empty( $parsed_blocks ) ) {
+            return $parsed_blocks[0];
+        }
+
+        $products = array();
+        foreach ( $product_ids as $id ) {
+            $products[] = array( 'id' => (string) $id );
+        }
+
+        return array(
+            'blockName'    => 'go4taste-ads/inline-banner',
+            'attrs'        => array(
+                'products' => $products,
+            ),
+            'innerBlocks'  => array(),
+            'innerHTML'    => '',
+            'innerContent' => array(),
+        );
+    }
+
+    /**
+     * Extract product IDs only from a shortcode Gutenberg block.
+     *
+     * @since 1.2.0
+     * @param array<string,mixed> $block Parsed block.
+     * @return array<int,string>
+     */
+    private function extract_legacy_product_ids_from_shortcode_block( $block ) {
+        if ( ! is_array( $block ) || ! isset( $block['blockName'] ) || 'core/shortcode' !== $block['blockName'] ) {
+            return array();
+        }
+
+        $shortcode_content = '';
+        if ( isset( $block['innerHTML'] ) && is_string( $block['innerHTML'] ) ) {
+            $shortcode_content = $block['innerHTML'];
+        }
+
+        if ( false === stripos( $shortcode_content, 'prestashop_' ) ) {
+            return array();
+        }
+
+        return $this->extract_legacy_product_ids( $shortcode_content );
+    }
+
+    /**
+     * Extract product IDs from legacy prestashop_* shortcodes.
+     *
+     * @since 1.2.0
+     * @param string $chunk Chunk of content.
+     * @return array<int,string>
+     */
+    private function extract_legacy_product_ids( $chunk ) {
+        $ids = array();
+        if ( preg_match_all( '/\[(?:prestashop_image|prestashop_data|prestashop_link)\b[^\]]*product\s*=\s*(?:"(\d+)"|\'(\d+)\'|(\d+))[^\]]*\]/i', $chunk, $matches, PREG_SET_ORDER ) ) {
+            foreach ( $matches as $match ) {
+                foreach ( array( 1, 2, 3 ) as $index ) {
+                    if ( ! empty( $match[ $index ] ) ) {
+                        $ids[] = $match[ $index ];
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $this->normalize_product_ids( $ids );
+    }
+
+    /**
+     * Normalize product IDs: keep digits only, unique, stable order.
+     *
+     * @since 1.2.0
+     * @param array<int,string|int> $ids Raw product IDs.
+     * @return array<int,string>
+     */
+    private function normalize_product_ids( $ids ) {
+        $normalized = array();
+        foreach ( $ids as $id ) {
+            $id = preg_replace( '/\D+/', '', (string) $id );
+            if ( '' === $id ) {
+                continue;
+            }
+            if ( ! in_array( $id, $normalized, true ) ) {
+                $normalized[] = $id;
+            }
+        }
+
+        return $normalized;
     }
 
     /**
