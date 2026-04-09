@@ -158,21 +158,46 @@
 
 	.g4t-banner-inline--mobile-carousel .g4t-ads-content {
 		scroll-snap-align: center;
-		min-width: 75%;
+		min-width: 100%;
 		flex-shrink: 0;
 	}
 
-	/* Hide scrollbar but keep functionality */
+	/* Hide scrollbar — dots replace it */
+	.g4t-banner-inline--mobile-carousel .g4t-ads-inline-products {
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+	}
+
 	.g4t-banner-inline--mobile-carousel .g4t-ads-inline-products::-webkit-scrollbar {
-		height: 4px;
+		display: none;
 	}
 
-	.g4t-banner-inline--mobile-carousel .g4t-ads-inline-products::-webkit-scrollbar-track {
-		background: transparent;
+	/* Carousel dot navigation */
+	.g4t-carousel-dots {
+		display: flex;
+		justify-content: center;
+		gap: 8px;
+		margin-top: 12px;
 	}
 
-	.g4t-banner-inline--mobile-carousel .g4t-ads-inline-products::-webkit-scrollbar-thumb {
+	.g4t-carousel-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		border: none;
+		padding: 0;
 		background: #c1d6c8;
-		border-radius: 2px;
+		cursor: pointer;
+		transition: background-color 0.3s ease, transform 0.3s ease;
 	}
+
+	.g4t-carousel-dot--active {
+		background: #28a745;
+		transform: scale(1.25);
+	}
+}
+
+/* Dots hidden on desktop */
+.g4t-carousel-dots {
+	display: none;
 }

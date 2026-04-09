@@ -203,4 +203,11 @@ $btn_style = ! empty( $btn_style_parts ) ? ' style="' . implode( ';', $btn_style
 		</div>
 		<?php endforeach; ?>
 	</div>
+	<?php if ( 'carousel' === $mobile_layout && $product_count > 1 ) : ?>
+	<div class="g4t-carousel-dots" aria-label="Nawigacja karuzeli">
+		<?php for ( $i = 0; $i < $product_count; $i++ ) : ?>
+		<button class="g4t-carousel-dot<?php echo 0 === $i ? ' g4t-carousel-dot--active' : ''; ?>" data-index="<?php echo $i; ?>" type="button" aria-label="Produkt <?php echo $i + 1; ?>"></button>
+		<?php endfor; ?>
+	</div>
+	<?php endif; ?>
 </div>
