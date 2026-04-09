@@ -152,16 +152,14 @@ $btn_style = ! empty( $btn_style_parts ) ? ' style="' . implode( ';', $btn_style
 			$category_with_spaces = str_replace( '-', ' ', $category );
 			$formatted_category   = ucfirst( strtolower( $category_with_spaces ) );
 
-			// Image dimensions with caching
-			$img_url        = (string) $product_data->picture;
-			$transient_key  = 'g4t_img_' . md5( $img_url );
-			$img_dimensions = get_transient( $transient_key );
-			if ( false === $img_dimensions ) {
-				$img_size = @getimagesize( $img_url );
-				$img_dimensions = $img_size
-					? array( 'width' => $img_size[0], 'height' => $img_size[1] )
-					: array( 'width' => 320, 'height' => 180 );
-				set_transient( $transient_key, $img_dimensions, WEEK_IN_SECONDS );
+			// Avoid runtime remote requests for image metadata during page render.
+			$img_width  = isset( $product_data->image_width ) ? absint( $product_data->image_width ) : 0;
+			$img_height = isset( $product_data->image_height ) ? absint( $product_data->image_height ) : 0;
+			if ( $img_width < 1 ) {
+				$img_width = 320;
+			}
+			if ( $img_height < 1 ) {
+				$img_height = 180;
 			}
 		?>
 		<div class="g4t-ads-content"<?php echo $card_style; ?>>
@@ -169,8 +167,8 @@ $btn_style = ! empty( $btn_style_parts ) ? ' style="' . implode( ';', $btn_style
 				<img
 					src="<?php echo esc_url( $product_data->picture ); ?>"
 					alt="<?php echo esc_attr( $product_data->name ); ?>"
-					width="<?php echo esc_attr( $img_dimensions['width'] ); ?>"
-					height="<?php echo esc_attr( $img_dimensions['height'] ); ?>"
+					width="<?php echo esc_attr( $img_width ); ?>"
+					height="<?php echo esc_attr( $img_height ); ?>"
 				/>
 			</div>
 			<div class="g4t-ads-details">

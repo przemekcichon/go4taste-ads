@@ -279,8 +279,15 @@ class Go4Taste_Ads{
 	 */
 	private function define_block_hooks() {
 
+		if ( ! function_exists( 'register_block_type_from_metadata' ) ) {
+			return;
+		}
+
 		$this->loader->add_action( 'init', $this, 'register_blocks' );
-		$this->loader->add_filter( 'wp_theme_json_data_theme', $this, 'enable_border_settings' );
+
+		if ( class_exists( 'WP_Theme_JSON_Data' ) ) {
+			$this->loader->add_filter( 'wp_theme_json_data_theme', $this, 'enable_border_settings' );
+		}
 
 	}
 
@@ -297,6 +304,10 @@ class Go4Taste_Ads{
 	 * @return WP_Theme_JSON_Data
 	 */
 	public function enable_border_settings( $theme_json ) {
+
+		if ( ! is_object( $theme_json ) || ! method_exists( $theme_json, 'update_with' ) ) {
+			return $theme_json;
+		}
 
 		$new_data = array(
 			'version'  => 3,
@@ -320,6 +331,10 @@ class Go4Taste_Ads{
 	 * @since    1.2.0
 	 */
 	public function register_blocks() {
+
+		if ( ! function_exists( 'register_block_type_from_metadata' ) || ! class_exists( 'WP_Block_Type' ) ) {
+			return;
+		}
 
 		$block_path = plugin_dir_path( dirname( __FILE__ ) ) . 'build/blocks/inline-banner';
 
