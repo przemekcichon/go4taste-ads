@@ -174,8 +174,8 @@ class Go4Taste_Ads_Admin {
 
         // Retrieve Algolia App ID and Search-Only API Key from settings
         $options = get_option('go4taste_ads_options');
-        $algolia_app_id = isset($options['algolia_app_id']) ? esc_attr($options['algolia_app_id']) : '';
-        $algolia_api_key = isset($options['algolia_api_key']) ? esc_attr($options['algolia_api_key']) : '';
+        $algolia_app_id = isset($options['algolia_app_id']) ? sanitize_text_field($options['algolia_app_id']) : '';
+        $algolia_api_key = isset($options['algolia_api_key']) ? sanitize_text_field($options['algolia_api_key']) : '';
 
         // Display the form field for Product ID (hidden)
         echo '<input type="hidden" id="g4t_a_sidebar_regular_widget_ps_product_id" name="g4t_a_sidebar_regular_widget_ps_product_id" value="' . esc_attr($product_id) . '" size="25" />';
@@ -192,7 +192,7 @@ class Go4Taste_Ads_Admin {
         <script type="text/javascript">
         jQuery(document).ready(function($) {
             // Initialize Algolia Search Client
-            const searchClient = algoliasearch('<?php echo $algolia_app_id; ?>', '<?php echo $algolia_api_key; ?>');
+            const searchClient = algoliasearch('<?php echo esc_js( $algolia_app_id ); ?>', '<?php echo esc_js( $algolia_api_key ); ?>');
 
             const search = instantsearch({
                 indexName: 'go4taste_product_list', // Algolia index name
@@ -288,7 +288,7 @@ class Go4Taste_Ads_Admin {
                     data: {
                         action: 'g4t_fetch_product_preview',
                         product_id: productID,
-                        nonce: '<?php echo wp_create_nonce('g4t_ad_preview_nonce'); ?>'
+                        nonce: '<?php echo esc_js( wp_create_nonce( 'g4t_ad_preview_nonce' ) ); ?>'
                     },
                     success: function(response) {
                         $('#g4t-ad-preview').html(response.data);
@@ -429,6 +429,8 @@ class Go4Taste_Ads_Admin {
 
         // Update the meta field in the database.
         update_post_meta($post_id, '_g4t_a_sidebar_regular_widget_ps_product_id', $product_id);
+
+        return $post_id;
     }
 
     /**
@@ -492,41 +494,9 @@ class Go4Taste_Ads_Admin {
      * @since    1.0.0
      */
     public function create_admin_page() {
-        $migration_report = null;
-        if ( isset( $_GET['g4t_migrate_done'] ) ) {
-            $report_key       = $this->get_migration_report_transient_key();
-            $migration_report = get_transient( $report_key );
-            delete_transient( $report_key );
-        }
         ?>
         <div class="wrap">
             <h1>Go4Taste Ads Settings</h1>
-
-            <?php if ( is_array( $migration_report ) ) : ?>
-                <div class="notice notice-success is-dismissible">
-                    <p>
-                        <?php
-                        echo esc_html(
-                            sprintf(
-                                'Legacy migration (%s): scanned %d entries, matched %d, converted %d groups into %d inline banners, %d entries changed.',
-                                ! empty( $migration_report['dry_run'] ) ? 'dry run' : 'write mode',
-                                (int) $migration_report['posts_scanned'],
-                                (int) $migration_report['posts_matched'],
-                                (int) $migration_report['groups_converted'],
-                                (int) $migration_report['inline_banners_created'],
-                                (int) $migration_report['posts_changed']
-                            )
-                        );
-                        ?>
-                    </p>
-                    <?php if ( isset( $migration_report['posts_skipped_candidates'] ) && $migration_report['posts_skipped_candidates'] > 0 ) : ?>
-                        <p><?php echo esc_html( sprintf( 'Skipped candidate entries: %d', (int) $migration_report['posts_skipped_candidates'] ) ); ?></p>
-                    <?php endif; ?>
-                    <?php if ( ! empty( $migration_report['errors'] ) ) : ?>
-                        <p><?php echo esc_html( sprintf( 'Errors: %d', (int) $migration_report['errors'] ) ); ?></p>
-                    <?php endif; ?>
-                </div>
-            <?php endif; ?>
 
             <form method="post" action="options.php">
                 <?php
@@ -638,14 +608,14 @@ class Go4Taste_Ads_Admin {
         add_settings_section(
             'go4taste_ads_setting_section',
             'Product API Settings',
-            null,
+            '__return_false',
             'go4taste-ads'
         );
 
         add_settings_section(
             'algolia_settings',              // Section for Algolia settings
             'Algolia Settings',              // Title
-            null,                            // Callback
+            '__return_false',                // Callback
             'algolia_settings'               // Page where the fields are displayed
         );
 
@@ -728,7 +698,7 @@ class Go4Taste_Ads_Admin {
             $sanitized_input['api_type'] = sanitize_text_field($input['api_type']);
         }
         if (isset($input['api_url'])) {
-            $sanitized_input['api_url'] = sanitize_text_field($input['api_url']);
+            $sanitized_input['api_url'] = esc_url_raw($input['api_url']);
         }
         if (isset($input['p_parameter_value'])) {
             $sanitized_input['p_parameter_value'] = sanitize_text_field($input['p_parameter_value']);
@@ -822,23 +792,6 @@ class Go4Taste_Ads_Admin {
         echo '<input type="text" id="prestashop_lang" name="go4taste_ads_options[prestashop_lang]" value="' . $prestashop_lang . '" />';
     }
 
-    // WooCommerce API Keys callback
-    public function woocommerce_keys_callback() {
-        $options = get_option('go4taste_ads_options');
-        $consumer_key = isset($options['woocommerce_consumer_key']) ? esc_attr($options['woocommerce_consumer_key']) : '';
-        $consumer_secret = isset($options['woocommerce_consumer_secret']) ? esc_attr($options['woocommerce_consumer_secret']) : '';
-        ?>
-        <p>
-            <label for="woocommerce_consumer_key">Consumer Key:</label>
-            <input type="text" id="woocommerce_consumer_key" name="go4taste_ads_options[woocommerce_consumer_key]" value="<?php echo $consumer_key; ?>" />
-        </p>
-        <p>
-            <label for="woocommerce_consumer_secret">Consumer Secret:</label>
-            <input type="text" id="woocommerce_consumer_secret" name="go4taste_ads_options[woocommerce_consumer_secret]" value="<?php echo $consumer_secret; ?>" />
-        </p>
-        <?php
-    }
-
     /**
      * Callback function for the fallback product ID field.
      *
@@ -927,26 +880,6 @@ class Go4Taste_Ads_Admin {
                 $this->update_product_ids_from_shortcode();
             }
         }
-    }
-
-    /**
-     * Handle migration from legacy prestashop shortcodes to inline banner blocks.
-     *
-     * @since 1.2.0
-     */
-    public function handle_migrate_legacy_banners() {
-        // Deprecated synchronous path intentionally disabled.
-        return;
-    }
-
-    /**
-     * Build transient key for storing per-user migration report.
-     *
-     * @since 1.2.0
-     * @return string
-     */
-    private function get_migration_report_transient_key() {
-        return 'g4t_migrate_inline_report_' . get_current_user_id();
     }
 
     /**
@@ -1064,7 +997,6 @@ class Go4Taste_Ads_Admin {
             $existing_job['status']        = 'failed';
             $existing_job['error_message'] = 'Stale migration lock was reset automatically.';
             $existing_job['updated_at']    = time();
-            set_transient( $this->get_migration_report_transient_key(), $existing_job, 10 * MINUTE_IN_SECONDS );
             delete_transient( $job_key );
         }
 
@@ -1165,7 +1097,6 @@ class Go4Taste_Ads_Admin {
             $job_state['error_message'] = 'Migration job became stale and was marked as failed.';
             $job_state['updated_at']    = time();
             set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
-            set_transient( $this->get_migration_report_transient_key(), $job_state, 10 * MINUTE_IN_SECONDS );
             wp_send_json_error( array( 'message' => 'Migration job is stale. Please start again.', 'job' => $job_state ), 409 );
         }
 
@@ -1176,7 +1107,6 @@ class Go4Taste_Ads_Admin {
         if ( 0 === $remaining ) {
             $job_state['status'] = 'done';
             set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
-            set_transient( $this->get_migration_report_transient_key(), $job_state, 10 * MINUTE_IN_SECONDS );
             wp_send_json_success( array( 'job' => $job_state, 'done' => true ) );
         }
 
@@ -1201,7 +1131,6 @@ class Go4Taste_Ads_Admin {
         if ( empty( $post_ids ) ) {
             $job_state['status'] = 'done';
             set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
-            set_transient( $this->get_migration_report_transient_key(), $job_state, 10 * MINUTE_IN_SECONDS );
             wp_send_json_success( array( 'job' => $job_state, 'done' => true ) );
         }
 
@@ -1259,7 +1188,6 @@ class Go4Taste_Ads_Admin {
         $job_state['offset'] += count( $post_ids );
         if ( (int) $job_state['offset'] >= (int) $job_state['total'] ) {
             $job_state['status'] = 'done';
-            set_transient( $this->get_migration_report_transient_key(), $job_state, 10 * MINUTE_IN_SECONDS );
         }
 
         $job_state['updated_at'] = time();
@@ -1285,82 +1213,6 @@ class Go4Taste_Ads_Admin {
         }
 
         wp_send_json_success( array( 'job' => $job_state ) );
-    }
-
-    /**
-     * Migrate legacy prestashop shortcode banners to inline banner blocks.
-     *
-     * @since 1.2.0
-     * @param bool             $dry_run       Whether to only simulate changes.
-     * @param int              $limit         Max number of posts to scan (0 = all).
-     * @param array<int,string> $post_types   Post types to scan.
-     * @param array<int,string> $post_statuses Post statuses to scan.
-     * @return array<string,int|bool>
-     */
-    public function migrate_legacy_shortcode_banners_to_inline( $dry_run = true, $limit = 0, $post_types = array( 'post', 'page' ), $post_statuses = array( 'publish', 'draft' ) ) {
-        $query_args = array(
-            'post_type'   => $post_types,
-            'post_status' => $post_statuses,
-            'numberposts' => $limit > 0 ? $limit : -1,
-        );
-
-        $report = array(
-            'dry_run'               => (bool) $dry_run,
-            'posts_scanned'         => 0,
-            'posts_matched'         => 0,
-            'posts_skipped_candidates' => 0,
-            'posts_changed'         => 0,
-            'groups_converted'      => 0,
-            'inline_banners_created' => 0,
-            'errors'                => 0,
-        );
-
-        $posts = get_posts( $query_args );
-        foreach ( $posts as $post ) {
-            $report['posts_scanned']++;
-            $content = (string) $post->post_content;
-
-            if ( false === strpos( $content, 'prestashop_' ) ) {
-                continue;
-            }
-
-            $local_stats = array(
-                'groups_converted'       => 0,
-                'inline_banners_created' => 0,
-            );
-
-            $updated_content = $this->convert_legacy_shortcodes_to_inline_blocks( $content, $local_stats );
-            if ( $updated_content === $content ) {
-                $report['posts_skipped_candidates']++;
-                continue;
-            }
-
-            $report['posts_matched']++;
-            $report['groups_converted'] += (int) $local_stats['groups_converted'];
-            $report['inline_banners_created'] += (int) $local_stats['inline_banners_created'];
-
-            if ( $dry_run ) {
-                $report['posts_changed']++;
-                continue;
-            }
-
-            $update_result = wp_update_post(
-                array(
-                    'ID'           => $post->ID,
-                    'post_content' => $updated_content,
-                ),
-                true
-            );
-
-            if ( is_wp_error( $update_result ) ) {
-                $report['errors']++;
-                continue;
-            }
-
-            $report['posts_changed']++;
-        }
-
-        return $report;
     }
 
     /**

@@ -68,17 +68,14 @@ class Go4Taste_Ads{
      */
     private static $instance = null;
 
-    /**
-     * The public-facing functionality instance of the plugin.
-     *
-     * This property holds the instance of the public-facing functionality class
-     * which is responsible for managing front-end features of the plugin.
-     *
-     * @since    1.0.0
-     * @access   protected
-     * @var      Go4Taste_Ads_Public    $public_instance    The public-facing functionality instance.
-     */
-    protected $public_instance;
+	/**
+	 * The admin functionality instance used by hooks and widget compatibility methods.
+	 *
+	 * @since    1.0.0
+	 * @access   protected
+	 * @var      Go4Taste_Ads_Admin    $admin_instance    The admin functionality instance.
+	 */
+	protected $admin_instance;
 
     /**
      * Define the core functionality of the plugin.
@@ -97,10 +94,7 @@ class Go4Taste_Ads{
         $this->set_locale();
         $this->define_admin_hooks();
         $this->define_public_hooks();
-        $this->define_block_hooks();
-
-        // Initialize the public instance
-        $this->public_instance = new Go4Taste_Ads_Admin($this->get_plugin_name(), $this->get_version());
+		$this->define_block_hooks();
     }
 
     /**
@@ -119,17 +113,25 @@ class Go4Taste_Ads{
         return self::$instance;
     }
 
-    /**
-     * Get the public-facing functionality instance.
-     *
-     * This method returns the instance of the public-facing functionality class.
-     *
-     * @since    1.0.0
-     * @return   Go4Taste_Ads_Public    The public-facing functionality instance.
-     */
-    public function get_public_instance() {
-        return $this->public_instance;
-    }
+	/**
+	 * Backward compatible alias for legacy callers.
+	 *
+	 * @since    1.0.0
+	 * @return   Go4Taste_Ads_Admin|null
+	 */
+	public function get_public_instance() {
+		return $this->get_admin_instance();
+	}
+
+	/**
+	 * Get the admin functionality instance.
+	 *
+	 * @since    1.2.0
+	 * @return   Go4Taste_Ads_Admin|null
+	 */
+	public function get_admin_instance() {
+		return $this->admin_instance;
+	}
 
 	/**
 	 * Load the required dependencies for this plugin.
@@ -178,7 +180,7 @@ class Go4Taste_Ads{
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-go4taste-ads-api-fetcher.php';
 
 		// Load the WP-CLI command class, if WP-CLI is available.
-		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+		if ( defined( 'WP_CLI' ) && true === constant( 'WP_CLI' ) ) {
 			/**
 			 * Load the WP-CLI command file.
 			 *
@@ -224,6 +226,7 @@ class Go4Taste_Ads{
 	private function define_admin_hooks() {
 
 		$plugin_admin = new Go4Taste_Ads_Admin( $this->get_plugin_name(), $this->get_version() );
+		$this->admin_instance = $plugin_admin;
 
 		// Enqueue styles and scripts
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
@@ -270,7 +273,6 @@ class Go4Taste_Ads{
 		$plugin_public = new Go4Taste_Ads_Public( $this->get_plugin_name(), $this->get_version() );
 
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
-		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
 
 	}
 
