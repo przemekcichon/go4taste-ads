@@ -430,6 +430,40 @@ class Go4Taste_Ads_API_Fetcher {
     }
 
     /**
+     * Fetch product IDs for sync job initialization.
+     *
+     * @since 1.2.0
+     * @param string      $api_type API type.
+     * @param string      $p_value PrestaShop legacy parameter.
+     * @param string      $lang PrestaShop language.
+     * @param string      $api_url API base URL.
+     * @param string|null $consumer_key WooCommerce consumer key.
+     * @param string|null $consumer_secret WooCommerce consumer secret.
+     * @return array<int,string>
+     */
+    public function fetch_product_ids_for_sync($api_type, $p_value, $lang, $api_url, $consumer_key = null, $consumer_secret = null) {
+        if ('prestashop_webservice_api' === $api_type) {
+            $options = get_option('go4taste_ads_options');
+            $prestashop_webservice_api_key = isset($options['prestashop_webservice_api_key']) ? sanitize_text_field($options['prestashop_webservice_api_key']) : '';
+            return $this->fetch_prestashop_webservice_product_ids($api_url, $prestashop_webservice_api_key);
+        }
+
+        $products = $this->fetch_all_products($api_type, $p_value, $lang, $api_url, $consumer_key, $consumer_secret);
+        if (empty($products) || !is_array($products)) {
+            return array();
+        }
+
+        $ids = array();
+        foreach ($products as $product) {
+            if (isset($product->id) && '' !== trim((string) $product->id)) {
+                $ids[] = trim((string) $product->id);
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
      * Store product data to Algolia.
      *
      * @since 1.0.0
