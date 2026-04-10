@@ -1232,6 +1232,7 @@ class Go4Taste_Ads_Admin {
     /**
      * Convert legacy shortcode blocks into inline banner blocks.
      *
+     * Recursively processes all block levels including nested blocks (columns, groups, etc).
      * Scope is limited to Gutenberg shortcode blocks only.
      *
      * @since 1.2.0
@@ -1249,19 +1250,52 @@ class Go4Taste_Ads_Admin {
             return $content;
         }
 
-        $new_blocks = array();
         $changed    = false;
+        $new_blocks = $this->process_blocks_recursively( $blocks, $stats, $changed );
+
+        if ( ! $changed ) {
+            return $content;
+        }
+
+        return serialize_blocks( $new_blocks );
+    }
+
+    /**
+     * Recursively process blocks tree to find and convert legacy shortcodes in nested structures.
+     *
+     * Handles nested blocks like columns/column, group, etc. by recursively processing innerBlocks.
+     *
+     * @since 1.2.0
+     * @param array<int,array<string,mixed>> $blocks  Parsed block array.
+     * @param array<string,int>             &$stats   Stats reference.
+     * @param bool                          &$changed Whether any blocks were converted.
+     * @return array<int,array<string,mixed>> Processed blocks.
+     */
+    private function process_blocks_recursively( $blocks, &$stats, &$changed ) {
+        if ( ! is_array( $blocks ) || empty( $blocks ) ) {
+            return $blocks;
+        }
+
+        $new_blocks = array();
         $count      = count( $blocks );
 
         for ( $i = 0; $i < $count; $i++ ) {
             $block = $blocks[ $i ];
-            $ids   = $this->extract_legacy_product_ids_from_shortcode_block( $block );
 
+            // Recursively process innerBlocks if they exist.
+            if ( isset( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] ) && ! empty( $block['innerBlocks'] ) ) {
+                $block['innerBlocks'] = $this->process_blocks_recursively( $block['innerBlocks'], $stats, $changed );
+            }
+
+            // Check if this block is a legacy shortcode.
+            $ids = $this->extract_legacy_product_ids_from_shortcode_block( $block );
             if ( empty( $ids ) ) {
+                // Not a shortcode block, add as-is.
                 $new_blocks[] = $block;
                 continue;
             }
 
+            // This is a shortcode block — group consecutive ones.
             $group_ids = $ids;
             $j         = $i + 1;
 
@@ -1276,26 +1310,23 @@ class Go4Taste_Ads_Admin {
             }
 
             $group_ids = $this->normalize_product_ids( $group_ids );
-            if ( empty( $group_ids ) ) {
+            if ( ! empty( $group_ids ) ) {
+                foreach ( array_chunk( $group_ids, 3 ) as $id_chunk ) {
+                    $new_blocks[] = $this->build_inline_banner_block_array( $id_chunk );
+                }
+
+                $stats['groups_converted']++;
+                $stats['inline_banners_created'] += count( array_chunk( $group_ids, 3 ) );
+                $changed = true;
+                $i       = $j - 1;
+            } else {
+                // Edge case: IDs extracted but normalization resulted in empty array.
+                error_log( 'Go4Taste Ads: Product IDs found in shortcode block but normalized to empty. Original IDs: ' . wp_json_encode( $ids ) );
                 $new_blocks[] = $block;
-                continue;
             }
-
-            foreach ( array_chunk( $group_ids, 3 ) as $id_chunk ) {
-                $new_blocks[] = $this->build_inline_banner_block_array( $id_chunk );
-            }
-
-            $stats['groups_converted']++;
-            $stats['inline_banners_created'] += count( array_chunk( $group_ids, 3 ) );
-            $changed = true;
-            $i       = $j - 1;
         }
 
-        if ( ! $changed ) {
-            return $content;
-        }
-
-        return serialize_blocks( $new_blocks );
+        return $new_blocks;
     }
 
     /**
