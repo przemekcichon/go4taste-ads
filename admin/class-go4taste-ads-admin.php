@@ -1250,8 +1250,29 @@ class Go4Taste_Ads_Admin {
             return $content;
         }
 
-        $changed    = false;
-        $new_blocks = $this->process_blocks_recursively( $blocks, $stats, $changed );
+        $changed            = false;
+        $collected_ids      = array();
+        $insertion_index    = null;
+        $new_blocks         = $this->remove_legacy_shortcodes_and_columns( $blocks, $collected_ids, $changed, $insertion_index );
+
+        $collected_ids = $this->normalize_product_ids( $collected_ids );
+        if ( ! empty( $collected_ids ) ) {
+            $inline_banner_blocks = array();
+            foreach ( array_chunk( $collected_ids, 3 ) as $id_chunk ) {
+                $inline_banner_blocks[] = $this->build_inline_banner_block_array( $id_chunk );
+            }
+
+            if ( null === $insertion_index ) {
+                $new_blocks = array_merge( $new_blocks, $inline_banner_blocks );
+            } else {
+                array_splice( $new_blocks, (int) $insertion_index, 0, $inline_banner_blocks );
+            }
+
+            // Count one converted source group per post; banner count is tracked separately.
+            $stats['groups_converted']++;
+            $stats['inline_banners_created'] += count( $inline_banner_blocks );
+            $changed = true;
+        }
 
         if ( ! $changed ) {
             return $content;
@@ -1261,72 +1282,94 @@ class Go4Taste_Ads_Admin {
     }
 
     /**
-     * Recursively process blocks tree to find and convert legacy shortcodes in nested structures.
+     * Remove legacy shortcode blocks and columns containing legacy shortcodes.
      *
-     * Handles nested blocks like columns/column, group, etc. by recursively processing innerBlocks.
+     * Legacy shortcode IDs are collected and converted later into top-level inline banner blocks.
      *
      * @since 1.2.0
      * @param array<int,array<string,mixed>> $blocks  Parsed block array.
-     * @param array<string,int>             &$stats   Stats reference.
-     * @param bool                          &$changed Whether any blocks were converted.
+     * @param array<int,string>            &$collected_ids   Collected legacy product IDs.
+     * @param bool                         &$changed         Whether any blocks were removed.
+     * @param int|null                     &$insertion_index Top-level insertion point for inline banners.
+     * @param int                           $depth           Current recursion depth.
      * @return array<int,array<string,mixed>> Processed blocks.
      */
-    private function process_blocks_recursively( $blocks, &$stats, &$changed ) {
+    private function remove_legacy_shortcodes_and_columns( $blocks, &$collected_ids, &$changed, &$insertion_index = null, $depth = 0 ) {
         if ( ! is_array( $blocks ) || empty( $blocks ) ) {
             return $blocks;
         }
 
         $new_blocks = array();
-        $count      = count( $blocks );
-
-        for ( $i = 0; $i < $count; $i++ ) {
-            $block = $blocks[ $i ];
-
-            // Recursively process innerBlocks if they exist.
-            if ( isset( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] ) && ! empty( $block['innerBlocks'] ) ) {
-                $block['innerBlocks'] = $this->process_blocks_recursively( $block['innerBlocks'], $stats, $changed );
-            }
-
-            // Check if this block is a legacy shortcode.
-            $ids = $this->extract_legacy_product_ids_from_shortcode_block( $block );
-            if ( empty( $ids ) ) {
-                // Not a shortcode block, add as-is.
+        foreach ( $blocks as $block ) {
+            if ( ! is_array( $block ) ) {
                 $new_blocks[] = $block;
                 continue;
             }
 
-            // This is a shortcode block — group consecutive ones.
-            $group_ids = $ids;
-            $j         = $i + 1;
+            $block_name = isset( $block['blockName'] ) && is_string( $block['blockName'] ) ? $block['blockName'] : '';
 
-            while ( $j < $count ) {
-                $next_ids = $this->extract_legacy_product_ids_from_shortcode_block( $blocks[ $j ] );
-                if ( empty( $next_ids ) ) {
-                    break;
+            // Anchor insertion to the first top-level block that contains any legacy shortcode in its tree.
+            if ( 0 === $depth && null === $insertion_index ) {
+                $top_level_tree_ids = $this->extract_legacy_product_ids_from_block_tree( $block );
+                if ( ! empty( $top_level_tree_ids ) ) {
+                    $insertion_index = count( $new_blocks );
                 }
-
-                $group_ids = $this->normalize_product_ids( array_merge( $group_ids, $next_ids ) );
-                $j++;
             }
 
-            $group_ids = $this->normalize_product_ids( $group_ids );
-            if ( ! empty( $group_ids ) ) {
-                foreach ( array_chunk( $group_ids, 3 ) as $id_chunk ) {
-                    $new_blocks[] = $this->build_inline_banner_block_array( $id_chunk );
+            $shortcode_ids = $this->extract_legacy_product_ids_from_shortcode_block( $block );
+            if ( ! empty( $shortcode_ids ) ) {
+                $collected_ids = $this->normalize_product_ids( array_merge( $collected_ids, $shortcode_ids ) );
+                $changed       = true;
+                if ( 0 === $depth && null === $insertion_index ) {
+                    $insertion_index = count( $new_blocks );
                 }
-
-                $stats['groups_converted']++;
-                $stats['inline_banners_created'] += count( array_chunk( $group_ids, 3 ) );
-                $changed = true;
-                $i       = $j - 1;
-            } else {
-                // Edge case: IDs extracted but normalization resulted in empty array.
-                error_log( 'Go4Taste Ads: Product IDs found in shortcode block but normalized to empty. Original IDs: ' . wp_json_encode( $ids ) );
-                $new_blocks[] = $block;
+                continue;
             }
+
+            // Remove entire columns/column wrappers if legacy shortcode is found anywhere inside.
+            if ( in_array( $block_name, array( 'core/columns', 'core/column' ), true ) ) {
+                $tree_ids = $this->extract_legacy_product_ids_from_block_tree( $block );
+                if ( ! empty( $tree_ids ) ) {
+                    $collected_ids = $this->normalize_product_ids( array_merge( $collected_ids, $tree_ids ) );
+                    $changed       = true;
+                    if ( 0 === $depth && null === $insertion_index ) {
+                        $insertion_index = count( $new_blocks );
+                    }
+                    continue;
+                }
+            }
+
+            if ( isset( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] ) && ! empty( $block['innerBlocks'] ) ) {
+                $block['innerBlocks'] = $this->remove_legacy_shortcodes_and_columns( $block['innerBlocks'], $collected_ids, $changed, $insertion_index, $depth + 1 );
+            }
+
+            $new_blocks[] = $block;
         }
 
         return $new_blocks;
+    }
+
+    /**
+     * Extract legacy product IDs from a block and all nested child blocks.
+     *
+     * @since 1.2.0
+     * @param array<string,mixed> $block Parsed block.
+     * @return array<int,string>
+     */
+    private function extract_legacy_product_ids_from_block_tree( $block ) {
+        if ( ! is_array( $block ) ) {
+            return array();
+        }
+
+        $ids = $this->extract_legacy_product_ids_from_shortcode_block( $block );
+
+        if ( isset( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] ) ) {
+            foreach ( $block['innerBlocks'] as $child_block ) {
+                $ids = array_merge( $ids, $this->extract_legacy_product_ids_from_block_tree( $child_block ) );
+            }
+        }
+
+        return $this->normalize_product_ids( $ids );
     }
 
     /**
