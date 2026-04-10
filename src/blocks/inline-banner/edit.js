@@ -137,7 +137,7 @@ export default function Edit( { attributes, setAttributes } ) {
 	const buttonStyle = buildButtonStyle( attributes );
 
 	const blockProps = useBlockProps( {
-		className: `g4t-ads-banner g4t-banner-inline g4t-banner-inline--mobile-${ mobileLayout }`,
+		className: `g4t-ads-banner g4t-banner-inline g4t-banner-inline--mobile-${ mobileLayout || 'carousel' }`,
 	} );
 
 	const addProduct = ( product ) => {
@@ -187,7 +187,7 @@ export default function Edit( { attributes, setAttributes } ) {
 				>
 					<SelectControl
 						label={ __( 'Układ na komórce', 'go4taste-ads' ) }
-						value={ mobileLayout }
+						value={ mobileLayout || 'carousel' }
 						options={ MOBILE_LAYOUT_OPTIONS }
 						onChange={ ( value ) =>
 							setAttributes( { mobileLayout: value } )
