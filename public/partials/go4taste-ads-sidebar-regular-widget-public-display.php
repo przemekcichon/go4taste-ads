@@ -55,24 +55,32 @@ $formatted_category = ucfirst(strtolower($category_with_spaces));
 /**
  * Get image dimensions with caching
  */
-$img_url = (string) $product_data->picture;
-$transient_key = 'g4t_img_' . md5( $img_url );
-$img_dimensions = get_transient( $transient_key );
+$img_url = isset( $product_data->picture ) ? (string) $product_data->picture : '';
 
-if ( false === $img_dimensions ) {
-    $img_size = @getimagesize( $img_url );
-    if ( $img_size ) {
-        $img_dimensions = array(
-            'width'  => $img_size[0],
-            'height' => $img_size[1],
-        );
-    } else {
-        $img_dimensions = array(
-            'width'  => 320,
-            'height' => 180,
-        );
+if ( '' === trim( $img_url ) ) {
+    $img_dimensions = array(
+        'width'  => 320,
+        'height' => 180,
+    );
+} else {
+    $transient_key = 'g4t_img_' . md5( $img_url );
+    $img_dimensions = get_transient( $transient_key );
+
+    if ( false === $img_dimensions ) {
+        $img_size = @getimagesize( $img_url );
+        if ( $img_size ) {
+            $img_dimensions = array(
+                'width'  => $img_size[0],
+                'height' => $img_size[1],
+            );
+        } else {
+            $img_dimensions = array(
+                'width'  => 320,
+                'height' => 180,
+            );
+        }
+        set_transient( $transient_key, $img_dimensions, WEEK_IN_SECONDS );
     }
-    set_transient( $transient_key, $img_dimensions, WEEK_IN_SECONDS );
 }
 
 ?>

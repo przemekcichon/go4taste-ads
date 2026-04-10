@@ -141,6 +141,8 @@ class Go4Taste_Ads_API_Fetcher {
         $mapped->category = '';
         $mapped->reference = isset($product_node->reference) ? trim((string) $product_node->reference) : '';
         $mapped->price_tax_exc = (string) $rounded_price;
+        $mapped->available_for_order = 1;
+        $mapped->low_stock_alert = 0;
 
         return $mapped;
     }
@@ -434,16 +436,16 @@ class Go4Taste_Ads_API_Fetcher {
         $records = [];
         foreach ($products as $product) {
             $records[] = [
-                'objectID' => $product->id,
-                'id' => $product->id,
-                'name' => $product->name,
-                'price' => $product->price,
-                'price_without_reduction' => $product->price_without_reduction,
-                'picture' => $product->picture,
-                'link' => $product->link,
-                'category' => $product->category,
-                'available_for_order' => $product->available_for_order,
-                'low_stock_alert' => $product->low_stock_alert,
+                'objectID' => isset($product->id) ? $product->id : '',
+                'id' => isset($product->id) ? $product->id : '',
+                'name' => isset($product->name) ? $product->name : '',
+                'price' => isset($product->price) ? $product->price : '',
+                'price_without_reduction' => isset($product->price_without_reduction) ? $product->price_without_reduction : '',
+                'picture' => isset($product->picture) ? $product->picture : '',
+                'link' => isset($product->link) ? $product->link : '',
+                'category' => isset($product->category) ? $product->category : '',
+                'available_for_order' => isset($product->available_for_order) ? $product->available_for_order : 0,
+                'low_stock_alert' => isset($product->low_stock_alert) ? $product->low_stock_alert : 0,
             ];
         }
 
