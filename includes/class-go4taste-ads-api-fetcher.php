@@ -119,6 +119,17 @@ class Go4Taste_Ads_API_Fetcher {
         $name = $this->get_prestashop_language_value(isset($product_node->name) ? $product_node->name : null);
         $link_rewrite = $this->get_prestashop_language_value(isset($product_node->link_rewrite) ? $product_node->link_rewrite : null);
 
+        $image_id = isset($product_node->id_default_image) ? trim((string) $product_node->id_default_image) : '';
+        if ('' === $image_id && isset($product_node->id_default_image)) {
+            $image_attrs = $product_node->id_default_image->attributes('xlink', true);
+            if (isset($image_attrs['href'])) {
+                $image_href = trim((string) $image_attrs['href']);
+                if ('' !== $image_href) {
+                    $image_id = basename($image_href);
+                }
+            }
+        }
+
         $raw_price = str_replace(',', '.', trim((string) $product_node->price));
         $rounded_price = 0;
         if ('' !== $raw_price && is_numeric($raw_price)) {
@@ -133,8 +144,8 @@ class Go4Taste_Ads_API_Fetcher {
         }
 
         $product_picture = '';
-        if ('' !== $product_id && '' !== $link_rewrite) {
-            $product_picture = $store_base_url . '/' . rawurlencode($product_id) . '-home_default/' . rawurlencode($link_rewrite) . '.jpg';
+        if ('' !== $image_id && '' !== $link_rewrite) {
+            $product_picture = $store_base_url . '/' . rawurlencode($image_id) . '-home_default/' . rawurlencode($link_rewrite) . '.jpg';
         }
 
         $mapped = new stdClass();
