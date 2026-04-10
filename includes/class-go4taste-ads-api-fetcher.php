@@ -126,21 +126,27 @@ class Go4Taste_Ads_API_Fetcher {
         }
 
         $store_base_url = $this->normalize_prestashop_store_url($api_url);
+        $price_with_currency = (string) $rounded_price . ' zł';
         $product_link = '';
         if ('' !== $link_rewrite) {
             $product_link = $store_base_url . '/' . $link_rewrite . '.html';
         }
 
+        $product_picture = '';
+        if ('' !== $product_id && '' !== $link_rewrite) {
+            $product_picture = $store_base_url . '/' . rawurlencode($product_id) . '-home_default/' . rawurlencode($link_rewrite) . '.jpg';
+        }
+
         $mapped = new stdClass();
         $mapped->id = $product_id;
         $mapped->name = $name;
-        $mapped->price = (string) $rounded_price;
-        $mapped->price_without_reduction = (string) $rounded_price;
+        $mapped->price = $price_with_currency;
+        $mapped->price_without_reduction = $price_with_currency;
         $mapped->link = $product_link;
-        $mapped->picture = '';
+        $mapped->picture = $product_picture;
         $mapped->category = '';
         $mapped->reference = isset($product_node->reference) ? trim((string) $product_node->reference) : '';
-        $mapped->price_tax_exc = (string) $rounded_price;
+        $mapped->price_tax_exc = $price_with_currency;
         $mapped->available_for_order = 1;
         $mapped->low_stock_alert = 0;
 

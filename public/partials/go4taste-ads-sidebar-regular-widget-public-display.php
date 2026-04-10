@@ -23,7 +23,7 @@ global $post;
 $price = htmlentities( $product_data->price, null, 'utf-8' );
 
 // Replace comma with a dot and remove the currency symbol and non-breaking space
-$formatted_price = str_replace( array( ',', '&nbsp;zł' ), array( '.', '' ), $price );
+$formatted_price = str_replace( array( ',', '&nbsp;zł', ' zł', 'zł' ), array( '.', '', '', '' ), $price );
 
 // Trim any remaining spaces
 $formatted_price = html_entity_decode( $formatted_price );
@@ -35,7 +35,7 @@ $formatted_price = html_entity_decode( $formatted_price );
 $price_tax_exc = htmlentities( $product_data->price_tax_exc, null, 'utf-8' );
 
 // Replace comma with a dot and remove the currency symbol and non-breaking space
-$formatted_price_tax_exc = str_replace( array( ',', '&nbsp;zł' ), array( '.', '' ), $price_tax_exc );
+$formatted_price_tax_exc = str_replace( array( ',', '&nbsp;zł', ' zł', 'zł' ), array( '.', '', '', '' ), $price_tax_exc );
 
 // Trim any remaining spaces
 $formatted_price_tax_exc = html_entity_decode( $formatted_price_tax_exc );
