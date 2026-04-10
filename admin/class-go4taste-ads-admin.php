@@ -645,6 +645,14 @@ class Go4Taste_Ads_Admin {
         );
 
         add_settings_field(
+            'prestashop_webservice_api_key',
+            'PrestaShop Webservice API Key',
+            array($this, 'prestashop_webservice_api_key_callback'),
+            'go4taste-ads',
+            'go4taste_ads_setting_section'
+        );
+
+        add_settings_field(
             'prestashop_lang',
             'PrestaShop Language',
             array($this, 'prestashop_lang_callback'),
@@ -695,6 +703,7 @@ class Go4Taste_Ads_Admin {
      */
     public function sanitize($input) {
         $sanitized_input = array();
+        $existing_options = get_option('go4taste_ads_options', array());
         if (isset($input['api_type'])) {
             $sanitized_input['api_type'] = sanitize_text_field($input['api_type']);
         }
@@ -703,6 +712,14 @@ class Go4Taste_Ads_Admin {
         }
         if (isset($input['p_parameter_value'])) {
             $sanitized_input['p_parameter_value'] = sanitize_text_field($input['p_parameter_value']);
+        }
+        if (isset($input['prestashop_webservice_api_key'])) {
+            $submitted_key = trim((string) $input['prestashop_webservice_api_key']);
+            if ('' !== $submitted_key) {
+                $sanitized_input['prestashop_webservice_api_key'] = sanitize_text_field($submitted_key);
+            } elseif (isset($existing_options['prestashop_webservice_api_key'])) {
+                $sanitized_input['prestashop_webservice_api_key'] = sanitize_text_field($existing_options['prestashop_webservice_api_key']);
+            }
         }
         if (isset($input['prestashop_lang'])) {
             $sanitized_input['prestashop_lang'] = sanitize_text_field($input['prestashop_lang']);
@@ -751,6 +768,11 @@ class Go4Taste_Ads_Admin {
             <option value="woocommerce" <?php selected($api_type, 'woocommerce'); ?>>
                 WooCommerce
             </option>
+
+            <!-- PrestaShop Webservice API -->
+            <option value="prestashop_webservice_api" <?php selected($api_type, 'prestashop_webservice_api'); ?>>
+                Prestashop Webservice API
+            </option>
     
             <!-- Custom API -->
             <option value="custom" <?php selected($api_type, 'custom'); ?>>
@@ -769,6 +791,7 @@ class Go4Taste_Ads_Admin {
         $options = get_option('go4taste_ads_options');
         $api_url = isset($options['api_url']) ? esc_attr($options['api_url']) : '';
         echo '<input type="text" id="api_url" name="go4taste_ads_options[api_url]" value="' . $api_url . '" />';
+        echo '<p class="description">Podaj URL sklepu PrestaShop (bez /api). Endpoint /api jest dolaczany automatycznie w kodzie.</p>';
     }
 
     /**
@@ -780,6 +803,16 @@ class Go4Taste_Ads_Admin {
         $options = get_option('go4taste_ads_options');
         $p_value = isset($options['p_parameter_value']) ? esc_attr($options['p_parameter_value']) : '';
         echo '<input type="password" id="p_parameter_value" name="go4taste_ads_options[p_parameter_value]" value="' . $p_value . '" />';
+    }
+
+    /**
+     * Callback function for the PrestaShop Webservice API key field.
+     *
+     * @since    1.2.0
+     */
+    public function prestashop_webservice_api_key_callback() {
+        echo '<input type="password" id="prestashop_webservice_api_key" name="go4taste_ads_options[prestashop_webservice_api_key]" value="" autocomplete="new-password" />';
+        echo '<p class="description">Dla bezpieczenstwa klucz nie jest wyswietlany. Wpisz nowy klucz tylko gdy chcesz go zaktualizowac.</p>';
     }
 
     /**

@@ -14,6 +14,236 @@ use Algolia\AlgoliaSearch\SearchClient;
 class Go4Taste_Ads_API_Fetcher {
 
     /**
+     * Normalize store base URL (without trailing /api).
+     *
+     * @since 1.2.0
+     * @param string $api_url URL from plugin settings.
+     * @return string
+     */
+    private function normalize_prestashop_store_url($api_url) {
+        $base = rtrim((string) $api_url, '/');
+        $base = preg_replace('#/api$#i', '', $base);
+
+        return rtrim((string) $base, '/');
+    }
+
+    /**
+     * Build native PrestaShop Webservice endpoint URL.
+     *
+     * @since 1.2.0
+     * @param string $api_url Base API URL from plugin settings.
+     * @param string $path Relative path under /api.
+     * @return string
+     */
+    private function build_prestashop_webservice_url($api_url, $path) {
+        $base = $this->normalize_prestashop_store_url($api_url);
+        $path = ltrim((string) $path, '/');
+
+        return $base . '/api/' . $path;
+    }
+
+    /**
+     * Decode XML from PrestaShop Webservice response.
+     *
+     * @since 1.2.0
+     * @param string $xml_body Raw XML response body.
+     * @return SimpleXMLElement|false
+     */
+    private function parse_prestashop_xml($xml_body) {
+        if (!is_string($xml_body) || '' === trim($xml_body)) {
+            return false;
+        }
+
+        $xml = @simplexml_load_string($xml_body, 'SimpleXMLElement', LIBXML_NOCDATA);
+        if (false === $xml) {
+            return false;
+        }
+
+        return $xml;
+    }
+
+    /**
+     * Resolve multilingual field with preferred language id=1 and fallback to first non-empty value.
+     *
+     * @since 1.2.0
+     * @param SimpleXMLElement|null $field XML field node.
+     * @return string
+     */
+    private function get_prestashop_language_value($field) {
+        if (!($field instanceof SimpleXMLElement)) {
+            return '';
+        }
+
+        if (!isset($field->language)) {
+            return trim((string) $field);
+        }
+
+        $fallback = '';
+        foreach ($field->language as $language_node) {
+            $value = trim((string) $language_node);
+            if ('' === $value) {
+                continue;
+            }
+
+            if ('' === $fallback) {
+                $fallback = $value;
+            }
+
+            $attrs = $language_node->attributes();
+            if (isset($attrs['id']) && '1' === (string) $attrs['id']) {
+                return $value;
+            }
+        }
+
+        return $fallback;
+    }
+
+    /**
+     * Map native PrestaShop Webservice product XML to plugin product object.
+     *
+     * @since 1.2.0
+     * @param SimpleXMLElement $product_node Product XML node.
+     * @param string           $api_url      Base URL from plugin settings.
+     * @return stdClass|false
+     */
+    private function map_prestashop_webservice_product($product_node, $api_url) {
+        if (!($product_node instanceof SimpleXMLElement)) {
+            return false;
+        }
+
+        $product_id = trim((string) $product_node->id);
+        if ('' === $product_id) {
+            return false;
+        }
+
+        $name = $this->get_prestashop_language_value(isset($product_node->name) ? $product_node->name : null);
+        $link_rewrite = $this->get_prestashop_language_value(isset($product_node->link_rewrite) ? $product_node->link_rewrite : null);
+
+        $raw_price = str_replace(',', '.', trim((string) $product_node->price));
+        $rounded_price = 0;
+        if ('' !== $raw_price && is_numeric($raw_price)) {
+            $rounded_price = (int) ceil((float) $raw_price);
+        }
+
+        $store_base_url = $this->normalize_prestashop_store_url($api_url);
+        $product_link = '';
+        if ('' !== $link_rewrite) {
+            $product_link = $store_base_url . '/' . $link_rewrite . '.html';
+        }
+
+        $mapped = new stdClass();
+        $mapped->id = $product_id;
+        $mapped->name = $name;
+        $mapped->price = (string) $rounded_price;
+        $mapped->price_without_reduction = (string) $rounded_price;
+        $mapped->link = $product_link;
+        $mapped->picture = '';
+        $mapped->category = '';
+        $mapped->reference = isset($product_node->reference) ? trim((string) $product_node->reference) : '';
+        $mapped->price_tax_exc = (string) $rounded_price;
+
+        return $mapped;
+    }
+
+    /**
+     * Fetch one product from native PrestaShop Webservice API.
+     *
+     * @since 1.2.0
+     * @param string $product_id Product ID.
+     * @param string $api_url    Base API URL.
+     * @param string $api_key    Webservice API key.
+     * @return stdClass|false
+     */
+    private function fetch_prestashop_webservice_product($product_id, $api_url, $api_key) {
+        if ('' === trim((string) $api_key) || '' === trim((string) $api_url)) {
+            return false;
+        }
+
+        $endpoint = $this->build_prestashop_webservice_url($api_url, 'products/' . rawurlencode((string) $product_id));
+        $response = wp_remote_get(
+            $endpoint,
+            array(
+                'timeout' => 15,
+                'headers' => array(
+                    'Authorization' => 'Basic ' . base64_encode((string) $api_key . ':'),
+                    'Accept' => 'application/xml',
+                ),
+            )
+        );
+
+        if (is_wp_error($response)) {
+            return false;
+        }
+
+        $http_code = (int) wp_remote_retrieve_response_code($response);
+        if ($http_code < 200 || $http_code >= 300) {
+            return false;
+        }
+
+        $xml = $this->parse_prestashop_xml(wp_remote_retrieve_body($response));
+        if (false === $xml || !isset($xml->product)) {
+            return false;
+        }
+
+        return $this->map_prestashop_webservice_product($xml->product, $api_url);
+    }
+
+    /**
+     * Fetch product IDs from native PrestaShop Webservice API list endpoint.
+     *
+     * @since 1.2.0
+     * @param string $api_url Base API URL.
+     * @param string $api_key Webservice API key.
+     * @return array<int,string>
+     */
+    private function fetch_prestashop_webservice_product_ids($api_url, $api_key) {
+        if ('' === trim((string) $api_key) || '' === trim((string) $api_url)) {
+            return array();
+        }
+
+        $endpoint = $this->build_prestashop_webservice_url($api_url, 'products');
+        $response = wp_remote_get(
+            $endpoint,
+            array(
+                'timeout' => 20,
+                'headers' => array(
+                    'Authorization' => 'Basic ' . base64_encode((string) $api_key . ':'),
+                    'Accept' => 'application/xml',
+                ),
+            )
+        );
+
+        if (is_wp_error($response)) {
+            return array();
+        }
+
+        $http_code = (int) wp_remote_retrieve_response_code($response);
+        if ($http_code < 200 || $http_code >= 300) {
+            return array();
+        }
+
+        $xml = $this->parse_prestashop_xml(wp_remote_retrieve_body($response));
+        if (false === $xml || !isset($xml->products->product)) {
+            return array();
+        }
+
+        $ids = array();
+        foreach ($xml->products->product as $product_node) {
+            $attrs = $product_node->attributes();
+            if (!isset($attrs['id'])) {
+                continue;
+            }
+
+            $id = trim((string) $attrs['id']);
+            if ('' !== $id) {
+                $ids[] = $id;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
      * Fetch product data from the selected API.
      *
      * @since 1.0.0
@@ -40,6 +270,22 @@ class Go4Taste_Ads_API_Fetcher {
             }
         }  
     
+        $options = get_option('go4taste_ads_options');
+        $prestashop_webservice_api_key = isset($options['prestashop_webservice_api_key']) ? sanitize_text_field($options['prestashop_webservice_api_key']) : '';
+
+        if ('prestashop_webservice_api' === $api_type) {
+            $native_product = $this->fetch_prestashop_webservice_product($product_id, $api_url, $prestashop_webservice_api_key);
+            if ($native_product) {
+                if ($cache_duration > 0) {
+                    set_transient($transient_key, $native_product, $cache_duration * HOUR_IN_SECONDS);
+                }
+
+                return $native_product;
+            }
+
+            return false;
+        }
+
         // Proceed to fetch from the API if no cached data
         $url = '';
         
@@ -98,7 +344,7 @@ class Go4Taste_Ads_API_Fetcher {
      * Fetch all products data from the selected API.
      *
      * @since 1.0.0
-     * @param string $api_type The API type (e.g., 'prestashop_1_4', 'prestashop_1_5', 'woocommerce').
+    * @param string $api_type The API type (e.g., 'prestashop_1_4', 'prestashop_1_5', 'prestashop_webservice_api', 'woocommerce').
      * @param string $p_value The "p" parameter for PrestaShop APIs.
      * @param string $lang The language for PrestaShop APIs.
      * @param string $api_url The API base URL.
@@ -122,6 +368,25 @@ class Go4Taste_Ads_API_Fetcher {
             case 'woocommerce':
                 $url = $api_url . '/wp-json/wc/v3/products?consumer_key=' . $consumer_key . '&consumer_secret=' . $consumer_secret . '&per_page=100'; // WooCommerce pagination example
                 break;
+
+            case 'prestashop_webservice_api':
+                $options = get_option('go4taste_ads_options');
+                $prestashop_webservice_api_key = isset($options['prestashop_webservice_api_key']) ? sanitize_text_field($options['prestashop_webservice_api_key']) : '';
+                $product_ids = $this->fetch_prestashop_webservice_product_ids($api_url, $prestashop_webservice_api_key);
+
+                if (empty($product_ids)) {
+                    return false;
+                }
+
+                $products = array();
+                foreach ($product_ids as $product_id) {
+                    $mapped_product = $this->fetch_prestashop_webservice_product($product_id, $api_url, $prestashop_webservice_api_key);
+                    if ($mapped_product) {
+                        $products[] = $mapped_product;
+                    }
+                }
+
+                return !empty($products) ? $products : false;
                 
             default:
                 return false; // Invalid API type
