@@ -96,6 +96,7 @@
 				nonce: g4tAdsAdmin.migrationNonce,
 				dry_run: migrationForm.find( 'input[name="go4taste_migrate_dry_run"]' ).is( ':checked' ) ? 1 : 0,
 				limit: migrationForm.find( 'input[name="go4taste_migrate_limit"]' ).val() || 0,
+				target_post: migrationForm.find( 'input[name="go4taste_migrate_target_post"]' ).val() || '',
 				batch_size: migrationForm.find( 'input[name="go4taste_migrate_batch_size"]' ).val() || 20,
 				post_types: postTypes,
 				post_statuses: postStatuses,
@@ -131,11 +132,48 @@
 				} )
 				.fail( function ( xhr ) {
 					running = false;
-					migrationStartButton.prop( 'disabled', false ).text( 'Run Migration' );
 					const message = xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message
 						? xhr.responseJSON.data.message
 						: 'Batch request failed.';
 					appendLog( message, true );
+					resumeExistingJob( 'Po bledzie batch probuje wznowic...' );
+				} );
+		}
+
+		function resumeExistingJob( contextMessage ) {
+			if ( contextMessage ) {
+				appendLog( contextMessage );
+			}
+
+			$.post( g4tAdsAdmin.ajaxUrl, {
+				action: g4tAdsAdmin.migrationStatusAction,
+				nonce: g4tAdsAdmin.migrationNonce,
+			} )
+				.done( function ( response ) {
+					if ( ! response || ! response.success || ! response.data || ! response.data.job ) {
+						running = false;
+						migrationStartButton.prop( 'disabled', false ).text( 'Run Migration' );
+						appendLog( 'Nie udalo sie odczytac statusu migracji.', true );
+						return;
+					}
+
+					renderStats( response.data.job );
+					if ( 'running' === response.data.job.status ) {
+						running = true;
+						migrationStartButton.prop( 'disabled', true ).text( 'Migration Running...' );
+						appendLog( 'Wznowiono aktywna migracje.' );
+						setTimeout( runBatch, 500 );
+						return;
+					}
+
+					running = false;
+					migrationStartButton.prop( 'disabled', false ).text( 'Run Migration' );
+					appendLog( 'Brak aktywnego joba. Mozesz uruchomic migracje ponownie.' );
+				} )
+				.fail( function () {
+					running = false;
+					migrationStartButton.prop( 'disabled', false ).text( 'Run Migration' );
+					appendLog( 'Nie udalo sie wznowic migracji po bledzie.', true );
 				} );
 		}
 
@@ -166,6 +204,13 @@
 					runBatch();
 				} )
 				.fail( function ( xhr ) {
+					const statusCode = xhr && xhr.status ? Number( xhr.status ) : 0;
+					if ( 409 === statusCode ) {
+						appendLog( 'Wykryto aktywny job migracji. Proba wznowienia...' );
+						resumeExistingJob();
+						return;
+					}
+
 					running = false;
 					migrationStartButton.prop( 'disabled', false ).text( 'Run Migration' );
 					const message = xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message

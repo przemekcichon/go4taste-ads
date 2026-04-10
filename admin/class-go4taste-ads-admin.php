@@ -571,6 +571,10 @@ class Go4Taste_Ads_Admin {
                     <input type="number" min="0" step="1" id="go4taste_migrate_limit" name="go4taste_migrate_limit" value="0" style="width:120px;">
                 </p>
                 <p>
+                    <label for="go4taste_migrate_target_post"><?php _e( 'Target post (ID or slug, optional):', 'go4taste-ads' ); ?></label>
+                    <input type="text" id="go4taste_migrate_target_post" name="go4taste_migrate_target_post" value="" placeholder="np. 123 lub moj-wpis" style="width:240px;">
+                </p>
+                <p>
                     <strong><?php _e( 'Post types:', 'go4taste-ads' ); ?></strong><br>
                     <label><input type="checkbox" name="go4taste_migrate_post_types[]" value="post" checked> <?php _e( 'Posts', 'go4taste-ads' ); ?></label><br>
                     <label><input type="checkbox" name="go4taste_migrate_post_types[]" value="page" checked> <?php _e( 'Pages', 'go4taste-ads' ); ?></label>
@@ -956,6 +960,82 @@ class Go4Taste_Ads_Admin {
     }
 
     /**
+     * Return stale timeout for running migration job lock.
+     *
+     * @since 1.2.0
+     * @return int
+     */
+    private function get_migration_job_stale_timeout() {
+        return 10 * MINUTE_IN_SECONDS;
+    }
+
+    /**
+     * Check if running migration job looks stale.
+     *
+     * @since 1.2.0
+     * @param array<string,mixed> $job_state Job state.
+     * @return bool
+     */
+    private function is_migration_job_stale( $job_state ) {
+        if ( ! is_array( $job_state ) || empty( $job_state['status'] ) || 'running' !== $job_state['status'] ) {
+            return false;
+        }
+
+        $updated_at = isset( $job_state['updated_at'] ) ? absint( $job_state['updated_at'] ) : 0;
+        if ( 0 === $updated_at ) {
+            // Backward compatibility with older job payloads that did not persist timestamps.
+            return true;
+        }
+
+        return ( time() - $updated_at ) > $this->get_migration_job_stale_timeout();
+    }
+
+    /**
+     * Resolve target post from input value (ID or slug).
+     *
+     * @since 1.2.0
+     * @param string            $target_post   Raw user input.
+     * @param array<int,string> $post_types    Allowed post types.
+     * @param array<int,string> $post_statuses Allowed post statuses.
+     * @return int
+     */
+    private function resolve_target_post_id( $target_post, $post_types, $post_statuses ) {
+        $target_post = trim( (string) $target_post );
+        if ( '' === $target_post ) {
+            return 0;
+        }
+
+        if ( ctype_digit( $target_post ) ) {
+            $post_id = absint( $target_post );
+            $post    = get_post( $post_id );
+            if ( $post && in_array( $post->post_type, $post_types, true ) && in_array( $post->post_status, $post_statuses, true ) ) {
+                return $post_id;
+            }
+
+            return 0;
+        }
+
+        $slug_query = get_posts(
+            array(
+                'name'           => sanitize_title( $target_post ),
+                'post_type'      => $post_types,
+                'post_status'    => $post_statuses,
+                'posts_per_page' => 1,
+                'fields'         => 'ids',
+                'orderby'        => 'ID',
+                'order'          => 'ASC',
+                'no_found_rows'  => true,
+            )
+        );
+
+        if ( empty( $slug_query ) ) {
+            return 0;
+        }
+
+        return absint( $slug_query[0] );
+    }
+
+    /**
      * Start async migration job (AJAX).
      *
      * @since 1.2.0
@@ -967,15 +1047,32 @@ class Go4Taste_Ads_Admin {
 
         check_ajax_referer( 'g4t_migrate_legacy_banners_ajax', 'nonce' );
 
-        $existing_job = get_transient( $this->get_migration_job_transient_key() );
+        $job_key      = $this->get_migration_job_transient_key();
+        $existing_job = get_transient( $job_key );
         if ( is_array( $existing_job ) && isset( $existing_job['status'] ) && 'running' === $existing_job['status'] ) {
-            wp_send_json_error( array( 'message' => 'Migration is already running.' ), 409 );
+            if ( ! $this->is_migration_job_stale( $existing_job ) ) {
+                wp_send_json_error(
+                    array(
+                        'message' => 'Migration is already running.',
+                        'job'     => $existing_job,
+                    ),
+                    409
+                );
+            }
+
+            // Stale lock recovery.
+            $existing_job['status']        = 'failed';
+            $existing_job['error_message'] = 'Stale migration lock was reset automatically.';
+            $existing_job['updated_at']    = time();
+            set_transient( $this->get_migration_report_transient_key(), $existing_job, 10 * MINUTE_IN_SECONDS );
+            delete_transient( $job_key );
         }
 
         $dry_run       = ! empty( $_POST['dry_run'] );
         $limit         = isset( $_POST['limit'] ) ? absint( $_POST['limit'] ) : 0;
         $batch_size    = isset( $_POST['batch_size'] ) ? absint( $_POST['batch_size'] ) : 20;
         $batch_size    = max( 1, min( 100, $batch_size ) );
+        $target_post   = isset( $_POST['target_post'] ) ? sanitize_text_field( wp_unslash( $_POST['target_post'] ) ) : '';
         $post_types    = isset( $_POST['post_types'] ) && is_array( $_POST['post_types'] ) ? array_map( 'sanitize_key', wp_unslash( $_POST['post_types'] ) ) : array( 'post', 'page' );
         $post_statuses = isset( $_POST['post_statuses'] ) && is_array( $_POST['post_statuses'] ) ? array_map( 'sanitize_key', wp_unslash( $_POST['post_statuses'] ) ) : array( 'publish', 'draft' );
 
@@ -987,6 +1084,11 @@ class Go4Taste_Ads_Admin {
             $post_statuses = array( 'publish', 'draft' );
         }
 
+        $target_post_id = $this->resolve_target_post_id( $target_post, $post_types, $post_statuses );
+        if ( '' !== trim( $target_post ) && 0 === $target_post_id ) {
+            wp_send_json_error( array( 'message' => 'Target post not found for selected type/status filters.' ), 400 );
+        }
+
         $total_query = array(
             'post_type'      => $post_types,
             'post_status'    => $post_statuses,
@@ -996,9 +1098,14 @@ class Go4Taste_Ads_Admin {
             'fields'         => 'ids',
             'no_found_rows'  => false,
         );
+        if ( $target_post_id > 0 ) {
+            $total_query['post__in']       = array( $target_post_id );
+            $total_query['posts_per_page'] = 1;
+        }
+
         $total_wp_query = new WP_Query( $total_query );
         $total          = isset( $total_wp_query->found_posts ) ? (int) $total_wp_query->found_posts : 0;
-        if ( $limit > 0 ) {
+        if ( $limit > 0 && $target_post_id <= 0 ) {
             $total = min( $total, $limit );
         }
         wp_reset_postdata();
@@ -1007,6 +1114,8 @@ class Go4Taste_Ads_Admin {
             'dry_run'                  => (bool) $dry_run,
             'limit'                    => $limit,
             'batch_size'               => $batch_size,
+            'target_post'              => $target_post,
+            'target_post_id'           => $target_post_id,
             'post_types'               => $post_types,
             'post_statuses'            => $post_statuses,
             'total'                    => $total,
@@ -1019,9 +1128,11 @@ class Go4Taste_Ads_Admin {
             'inline_banners_created'   => 0,
             'errors'                   => 0,
             'status'                   => 'running',
+            'created_at'               => time(),
+            'updated_at'               => time(),
         );
 
-        set_transient( $this->get_migration_job_transient_key(), $job_state, HOUR_IN_SECONDS );
+        set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
 
         wp_send_json_success( array( 'job' => $job_state ) );
     }
@@ -1049,6 +1160,18 @@ class Go4Taste_Ads_Admin {
             wp_send_json_success( array( 'job' => $job_state, 'done' => true ) );
         }
 
+        if ( $this->is_migration_job_stale( $job_state ) ) {
+            $job_state['status']        = 'failed';
+            $job_state['error_message'] = 'Migration job became stale and was marked as failed.';
+            $job_state['updated_at']    = time();
+            set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+            set_transient( $this->get_migration_report_transient_key(), $job_state, 10 * MINUTE_IN_SECONDS );
+            wp_send_json_error( array( 'message' => 'Migration job is stale. Please start again.', 'job' => $job_state ), 409 );
+        }
+
+        $job_state['updated_at'] = time();
+        set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+
         $remaining = max( 0, (int) $job_state['total'] - (int) $job_state['offset'] );
         if ( 0 === $remaining ) {
             $job_state['status'] = 'done';
@@ -1069,6 +1192,9 @@ class Go4Taste_Ads_Admin {
             'fields'         => 'ids',
             'no_found_rows'  => true,
         );
+        if ( ! empty( $job_state['target_post_id'] ) ) {
+            $batch_query['post__in'] = array( absint( $job_state['target_post_id'] ) );
+        }
 
         $post_ids = get_posts( $batch_query );
 
@@ -1092,7 +1218,14 @@ class Go4Taste_Ads_Admin {
                 'inline_banners_created' => 0,
             );
 
-            $updated_content = $this->convert_legacy_shortcodes_to_inline_blocks( $content, $local_stats );
+            try {
+                $updated_content = $this->convert_legacy_shortcodes_to_inline_blocks( $content, $local_stats );
+            } catch ( Throwable $e ) {
+                $job_state['errors']++;
+                $job_state['last_error'] = $e->getMessage();
+                continue;
+            }
+
             if ( $updated_content === $content ) {
                 $job_state['posts_skipped_candidates']++;
                 continue;
@@ -1129,6 +1262,7 @@ class Go4Taste_Ads_Admin {
             set_transient( $this->get_migration_report_transient_key(), $job_state, 10 * MINUTE_IN_SECONDS );
         }
 
+        $job_state['updated_at'] = time();
         set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
         wp_send_json_success( array( 'job' => $job_state, 'done' => 'done' === $job_state['status'] ) );
     }
