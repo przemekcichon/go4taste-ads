@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 /**
  * The class responsible for fetching product data from different APIs (PrestaShop, WooCommerce, etc.).
@@ -12,6 +12,14 @@
 
 use Algolia\AlgoliaSearch\SearchClient;
 class Go4Taste_Ads_API_Fetcher {
+
+    /**
+     * In-request cache for PrestaShop tax rates by store and tax id.
+     *
+     * @since 1.2.0
+     * @var array<string,float>
+     */
+    private $prestashop_tax_rate_cache = array();
 
     /**
      * Normalize store base URL (without trailing /api).
@@ -99,7 +107,74 @@ class Go4Taste_Ads_API_Fetcher {
     }
 
     /**
+     * Fetch tax rate (%) from native PrestaShop Webservice API.
+     *
+     * TODO(research): For this project we intentionally map product.id_tax_rules_group
+     * directly to /api/taxes/<id>. Re-verify in future if tax_rule_groups -> taxes
+     * indirection is ever needed for other stores.
+     *
+     * TODO(research): We currently accept rate without checking tax active/deleted flags,
+     * based on assumption that inactive taxes are not assigned at product level.
+     * Revisit if store data model changes.
+     *
+     * @since 1.2.0
+     * @param string $tax_id Tax ID.
+     * @param string $api_url Base API URL.
+     * @param string $api_key Webservice API key.
+     * @return float
+     */
+    private function fetch_prestashop_webservice_tax_rate($tax_id, $api_url, $api_key) {
+        $tax_id = trim((string) $tax_id);
+        if ('' === $tax_id || '' === trim((string) $api_key) || '' === trim((string) $api_url)) {
+            return 0.0;
+        }
+
+        $cache_key = $this->normalize_prestashop_store_url($api_url) . '|' . $tax_id;
+        if (isset($this->prestashop_tax_rate_cache[$cache_key])) {
+            return (float) $this->prestashop_tax_rate_cache[$cache_key];
+        }
+
+        $endpoint = $this->build_prestashop_webservice_url($api_url, 'taxes/' . rawurlencode($tax_id));
+        $response = wp_remote_get(
+            $endpoint,
+            array(
+                'timeout' => 15,
+                'headers' => array(
+                    'Authorization' => 'Basic ' . base64_encode((string) $api_key . ':'),
+                    'Accept' => 'application/xml',
+                ),
+            )
+        );
+
+        if (is_wp_error($response)) {
+            $this->prestashop_tax_rate_cache[$cache_key] = 0.0;
+            return 0.0;
+        }
+
+        $http_code = (int) wp_remote_retrieve_response_code($response);
+        if ($http_code < 200 || $http_code >= 300) {
+            $this->prestashop_tax_rate_cache[$cache_key] = 0.0;
+            return 0.0;
+        }
+
+        $xml = $this->parse_prestashop_xml(wp_remote_retrieve_body($response));
+        if (false === $xml || !isset($xml->tax->rate)) {
+            $this->prestashop_tax_rate_cache[$cache_key] = 0.0;
+            return 0.0;
+        }
+
+        $raw_rate = str_replace(',', '.', trim((string) $xml->tax->rate));
+        $tax_rate = ('' !== $raw_rate && is_numeric($raw_rate)) ? (float) $raw_rate : 0.0;
+
+        $this->prestashop_tax_rate_cache[$cache_key] = $tax_rate;
+
+        return $tax_rate;
+    }
+    /**
      * Map native PrestaShop Webservice product XML to plugin product object.
+     *
+     * TODO(change): price_tax_exc currently mirrors final rounded gross price for backward
+     * compatibility. Revisit and align it with tax-exclusive semantics when consumers are ready.
      *
      * @since 1.2.0
      * @param SimpleXMLElement $product_node Product XML node.
@@ -131,10 +206,17 @@ class Go4Taste_Ads_API_Fetcher {
         }
 
         $raw_price = str_replace(',', '.', trim((string) $product_node->price));
-        $rounded_price = 0;
-        if ('' !== $raw_price && is_numeric($raw_price)) {
-            $rounded_price = (int) ceil((float) $raw_price);
+        $net_price = ('' !== $raw_price && is_numeric($raw_price)) ? (float) $raw_price : 0.0;
+
+        $tax_id = isset($product_node->id_tax_rules_group) ? trim((string) $product_node->id_tax_rules_group) : '';
+        $tax_rate = $this->fetch_prestashop_webservice_tax_rate($tax_id, $api_url, $api_key);
+
+        $gross_price = $net_price;
+        if ($tax_rate > 0) {
+            $gross_price = $net_price * (1 + ($tax_rate / 100));
         }
+
+        $rounded_price = (int) ceil($gross_price);
 
         $store_base_url = $this->normalize_prestashop_store_url($api_url);
         $price_with_currency = (string) $rounded_price . ' zł';
@@ -204,7 +286,7 @@ class Go4Taste_Ads_API_Fetcher {
             return false;
         }
 
-        return $this->map_prestashop_webservice_product($xml->product, $api_url);
+        return $this->map_prestashop_webservice_product($xml->product, $api_url, $api_key);
     }
 
     /**
@@ -504,5 +586,7 @@ class Go4Taste_Ads_API_Fetcher {
         $response = $index->saveObjects($records)->wait();
     }
 }
+
+
 
 
