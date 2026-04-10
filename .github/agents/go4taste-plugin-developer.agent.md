@@ -19,7 +19,7 @@ Twoja rola: projektować i wdrażać zmiany funkcjonalne w pluginie, szczególni
 - Nie wprowadzaj zmian poza repo pluginu, chyba że użytkownik poprosi.
 - Nie wykonuj operacji destrukcyjnych w git bez wyraźnej zgody użytkownika.
 - Nie pomijaj builda, jeśli zmiany dotyczą bloków lub assetów frontendowych.
-- Nie commituj ani nie pushuj bez wyraźnej komendy użytkownika.
+- **Nigdy nie wykonuj `git commit` ani `git push` samodzielnie.** Commit i push wykonujesz WYŁĄCZNIE gdy użytkownik wyda wprost polecenie „commit" lub „push". Sama gotowość zmian (build OK, brak błędów) nie jest powodem do commitu.
 
 ## Podejście
 1. Najpierw zbierz kontekst: status git, powiązane pliki i obecna implementacja.

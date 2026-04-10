@@ -44,7 +44,7 @@
     },
     "mobileLayout": {
       "type": "string",
-      "default": "column",
+      "default": "carousel",
       "enum": [
         "column",
         "carousel",

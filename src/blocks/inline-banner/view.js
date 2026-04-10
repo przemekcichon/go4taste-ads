@@ -14,7 +14,7 @@
 			const track = banner.querySelector( '.g4t-ads-inline-products' );
 			const dots = banner.querySelectorAll( '.g4t-carousel-dot' );
 
-			if ( ! track || dots.length < 2 ) {
+			if ( ! track || dots.length < 1 ) {
 				return;
 			}
 

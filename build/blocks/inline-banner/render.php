@@ -45,7 +45,7 @@ if ( empty( $products_data ) ) {
 }
 
 $product_count  = count( $products_data );
-$mobile_layout  = isset( $attributes['mobileLayout'] ) ? $attributes['mobileLayout'] : 'column';
+$mobile_layout  = isset( $attributes['mobileLayout'] ) ? $attributes['mobileLayout'] : 'carousel';
 $wrapper_attrs  = get_block_wrapper_attributes( array(
 	'class' => 'g4t-ads-banner g4t-banner-inline g4t-banner-inline--count-' . $product_count . ' g4t-banner-inline--mobile-' . esc_attr( $mobile_layout ),
 ) );

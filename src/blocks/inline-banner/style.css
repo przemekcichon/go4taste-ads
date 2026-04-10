@@ -8,10 +8,9 @@
 	position: static;
 	display: block;
 	padding: 20px;
-	border: 1px solid #c1d6c8;
-	background-color: #f0f8f5;
+	border: none;
+	background-color: transparent;
 	margin: 24px auto;
-	border-radius: 4px;
 }
 
 /* Container width scales with product count so each card stays ~1/3 of parent.
