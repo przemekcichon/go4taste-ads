@@ -49,6 +49,16 @@
 		const migrationLog = $( '#g4t-migration-log' );
 
 		let running = false;
+		let lastKnownOffset = 0;
+		let consecutiveStalledFailures = 0;
+
+		function getJobOffset( job ) {
+			if ( ! job ) {
+				return 0;
+			}
+
+			return Number( job.offset || job.posts_scanned || 0 );
+		}
 
 		function appendLog( message, isError ) {
 			const safeMessage = String( message || '' );
@@ -62,6 +72,7 @@
 			const total = Number( job.total || 0 );
 			const scanned = Number( job.posts_scanned || 0 );
 			const percent = total > 0 ? Math.min( 100, Math.round( ( scanned / total ) * 100 ) ) : 0;
+			lastKnownOffset = getJobOffset( job );
 
 			progressBar.css( 'width', percent + '%' );
 			progressText.text(
@@ -120,6 +131,8 @@
 						return;
 					}
 
+					consecutiveStalledFailures = 0;
+
 					renderStats( response.data.job );
 					if ( response.data.done ) {
 						running = false;
@@ -140,6 +153,29 @@
 				} );
 		}
 
+		function unlockStalledJob() {
+			appendLog( 'Brak postepu migracji. Zdejmuje lock i odblokowuje przycisk...', true );
+			$.post( g4tAdsAdmin.ajaxUrl, {
+				action: g4tAdsAdmin.migrationUnlockAction,
+				nonce: g4tAdsAdmin.migrationNonce,
+			} )
+				.done( function () {
+					appendLog( 'Lock migracji zostal wyczyszczony. Mozesz uruchomic ponownie.' );
+				} )
+				.fail( function ( xhr ) {
+					const message = xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message
+						? xhr.responseJSON.data.message
+						: 'Nie udalo sie wyczyscic locka migracji.';
+					appendLog( message, true );
+				} )
+				.always( function () {
+					running = false;
+					consecutiveStalledFailures = 0;
+					lastKnownOffset = 0;
+					migrationStartButton.prop( 'disabled', false ).text( 'Run Migration' );
+				} );
+		}
+
 		function resumeExistingJob( contextMessage ) {
 			if ( contextMessage ) {
 				appendLog( contextMessage );
@@ -157,8 +193,21 @@
 						return;
 					}
 
+					const previousOffset = lastKnownOffset;
 					renderStats( response.data.job );
 					if ( 'running' === response.data.job.status ) {
+						const statusOffset = getJobOffset( response.data.job );
+						if ( statusOffset <= previousOffset ) {
+							consecutiveStalledFailures++;
+						} else {
+							consecutiveStalledFailures = 0;
+						}
+
+						if ( consecutiveStalledFailures >= 3 ) {
+							unlockStalledJob();
+							return;
+						}
+
 						running = true;
 						migrationStartButton.prop( 'disabled', true ).text( 'Migration Running...' );
 						appendLog( 'Wznowiono aktywna migracje.' );

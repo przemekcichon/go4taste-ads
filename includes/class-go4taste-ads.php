@@ -256,6 +256,7 @@ class Go4Taste_Ads{
 		$this->loader->add_action( 'wp_ajax_g4t_migration_start', $plugin_admin, 'ajax_migration_start' );
 		$this->loader->add_action( 'wp_ajax_g4t_migration_batch', $plugin_admin, 'ajax_migration_batch' );
 		$this->loader->add_action( 'wp_ajax_g4t_migration_status', $plugin_admin, 'ajax_migration_status' );
+		$this->loader->add_action( 'wp_ajax_g4t_migration_unlock', $plugin_admin, 'ajax_migration_unlock' );
 
 		$this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_admin_preview_styles');
 

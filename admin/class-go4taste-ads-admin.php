@@ -117,6 +117,7 @@ class Go4Taste_Ads_Admin {
                 'migrationStartAction'   => 'g4t_migration_start',
                 'migrationBatchAction'   => 'g4t_migration_batch',
                 'migrationStatusAction'  => 'g4t_migration_status',
+                'migrationUnlockAction'  => 'g4t_migration_unlock',
             )
         );
     }
@@ -1100,12 +1101,10 @@ class Go4Taste_Ads_Admin {
             wp_send_json_error( array( 'message' => 'Migration job is stale. Please start again.', 'job' => $job_state ), 409 );
         }
 
-        $job_state['updated_at'] = time();
-        set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
-
         $remaining = max( 0, (int) $job_state['total'] - (int) $job_state['offset'] );
         if ( 0 === $remaining ) {
             $job_state['status'] = 'done';
+            $job_state['updated_at'] = time();
             set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
             wp_send_json_success( array( 'job' => $job_state, 'done' => true ) );
         }
@@ -1130,6 +1129,7 @@ class Go4Taste_Ads_Admin {
 
         if ( empty( $post_ids ) ) {
             $job_state['status'] = 'done';
+            $job_state['updated_at'] = time();
             set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
             wp_send_json_success( array( 'job' => $job_state, 'done' => true ) );
         }
@@ -1207,12 +1207,54 @@ class Go4Taste_Ads_Admin {
 
         check_ajax_referer( 'g4t_migrate_legacy_banners_ajax', 'nonce' );
 
-        $job_state = get_transient( $this->get_migration_job_transient_key() );
+        $job_key   = $this->get_migration_job_transient_key();
+        $job_state = get_transient( $job_key );
         if ( ! is_array( $job_state ) ) {
             wp_send_json_error( array( 'message' => 'Migration job not found.' ), 404 );
         }
 
+        if ( $this->is_migration_job_stale( $job_state ) ) {
+            $job_state['status']        = 'failed';
+            $job_state['error_message'] = 'Migration job is stale. Lock was released.';
+            $job_state['updated_at']    = time();
+            delete_transient( $job_key );
+            wp_send_json_success( array( 'job' => $job_state ) );
+        }
+
         wp_send_json_success( array( 'job' => $job_state ) );
+    }
+
+    /**
+     * Force unlock async migration job (AJAX).
+     *
+     * @since 1.2.0
+     */
+    public function ajax_migration_unlock() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
+        }
+
+        check_ajax_referer( 'g4t_migrate_legacy_banners_ajax', 'nonce' );
+
+        $job_key   = $this->get_migration_job_transient_key();
+        $job_state = get_transient( $job_key );
+
+        if ( ! is_array( $job_state ) ) {
+            wp_send_json_success( array( 'message' => 'No active migration lock found.' ) );
+        }
+
+        if ( isset( $job_state['status'] ) && 'running' === $job_state['status'] && ! $this->is_migration_job_stale( $job_state ) ) {
+            wp_send_json_error(
+                array(
+                    'message' => 'Migration is still running. Unlock is allowed only for stale jobs.',
+                    'job'     => $job_state,
+                ),
+                409
+            );
+        }
+
+        delete_transient( $job_key );
+        wp_send_json_success( array( 'message' => 'Migration lock has been cleared.' ) );
     }
 
     /**
