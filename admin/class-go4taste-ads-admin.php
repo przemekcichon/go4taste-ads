@@ -671,6 +671,14 @@ class Go4Taste_Ads_Admin {
         );
 
         add_settings_field(
+            'prestashop_tax_country_iso',
+            'PrestaShop Tax Country ISO',
+            array($this, 'prestashop_tax_country_iso_callback'),
+            'go4taste-ads',
+            'go4taste_ads_setting_section'
+        );
+
+        add_settings_field(
             'fallback_product_id',
             'Fallback Product ID',
             array($this, 'fallback_product_id_callback'),
@@ -733,6 +741,14 @@ class Go4Taste_Ads_Admin {
         }
         if (isset($input['prestashop_lang'])) {
             $sanitized_input['prestashop_lang'] = sanitize_text_field($input['prestashop_lang']);
+        }
+        if (isset($input['prestashop_tax_country_iso'])) {
+            $tax_country_iso = strtoupper(trim((string) sanitize_text_field($input['prestashop_tax_country_iso'])));
+            if (preg_match('/^[A-Z]{2}$/', $tax_country_iso)) {
+                $sanitized_input['prestashop_tax_country_iso'] = $tax_country_iso;
+            } else {
+                $sanitized_input['prestashop_tax_country_iso'] = 'PL';
+            }
         }
         if (isset($input['fallback_product_id'])) {
             $sanitized_input['fallback_product_id'] = sanitize_text_field($input['fallback_product_id']);
@@ -834,6 +850,19 @@ class Go4Taste_Ads_Admin {
         $options = get_option('go4taste_ads_options');
         $prestashop_lang = isset($options['prestashop_lang']) ? esc_attr($options['prestashop_lang']) : '';
         echo '<input type="text" id="prestashop_lang" name="go4taste_ads_options[prestashop_lang]" value="' . $prestashop_lang . '" />';
+    }
+
+    /**
+     * Callback function for the tax country ISO field.
+     *
+     * @since    1.2.0
+     */
+    public function prestashop_tax_country_iso_callback() {
+        $options = get_option('go4taste_ads_options');
+        $tax_country_iso = isset($options['prestashop_tax_country_iso']) ? esc_attr($options['prestashop_tax_country_iso']) : 'PL';
+
+        echo '<input type="text" id="prestashop_tax_country_iso" name="go4taste_ads_options[prestashop_tax_country_iso]" value="' . $tax_country_iso . '" maxlength="2" style="width:80px; text-transform:uppercase;" />';
+        echo '<p class="description">Dwuliterowy kod ISO kraju do mapowania reguly VAT (np. PL, DE, CZ). Domyslnie: PL.</p>';
     }
 
     /**

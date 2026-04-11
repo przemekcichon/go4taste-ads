@@ -22,6 +22,44 @@ class Go4Taste_Ads_API_Fetcher {
     private $prestashop_tax_rate_cache = array();
 
     /**
+     * In-request cache for country id by store and ISO code.
+     *
+     * @since 1.2.0
+     * @var array<string,string>
+     */
+    private $prestashop_country_id_cache = array();
+
+    /**
+     * In-request cache for tax id by store, tax rules group and country id.
+     *
+     * @since 1.2.0
+     * @var array<string,string>
+     */
+    private $prestashop_tax_id_by_group_cache = array();
+
+    /**
+     * Resolve configured tax country ISO for PrestaShop mapping.
+     *
+     * @since 1.2.0
+     * @return string
+     */
+    private function get_prestashop_tax_country_iso() {
+        $options = get_option('go4taste_ads_options');
+        $iso = '';
+
+        if (is_array($options) && isset($options['prestashop_tax_country_iso'])) {
+            $iso = sanitize_text_field($options['prestashop_tax_country_iso']);
+        }
+
+        $iso = strtoupper(trim((string) $iso));
+        if ('' === $iso || !preg_match('/^[A-Z]{2}$/', $iso)) {
+            return 'PL';
+        }
+
+        return $iso;
+    }
+
+    /**
      * Normalize store base URL (without trailing /api).
      *
      * @since 1.2.0
@@ -109,14 +147,6 @@ class Go4Taste_Ads_API_Fetcher {
     /**
      * Fetch tax rate (%) from native PrestaShop Webservice API.
      *
-     * TODO(research): For this project we intentionally map product.id_tax_rules_group
-     * directly to /api/taxes/<id>. Re-verify in future if tax_rule_groups -> taxes
-     * indirection is ever needed for other stores.
-     *
-     * TODO(research): We currently accept rate without checking tax active/deleted flags,
-     * based on assumption that inactive taxes are not assigned at product level.
-     * Revisit if store data model changes.
-     *
      * @since 1.2.0
      * @param string $tax_id Tax ID.
      * @param string $api_url Base API URL.
@@ -163,6 +193,16 @@ class Go4Taste_Ads_API_Fetcher {
             return 0.0;
         }
 
+        if (isset($xml->tax->active) && '0' === trim((string) $xml->tax->active)) {
+            $this->prestashop_tax_rate_cache[$cache_key] = 0.0;
+            return 0.0;
+        }
+
+        if (isset($xml->tax->deleted) && '1' === trim((string) $xml->tax->deleted)) {
+            $this->prestashop_tax_rate_cache[$cache_key] = 0.0;
+            return 0.0;
+        }
+
         $raw_rate = str_replace(',', '.', trim((string) $xml->tax->rate));
         $tax_rate = ('' !== $raw_rate && is_numeric($raw_rate)) ? (float) $raw_rate : 0.0;
 
@@ -170,6 +210,201 @@ class Go4Taste_Ads_API_Fetcher {
 
         return $tax_rate;
     }
+
+    /**
+     * Resolve country ID from PrestaShop Webservice by ISO code.
+     *
+     * @since 1.2.0
+     * @param string $iso_code Country ISO code.
+     * @param string $api_url Base API URL.
+     * @param string $api_key Webservice API key.
+     * @return string
+     */
+    private function fetch_prestashop_country_id_by_iso($iso_code, $api_url, $api_key) {
+        $iso_code = strtoupper(trim((string) $iso_code));
+        if ('' === $iso_code || '' === trim((string) $api_key) || '' === trim((string) $api_url)) {
+            return '';
+        }
+
+        $cache_key = $this->normalize_prestashop_store_url($api_url) . '|country|' . $iso_code;
+        if (isset($this->prestashop_country_id_cache[$cache_key])) {
+            return (string) $this->prestashop_country_id_cache[$cache_key];
+        }
+
+        $query = http_build_query(
+            array(
+                'filter[iso_code]' => '[' . $iso_code . ']',
+                'display' => '[id]',
+            ),
+            '',
+            '&',
+            PHP_QUERY_RFC3986
+        );
+
+        $endpoint = $this->build_prestashop_webservice_url($api_url, 'countries?' . $query);
+        $response = wp_remote_get(
+            $endpoint,
+            array(
+                'timeout' => 15,
+                'headers' => array(
+                    'Authorization' => 'Basic ' . base64_encode((string) $api_key . ':'),
+                    'Accept' => 'application/xml',
+                ),
+            )
+        );
+
+        if (is_wp_error($response)) {
+            $this->prestashop_country_id_cache[$cache_key] = '';
+            return '';
+        }
+
+        $http_code = (int) wp_remote_retrieve_response_code($response);
+        if ($http_code < 200 || $http_code >= 300) {
+            $this->prestashop_country_id_cache[$cache_key] = '';
+            return '';
+        }
+
+        $xml = $this->parse_prestashop_xml(wp_remote_retrieve_body($response));
+        if (false === $xml || !isset($xml->countries->country)) {
+            $this->prestashop_country_id_cache[$cache_key] = '';
+            return '';
+        }
+
+        $country_id = '';
+        foreach ($xml->countries->country as $country_node) {
+            if (isset($country_node->id) && '' !== trim((string) $country_node->id)) {
+                $country_id = trim((string) $country_node->id);
+                break;
+            }
+
+            $attrs = $country_node->attributes();
+            if (isset($attrs['id']) && '' !== trim((string) $attrs['id'])) {
+                $country_id = trim((string) $attrs['id']);
+                break;
+            }
+        }
+
+        $this->prestashop_country_id_cache[$cache_key] = $country_id;
+
+        return $country_id;
+    }
+
+    /**
+     * Resolve tax ID for tax rules group and country from PrestaShop Webservice.
+     *
+     * @since 1.2.0
+     * @param string $tax_rules_group_id Tax rules group ID.
+     * @param string $country_id Country ID.
+     * @param string $api_url Base API URL.
+     * @param string $api_key Webservice API key.
+     * @return string
+     */
+    private function fetch_prestashop_tax_id_from_rules_group($tax_rules_group_id, $country_id, $api_url, $api_key) {
+        $tax_rules_group_id = trim((string) $tax_rules_group_id);
+        $country_id = trim((string) $country_id);
+        if ('' === $tax_rules_group_id || '' === trim((string) $api_key) || '' === trim((string) $api_url)) {
+            return '';
+        }
+
+        $cache_key = $this->normalize_prestashop_store_url($api_url) . '|group|' . $tax_rules_group_id . '|country|' . $country_id;
+        if (isset($this->prestashop_tax_id_by_group_cache[$cache_key])) {
+            return (string) $this->prestashop_tax_id_by_group_cache[$cache_key];
+        }
+
+        $query = http_build_query(
+            array(
+                'filter[id_tax_rules_group]' => '[' . $tax_rules_group_id . ']',
+                'display' => '[id,id_tax,id_country]',
+            ),
+            '',
+            '&',
+            PHP_QUERY_RFC3986
+        );
+
+        $endpoint = $this->build_prestashop_webservice_url($api_url, 'tax_rules?' . $query);
+        $response = wp_remote_get(
+            $endpoint,
+            array(
+                'timeout' => 15,
+                'headers' => array(
+                    'Authorization' => 'Basic ' . base64_encode((string) $api_key . ':'),
+                    'Accept' => 'application/xml',
+                ),
+            )
+        );
+
+        if (is_wp_error($response)) {
+            $this->prestashop_tax_id_by_group_cache[$cache_key] = '';
+            return '';
+        }
+
+        $http_code = (int) wp_remote_retrieve_response_code($response);
+        if ($http_code < 200 || $http_code >= 300) {
+            $this->prestashop_tax_id_by_group_cache[$cache_key] = '';
+            return '';
+        }
+
+        $xml = $this->parse_prestashop_xml(wp_remote_retrieve_body($response));
+        if (false === $xml || !isset($xml->tax_rules->tax_rule)) {
+            $this->prestashop_tax_id_by_group_cache[$cache_key] = '';
+            return '';
+        }
+
+        $fallback_tax_id = '';
+        $selected_tax_id = '';
+
+        foreach ($xml->tax_rules->tax_rule as $tax_rule) {
+            $rule_tax_id = isset($tax_rule->id_tax) ? trim((string) $tax_rule->id_tax) : '';
+            if ('' === $rule_tax_id) {
+                continue;
+            }
+
+            if ('' === $fallback_tax_id) {
+                $fallback_tax_id = $rule_tax_id;
+            }
+
+            $rule_country_id = isset($tax_rule->id_country) ? trim((string) $tax_rule->id_country) : '';
+            if ('' !== $country_id && $rule_country_id === $country_id) {
+                $selected_tax_id = $rule_tax_id;
+                break;
+            }
+        }
+
+        if ('' === $selected_tax_id) {
+            $selected_tax_id = $fallback_tax_id;
+        }
+
+        $this->prestashop_tax_id_by_group_cache[$cache_key] = $selected_tax_id;
+
+        return $selected_tax_id;
+    }
+
+    /**
+     * Resolve tax rate (%) using PrestaShop tax rules group.
+     *
+     * @since 1.2.0
+     * @param string $tax_rules_group_id Tax rules group ID.
+     * @param string $api_url Base API URL.
+     * @param string $api_key Webservice API key.
+     * @return float
+     */
+    private function fetch_prestashop_webservice_tax_rate_from_group($tax_rules_group_id, $api_url, $api_key) {
+        $tax_rules_group_id = trim((string) $tax_rules_group_id);
+        if ('' === $tax_rules_group_id || '' === trim((string) $api_key) || '' === trim((string) $api_url)) {
+            return 0.0;
+        }
+
+        $tax_country_iso = $this->get_prestashop_tax_country_iso();
+        $country_id = $this->fetch_prestashop_country_id_by_iso($tax_country_iso, $api_url, $api_key);
+        $tax_id = $this->fetch_prestashop_tax_id_from_rules_group($tax_rules_group_id, $country_id, $api_url, $api_key);
+        if ('' === $tax_id) {
+            // Backward-compatible fallback for stores where group id equals tax id.
+            return $this->fetch_prestashop_webservice_tax_rate($tax_rules_group_id, $api_url, $api_key);
+        }
+
+        return $this->fetch_prestashop_webservice_tax_rate($tax_id, $api_url, $api_key);
+    }
+
     /**
      * Map native PrestaShop Webservice product XML to plugin product object.
      *
@@ -179,9 +414,10 @@ class Go4Taste_Ads_API_Fetcher {
      * @since 1.2.0
      * @param SimpleXMLElement $product_node Product XML node.
      * @param string           $api_url      Base URL from plugin settings.
+     * @param string           $api_key      Webservice API key.
      * @return stdClass|false
      */
-    private function map_prestashop_webservice_product($product_node, $api_url) {
+    private function map_prestashop_webservice_product($product_node, $api_url, $api_key) {
         if (!($product_node instanceof SimpleXMLElement)) {
             return false;
         }
@@ -208,8 +444,11 @@ class Go4Taste_Ads_API_Fetcher {
         $raw_price = str_replace(',', '.', trim((string) $product_node->price));
         $net_price = ('' !== $raw_price && is_numeric($raw_price)) ? (float) $raw_price : 0.0;
 
-        $tax_id = isset($product_node->id_tax_rules_group) ? trim((string) $product_node->id_tax_rules_group) : '';
-        $tax_rate = $this->fetch_prestashop_webservice_tax_rate($tax_id, $api_url, $api_key);
+        $tax_rules_group_id = isset($product_node->id_tax_rules_group) ? trim((string) $product_node->id_tax_rules_group) : '';
+        $tax_rate = 0.0;
+        if ('' !== $tax_rules_group_id) {
+            $tax_rate = $this->fetch_prestashop_webservice_tax_rate_from_group($tax_rules_group_id, $api_url, $api_key);
+        }
 
         $gross_price = $net_price;
         if ($tax_rate > 0) {
