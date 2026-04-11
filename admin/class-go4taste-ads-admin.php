@@ -82,6 +82,9 @@ class Go4Taste_Ads_Admin {
      * @since    1.0.0
      */
     public function enqueue_scripts() {
+        $admin_script_path = plugin_dir_path( __FILE__ ) . 'js/go4taste-ads-admin.js';
+        $admin_script_version = file_exists( $admin_script_path ) ? (string) filemtime( $admin_script_path ) : $this->version;
+
         // Enqueue Algolia's instantsearch.js and search client
         wp_enqueue_script(
             'algolia-instantsearch',
@@ -104,7 +107,7 @@ class Go4Taste_Ads_Admin {
             $this->plugin_name,
             plugin_dir_url( __FILE__ ) . 'js/go4taste-ads-admin.js',
             array('jquery'),
-            $this->version,
+            $admin_script_version,
             true
         );
 

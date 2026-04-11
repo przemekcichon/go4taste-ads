@@ -36,39 +36,48 @@
 		// Calls togglePasswordField() every time the selected API type changes
 		apiTypeSelector.on('change', togglePasswordField);
 
-		const permissionsTestButton = $( '#g4t-test-api-permissions' );
-		const permissionsResultWrap = $( '#g4t-api-permissions-result' );
+		$( document ).on( 'click', '#g4t-test-api-permissions', function () {
+			const button = $( this );
+			const permissionsResultWrap = $( '#g4t-api-permissions-result' );
+			const ajaxUrl = ( 'undefined' !== typeof g4tAdsAdmin && g4tAdsAdmin.ajaxUrl ) ? g4tAdsAdmin.ajaxUrl : window.ajaxurl;
+			const permissionsAction = ( 'undefined' !== typeof g4tAdsAdmin && g4tAdsAdmin.permissionsTestAction ) ? g4tAdsAdmin.permissionsTestAction : 'g4t_test_prestashop_permissions';
+			const permissionsNonce = ( 'undefined' !== typeof g4tAdsAdmin && g4tAdsAdmin.permissionsNonce ) ? g4tAdsAdmin.permissionsNonce : '';
 
-		if ( permissionsTestButton.length && permissionsResultWrap.length && 'undefined' !== typeof g4tAdsAdmin ) {
-			permissionsTestButton.on( 'click', function () {
-				const button = $( this );
-				button.prop( 'disabled', true ).text( 'Testing...' );
+			if ( ! permissionsResultWrap.length ) {
+				return;
+			}
 
-				$.post( g4tAdsAdmin.ajaxUrl, {
-					action: g4tAdsAdmin.permissionsTestAction,
-					nonce: g4tAdsAdmin.permissionsNonce,
+			if ( ! ajaxUrl ) {
+				permissionsResultWrap.html( '<p class="description" style="color:#a00;">Brak konfiguracji AJAX URL.</p>' );
+				return;
+			}
+
+			button.prop( 'disabled', true ).text( 'Testing...' );
+
+			$.post( ajaxUrl, {
+				action: permissionsAction,
+				nonce: permissionsNonce,
+			} )
+				.done( function ( response ) {
+					if ( response && response.success && response.data && response.data.html ) {
+						permissionsResultWrap.html( response.data.html );
+						return;
+					}
+
+					permissionsResultWrap.html( '<p class="description" style="color:#a00;">Blad podczas testu uprawnien.</p>' );
 				} )
-					.done( function ( response ) {
-						if ( response && response.success && response.data && response.data.html ) {
-							permissionsResultWrap.html( response.data.html );
-							return;
-						}
+				.fail( function ( xhr ) {
+					let message = 'Nie udalo sie wykonac testu uprawnien.';
+					if ( xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message ) {
+						message = String( xhr.responseJSON.data.message );
+					}
 
-						permissionsResultWrap.html( '<p class="description" style="color:#a00;">Blad podczas testu uprawnien.</p>' );
-					} )
-					.fail( function ( xhr ) {
-						let message = 'Nie udalo sie wykonac testu uprawnien.';
-						if ( xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message ) {
-							message = String( xhr.responseJSON.data.message );
-						}
-
-						permissionsResultWrap.html( '<p class="description" style="color:#a00;">' + message + '</p>' );
-					} )
-					.always( function () {
-						button.prop( 'disabled', false ).text( 'Test API Permissions' );
-					} );
-			} );
-		}
+					permissionsResultWrap.html( '<p class="description" style="color:#a00;">' + message + '</p>' );
+				} )
+				.always( function () {
+					button.prop( 'disabled', false ).text( 'Test API Permissions' );
+				} );
+		} );
 
 		const migrationForm = $( '#g4t-migration-form' );
 		if ( ! migrationForm.length || 'undefined' === typeof g4tAdsAdmin ) {
