@@ -123,6 +123,8 @@ class Go4Taste_Ads_Admin {
                 'syncBatchAction'        => 'g4t_sync_batch',
                 'syncStatusAction'       => 'g4t_sync_status',
                 'syncUnlockAction'       => 'g4t_sync_unlock',
+                'permissionsNonce'       => wp_create_nonce( 'g4t_test_permissions_ajax' ),
+                'permissionsTestAction'  => 'g4t_test_prestashop_permissions',
             )
         );
     }
@@ -398,6 +400,86 @@ class Go4Taste_Ads_Admin {
 
         // Return the rendered preview
         wp_send_json_success($output);
+    }
+
+    /**
+     * Render permissions report HTML for admin settings panel.
+     *
+     * @since 1.2.0
+     * @param array<string,mixed>|false $permissions_report Report structure.
+     * @return string
+     */
+    private function render_prestashop_permissions_report_html($permissions_report) {
+        if (!is_array($permissions_report)) {
+            return '<p class="description">Brak zapisanego wyniku testu uprawnien. Kliknij "Test API Permissions".</p>';
+        }
+
+        ob_start();
+
+        $summary_color = !empty($permissions_report['ok']) ? '#188038' : '#a00';
+        $summary_text = !empty($permissions_report['message']) ? (string) $permissions_report['message'] : 'Brak danych weryfikacji.';
+
+        echo '<p class="description" style="color:' . esc_attr($summary_color) . ';"><strong>Status uprawnien:</strong> ' . esc_html($summary_text) . '</p>';
+
+        if (!empty($permissions_report['checked_at'])) {
+            echo '<p class="description">Ostatni test: ' . esc_html((string) $permissions_report['checked_at']) . '</p>';
+        }
+
+        if (!empty($permissions_report['resources']) && is_array($permissions_report['resources'])) {
+            echo '<ul style="margin:6px 0 0 18px; list-style:disc;">';
+            foreach ($permissions_report['resources'] as $resource_name => $resource_status) {
+                $resource_ok = !empty($resource_status['ok']);
+                $resource_color = $resource_ok ? '#188038' : '#a00';
+                $code_suffix = '';
+                if (isset($resource_status['http_code']) && (int) $resource_status['http_code'] > 0) {
+                    $code_suffix = ' (HTTP ' . (int) $resource_status['http_code'] . ')';
+                }
+
+                $line = strtoupper((string) $resource_name) . ': ' . ((isset($resource_status['message']) && '' !== (string) $resource_status['message']) ? (string) $resource_status['message'] : ($resource_ok ? 'OK' : 'Brak uprawnienia')) . $code_suffix;
+                echo '<li style="color:' . esc_attr($resource_color) . ';">' . esc_html($line) . '</li>';
+            }
+            echo '</ul>';
+        }
+
+        return (string) ob_get_clean();
+    }
+
+    /**
+     * AJAX: test PrestaShop Webservice permissions on demand.
+     *
+     * @since 1.2.0
+     * @return void
+     */
+    public function ajax_test_prestashop_permissions() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
+        }
+
+        check_ajax_referer( 'g4t_test_permissions_ajax', 'nonce' );
+
+        $options = get_option('go4taste_ads_options');
+        $api_type = isset($options['api_type']) ? sanitize_text_field($options['api_type']) : '';
+        $api_url = isset($options['api_url']) ? esc_url_raw($options['api_url']) : '';
+        $stored_key = isset($options['prestashop_webservice_api_key']) ? sanitize_text_field($options['prestashop_webservice_api_key']) : '';
+        $tax_country_iso = isset($options['prestashop_tax_country_iso']) ? strtoupper(sanitize_text_field($options['prestashop_tax_country_iso'])) : 'PL';
+
+        if ('prestashop_webservice_api' !== $api_type) {
+            wp_send_json_error(array('message' => 'Wybierz API Type: Prestashop Webservice API.'), 400);
+        }
+
+        if ('' === trim((string) $api_url) || '' === trim((string) $stored_key)) {
+            wp_send_json_error(array('message' => 'Uzupelnij API URL i zapisz klucz Webservice.'), 400);
+        }
+
+        $api_fetcher = new Go4Taste_Ads_API_Fetcher();
+        $permissions_report = $api_fetcher->verify_prestashop_webservice_permissions($api_url, $stored_key, $tax_country_iso);
+
+        wp_send_json_success(
+            array(
+                'report' => $permissions_report,
+                'html' => $this->render_prestashop_permissions_report_html($permissions_report),
+            )
+        );
     }
 
     /**
@@ -837,8 +919,35 @@ class Go4Taste_Ads_Admin {
      * @since    1.2.0
      */
     public function prestashop_webservice_api_key_callback() {
+        $options = get_option('go4taste_ads_options');
+        $api_type = isset($options['api_type']) ? sanitize_text_field($options['api_type']) : '';
+        $api_url = isset($options['api_url']) ? esc_url_raw($options['api_url']) : '';
+        $stored_key = isset($options['prestashop_webservice_api_key']) ? sanitize_text_field($options['prestashop_webservice_api_key']) : '';
+        $tax_country_iso = isset($options['prestashop_tax_country_iso']) ? strtoupper(sanitize_text_field($options['prestashop_tax_country_iso'])) : 'PL';
+        $permissions_report_html = '';
+
+        if ('prestashop_webservice_api' === $api_type && '' !== trim((string) $api_url) && '' !== trim((string) $stored_key)) {
+            $api_fetcher = new Go4Taste_Ads_API_Fetcher();
+            $cached_report = $api_fetcher->get_cached_prestashop_webservice_permissions_report($api_url, $stored_key, $tax_country_iso);
+            $permissions_report_html = $this->render_prestashop_permissions_report_html($cached_report);
+        }
+
         echo '<input type="password" id="prestashop_webservice_api_key" name="go4taste_ads_options[prestashop_webservice_api_key]" value="" autocomplete="new-password" />';
         echo '<p class="description">Dla bezpieczenstwa klucz nie jest wyswietlany. Wpisz nowy klucz tylko gdy chcesz go zaktualizowac.</p>';
+        echo '<p class="description"><strong>Wymagane uprawnienia klucza Webservice (GET/READ):</strong> products, taxes, tax_rules, countries.</p>';
+
+        if ('prestashop_webservice_api' !== $api_type) {
+            echo '<p class="description">Weryfikacja uprawnien jest aktywna po wybraniu API Type: Prestashop Webservice API.</p>';
+            return;
+        }
+
+        if ('' === trim((string) $api_url) || '' === trim((string) $stored_key)) {
+            echo '<p class="description" style="color:#a00;">Aby zweryfikowac uprawnienia, uzupelnij API URL i zapisz klucz Webservice.</p>';
+            return;
+        }
+
+        echo '<p><button type="button" class="button" id="g4t-test-api-permissions">Test API Permissions</button></p>';
+        echo '<div id="g4t-api-permissions-result">' . $permissions_report_html . '</div>';
     }
 
     /**

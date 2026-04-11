@@ -154,14 +154,35 @@ class Go4Taste_Ads_API_Fetcher {
      * @return float
      */
     private function fetch_prestashop_webservice_tax_rate($tax_id, $api_url, $api_key) {
+        $tax_rate_result = $this->fetch_prestashop_webservice_tax_rate_with_meta($tax_id, $api_url, $api_key);
+
+        return isset($tax_rate_result['rate']) ? (float) $tax_rate_result['rate'] : 0.0;
+    }
+
+    /**
+     * Fetch tax rate with diagnostic metadata.
+     *
+     * @since 1.2.0
+     * @param string $tax_id Tax ID.
+     * @param string $api_url Base API URL.
+     * @param string $api_key Webservice API key.
+     * @return array<string,mixed>
+     */
+    private function fetch_prestashop_webservice_tax_rate_with_meta($tax_id, $api_url, $api_key) {
+        $result = array(
+            'rate' => 0.0,
+            'http_code' => 0,
+        );
+
         $tax_id = trim((string) $tax_id);
         if ('' === $tax_id || '' === trim((string) $api_key) || '' === trim((string) $api_url)) {
-            return 0.0;
+            return $result;
         }
 
         $cache_key = $this->normalize_prestashop_store_url($api_url) . '|' . $tax_id;
         if (isset($this->prestashop_tax_rate_cache[$cache_key])) {
-            return (float) $this->prestashop_tax_rate_cache[$cache_key];
+            $result['rate'] = (float) $this->prestashop_tax_rate_cache[$cache_key];
+            return $result;
         }
 
         $endpoint = $this->build_prestashop_webservice_url($api_url, 'taxes/' . rawurlencode($tax_id));
@@ -178,37 +199,39 @@ class Go4Taste_Ads_API_Fetcher {
 
         if (is_wp_error($response)) {
             $this->prestashop_tax_rate_cache[$cache_key] = 0.0;
-            return 0.0;
+            return $result;
         }
 
         $http_code = (int) wp_remote_retrieve_response_code($response);
+        $result['http_code'] = $http_code;
         if ($http_code < 200 || $http_code >= 300) {
             $this->prestashop_tax_rate_cache[$cache_key] = 0.0;
-            return 0.0;
+            return $result;
         }
 
         $xml = $this->parse_prestashop_xml(wp_remote_retrieve_body($response));
         if (false === $xml || !isset($xml->tax->rate)) {
             $this->prestashop_tax_rate_cache[$cache_key] = 0.0;
-            return 0.0;
+            return $result;
         }
 
         if (isset($xml->tax->active) && '0' === trim((string) $xml->tax->active)) {
             $this->prestashop_tax_rate_cache[$cache_key] = 0.0;
-            return 0.0;
+            return $result;
         }
 
         if (isset($xml->tax->deleted) && '1' === trim((string) $xml->tax->deleted)) {
             $this->prestashop_tax_rate_cache[$cache_key] = 0.0;
-            return 0.0;
+            return $result;
         }
 
         $raw_rate = str_replace(',', '.', trim((string) $xml->tax->rate));
         $tax_rate = ('' !== $raw_rate && is_numeric($raw_rate)) ? (float) $raw_rate : 0.0;
-
         $this->prestashop_tax_rate_cache[$cache_key] = $tax_rate;
 
-        return $tax_rate;
+        $result['rate'] = $tax_rate;
+
+        return $result;
     }
 
     /**
@@ -402,7 +425,180 @@ class Go4Taste_Ads_API_Fetcher {
             return $this->fetch_prestashop_webservice_tax_rate($tax_rules_group_id, $api_url, $api_key);
         }
 
-        return $this->fetch_prestashop_webservice_tax_rate($tax_id, $api_url, $api_key);
+        $tax_rate_result = $this->fetch_prestashop_webservice_tax_rate_with_meta($tax_id, $api_url, $api_key);
+        $tax_rate = isset($tax_rate_result['rate']) ? (float) $tax_rate_result['rate'] : 0.0;
+        if ($tax_rate > 0) {
+            return $tax_rate;
+        }
+
+        $http_code = isset($tax_rate_result['http_code']) ? (int) $tax_rate_result['http_code'] : 0;
+        if (in_array($http_code, array(401, 403, 404), true)) {
+            // Fallback only for access/resource errors on taxes/<id>.
+            return $this->fetch_prestashop_webservice_tax_rate($tax_rules_group_id, $api_url, $api_key);
+        }
+
+        return 0.0;
+    }
+
+    /**
+     * Build cache key for permissions verification report.
+     *
+     * @since 1.2.0
+     * @param string $api_url Base API URL.
+     * @param string $api_key Webservice API key.
+     * @param string $country_iso Country ISO.
+     * @return string
+     */
+    private function get_prestashop_permissions_cache_key($api_url, $api_key, $country_iso) {
+        return 'g4t_ps_perm_' . md5($this->normalize_prestashop_store_url($api_url) . '|' . strtoupper(trim((string) $country_iso)) . '|' . trim((string) $api_key));
+    }
+
+    /**
+     * Return cached PrestaShop permissions verification report.
+     *
+     * @since 1.2.0
+     * @param string $api_url Base API URL.
+     * @param string $api_key Webservice API key.
+     * @param string $country_iso Country ISO.
+     * @return array<string,mixed>|false
+     */
+    public function get_cached_prestashop_webservice_permissions_report($api_url, $api_key, $country_iso = 'PL') {
+        $api_url = trim((string) $api_url);
+        $api_key = trim((string) $api_key);
+        $country_iso = strtoupper(trim((string) $country_iso));
+
+        if ('' === $country_iso || !preg_match('/^[A-Z]{2}$/', $country_iso)) {
+            $country_iso = 'PL';
+        }
+
+        if ('' === $api_url || '' === $api_key) {
+            return false;
+        }
+
+        $cache_key = $this->get_prestashop_permissions_cache_key($api_url, $api_key, $country_iso);
+        $cached = get_transient($cache_key);
+        if (is_array($cached) && isset($cached['resources'])) {
+            return $cached;
+        }
+
+        return false;
+    }
+
+    /**
+     * Verify required PrestaShop Webservice API permissions for this plugin.
+     *
+     * @since 1.2.0
+     * @param string $api_url Base API URL.
+     * @param string $api_key Webservice API key.
+     * @param string $country_iso Country ISO used for countries endpoint check.
+     * @return array<string,mixed>
+     */
+    public function verify_prestashop_webservice_permissions($api_url, $api_key, $country_iso = 'PL') {
+        $api_url = trim((string) $api_url);
+        $api_key = trim((string) $api_key);
+        $country_iso = strtoupper(trim((string) $country_iso));
+
+        if ('' === $country_iso || !preg_match('/^[A-Z]{2}$/', $country_iso)) {
+            $country_iso = 'PL';
+        }
+
+        if ('' === $api_url || '' === $api_key) {
+            return array(
+                'ok' => false,
+                'country_iso' => $country_iso,
+                'checked_at' => current_time('mysql'),
+                'resources' => array(),
+                'message' => 'Brak API URL lub klucza API.',
+            );
+        }
+
+        $cache_key = $this->get_prestashop_permissions_cache_key($api_url, $api_key, $country_iso);
+        $cached = get_transient($cache_key);
+        if (is_array($cached) && isset($cached['resources'])) {
+            return $cached;
+        }
+
+        $countries_query = http_build_query(
+            array(
+                'filter[iso_code]' => '[' . $country_iso . ']',
+                'display' => '[id]',
+            ),
+            '',
+            '&',
+            PHP_QUERY_RFC3986
+        );
+
+        $checks = array(
+            'products' => 'products?display=[id]&limit=1',
+            'taxes' => 'taxes?display=[id]&limit=1',
+            'tax_rules' => 'tax_rules?display=[id]&limit=1',
+            'countries' => 'countries?' . $countries_query,
+        );
+
+        $resources = array();
+        $all_ok = true;
+
+        foreach ($checks as $resource => $path) {
+            $endpoint = $this->build_prestashop_webservice_url($api_url, $path);
+            $resource_status = array(
+                'ok' => false,
+                'http_code' => 0,
+                'message' => '',
+            );
+
+            $response = wp_remote_get(
+                $endpoint,
+                array(
+                    'timeout' => 6,
+                    'headers' => array(
+                        'Authorization' => 'Basic ' . base64_encode((string) $api_key . ':'),
+                        'Accept' => 'application/xml',
+                    ),
+                )
+            );
+
+            if (is_wp_error($response)) {
+                $resource_status['message'] = 'Blad transportu: ' . $response->get_error_message();
+                $resources[$resource] = $resource_status;
+                $all_ok = false;
+                continue;
+            }
+
+            $http_code = (int) wp_remote_retrieve_response_code($response);
+            $resource_status['http_code'] = $http_code;
+
+            if ($http_code >= 200 && $http_code < 300) {
+                $xml = $this->parse_prestashop_xml(wp_remote_retrieve_body($response));
+                if (false === $xml) {
+                    $resource_status['message'] = 'Niepoprawna odpowiedz XML.';
+                    $all_ok = false;
+                } else {
+                    $resource_status['ok'] = true;
+                    $resource_status['message'] = 'OK';
+                }
+            } else {
+                if (401 === $http_code || 403 === $http_code) {
+                    $resource_status['message'] = 'Brak uprawnienia do odczytu zasobu.';
+                } else {
+                    $resource_status['message'] = 'HTTP ' . $http_code;
+                }
+                $all_ok = false;
+            }
+
+            $resources[$resource] = $resource_status;
+        }
+
+        $result = array(
+            'ok' => $all_ok,
+            'country_iso' => $country_iso,
+            'checked_at' => current_time('mysql'),
+            'resources' => $resources,
+            'message' => $all_ok ? 'Wszystkie wymagane uprawnienia wygladaja poprawnie.' : 'Wykryto brakujace uprawnienia lub problemy dostepu.',
+        );
+
+        set_transient($cache_key, $result, 5 * MINUTE_IN_SECONDS);
+
+        return $result;
     }
 
     /**

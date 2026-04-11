@@ -36,6 +36,40 @@
 		// Calls togglePasswordField() every time the selected API type changes
 		apiTypeSelector.on('change', togglePasswordField);
 
+		const permissionsTestButton = $( '#g4t-test-api-permissions' );
+		const permissionsResultWrap = $( '#g4t-api-permissions-result' );
+
+		if ( permissionsTestButton.length && permissionsResultWrap.length && 'undefined' !== typeof g4tAdsAdmin ) {
+			permissionsTestButton.on( 'click', function () {
+				const button = $( this );
+				button.prop( 'disabled', true ).text( 'Testing...' );
+
+				$.post( g4tAdsAdmin.ajaxUrl, {
+					action: g4tAdsAdmin.permissionsTestAction,
+					nonce: g4tAdsAdmin.permissionsNonce,
+				} )
+					.done( function ( response ) {
+						if ( response && response.success && response.data && response.data.html ) {
+							permissionsResultWrap.html( response.data.html );
+							return;
+						}
+
+						permissionsResultWrap.html( '<p class="description" style="color:#a00;">Blad podczas testu uprawnien.</p>' );
+					} )
+					.fail( function ( xhr ) {
+						let message = 'Nie udalo sie wykonac testu uprawnien.';
+						if ( xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message ) {
+							message = String( xhr.responseJSON.data.message );
+						}
+
+						permissionsResultWrap.html( '<p class="description" style="color:#a00;">' + message + '</p>' );
+					} )
+					.always( function () {
+						button.prop( 'disabled', false ).text( 'Test API Permissions' );
+					} );
+			} );
+		}
+
 		const migrationForm = $( '#g4t-migration-form' );
 		if ( ! migrationForm.length || 'undefined' === typeof g4tAdsAdmin ) {
 			return;
