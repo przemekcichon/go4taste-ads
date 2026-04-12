@@ -6,9 +6,11 @@ When implementing or modifying PrestaShop Webservice API integration logic in th
 
 1. Price mapping rule:
 - Source: `product.price` from PrestaShop XML.
-- Output: always round up to the nearest integer value.
-- Example: `16.190476` must map to `17`.
-- Do not use standard round-to-nearest for this field.
+- Output: use threshold mapping with decimal-part cutoff at `0.45`.
+- Rule: if decimal part is below `0.45`, cut down to one decimal place.
+- Rule: if decimal part is `0.45` or above, map to `.50`.
+- Examples: `18.42` -> `18.4`, `18.45` -> `18.50`, `18.50013` -> `18.50`.
+- For numeric stability, compare using normalized grosz/cents integers (no raw float threshold comparison).
 
 2. Product URL mapping rule:
 - Source slug: `product.link_rewrite.language[id=1]`.

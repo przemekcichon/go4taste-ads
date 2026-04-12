@@ -651,10 +651,10 @@ class Go4Taste_Ads_API_Fetcher {
             $gross_price = $net_price * (1 + ($tax_rate / 100));
         }
 
-        $rounded_price = (int) ceil($gross_price);
+        $rounded_price = $this->format_prestashop_price_with_threshold($gross_price);
 
         $store_base_url = $this->normalize_prestashop_store_url($api_url);
-        $price_with_currency = (string) $rounded_price . ' zł';
+        $price_with_currency = $rounded_price . ' zł';
         $product_link = '';
         if ('' !== $link_rewrite) {
             $product_link = $store_base_url . '/' . $link_rewrite . '.html';
@@ -679,6 +679,32 @@ class Go4Taste_Ads_API_Fetcher {
         $mapped->low_stock_alert = 0;
 
         return $mapped;
+    }
+
+    /**
+     * Format PrestaShop gross price with custom threshold rounding.
+     *
+     * Rule:
+     * - decimal part below 0.45 => cut down to one decimal place.
+     * - decimal part from 0.45 => move to .50.
+     *
+     * @since 1.2.0
+     * @param float $gross_price Gross price value.
+     * @return string
+     */
+    private function format_prestashop_price_with_threshold($gross_price) {
+        $gross_price = max(0.0, (float) $gross_price);
+        $normalized_cents = (int) round($gross_price * 100);
+        $integer_part = intdiv($normalized_cents, 100);
+        $decimal_cents = $normalized_cents % 100;
+
+        if ($decimal_cents >= 45) {
+            return number_format($integer_part + 0.5, 2, '.', '');
+        }
+
+        $decimal_tenths = intdiv($decimal_cents, 10);
+        $cut_price = $integer_part + ($decimal_tenths / 10);
+        return number_format($cut_price, 1, '.', '');
     }
 
     /**
