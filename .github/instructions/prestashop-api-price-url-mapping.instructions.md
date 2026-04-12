@@ -8,8 +8,10 @@ When implementing or modifying PrestaShop Webservice API integration logic in th
 - Source: `product.price` from PrestaShop XML.
 - Output: use threshold mapping with decimal-part cutoff at `0.45`.
 - Rule: if decimal part is below `0.45`, cut down to one decimal place.
-- Rule: if decimal part is `0.45` or above, map to `.50`.
-- Examples: `18.42` -> `18.4`, `18.45` -> `18.50`, `18.50013` -> `18.50`.
+- Rule: if decimal part is `0.45` or above, map to `,50`.
+- Use Polish decimal separator in output: `,` (comma), not `.`.
+- Always format output with exactly two decimal places.
+- Examples: `18.42` -> `18,40`, `18.45` -> `18,50`, `18.50013` -> `18,50`, `46.1` -> `46,10`, `50` -> `50,00`.
 - For numeric stability, compare using normalized grosz/cents integers (no raw float threshold comparison).
 
 2. Product URL mapping rule:

@@ -686,7 +686,8 @@ class Go4Taste_Ads_API_Fetcher {
      *
      * Rule:
      * - decimal part below 0.45 => cut down to one decimal place.
-     * - decimal part from 0.45 => move to .50.
+     * - decimal part from 0.45 => move to ,50.
+     * - output format always keeps two decimal places.
      *
      * @since 1.2.0
      * @param float $gross_price Gross price value.
@@ -699,12 +700,12 @@ class Go4Taste_Ads_API_Fetcher {
         $decimal_cents = $normalized_cents % 100;
 
         if ($decimal_cents >= 45) {
-            return number_format($integer_part + 0.5, 2, '.', '');
+            return number_format($integer_part + 0.5, 2, ',', '');
         }
 
         $decimal_tenths = intdiv($decimal_cents, 10);
         $cut_price = $integer_part + ($decimal_tenths / 10);
-        return number_format($cut_price, 1, '.', '');
+        return number_format($cut_price, 2, ',', '');
     }
 
     /**
