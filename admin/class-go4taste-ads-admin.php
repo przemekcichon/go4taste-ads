@@ -1619,7 +1619,7 @@ class Go4Taste_Ads_Admin {
             $update_result = wp_update_post(
                 array(
                     'ID'           => $post_id,
-                    'post_content' => $updated_content,
+                    'post_content' => wp_slash( $updated_content ),
                 ),
                 true
             );
