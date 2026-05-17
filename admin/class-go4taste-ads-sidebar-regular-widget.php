@@ -33,7 +33,7 @@ class Go4Taste_Ads_Sidebar_Regular_Widget extends WP_Widget
         // Create the widget using a unique base ID
         parent::__construct(
             'g4t-ads-sidebar-regular-widget', // Base ID with hyphens
-            __('G4T Ads Sidebar Regular Widget', 'go4taste-ads'), // Widget name
+            __('[Przestarzaly] G4T Ads Sidebar Regular Widget - uzyj bloku', 'go4taste-ads'), // Widget name
             $widget_ops // Widget options, including the classname
         );
     }

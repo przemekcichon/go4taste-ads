@@ -25,6 +25,7 @@ $p_value  = isset( $options['p_parameter_value'] ) ? $options['p_parameter_value
 $lang     = isset( $options['prestashop_lang'] ) ? $options['prestashop_lang'] : 'pl';
 $api_type = isset( $options['api_type'] ) ? $options['api_type'] : 'prestashop_1_5';
 $api_url  = isset( $options['api_url'] ) ? $options['api_url'] : '';
+$ga4_view_promotion_enabled = ! empty( $options['ga4_view_promotion_datalayer'] );
 
 $plugin_instance = Go4Taste_Ads::get_instance();
 
@@ -49,8 +50,6 @@ $mobile_layout  = isset( $attributes['mobileLayout'] ) ? $attributes['mobileLayo
 $wrapper_attrs  = get_block_wrapper_attributes( array(
 	'class' => 'g4t-ads-banner g4t-banner-inline g4t-banner-inline--count-' . $product_count . ' g4t-banner-inline--mobile-' . esc_attr( $mobile_layout ),
 ) );
-
-$post_id = get_the_ID();
 
 $products_style_parts = array();
 if ( ! empty( $attributes['productsGap'] ) ) {
@@ -133,24 +132,23 @@ if ( ! empty( $attributes['btnHoverBorderColor'] ) ) {
 	$btn_style_parts[] = '--btn-hover-border-color:' . esc_attr( $attributes['btnHoverBorderColor'] );
 }
 $btn_style = ! empty( $btn_style_parts ) ? ' style="' . implode( ';', $btn_style_parts ) . '"' : '';
+$ga4_items = array();
 ?>
 <div <?php echo $wrapper_attrs; ?>>
 	<div class="g4t-ads-inline-products"<?php echo $products_style; ?>>
 		<?php foreach ( $products_data as $product_data ) :
 			// Format price
-			$price           = htmlentities( $product_data->price, null, 'utf-8' );
+			$price           = htmlentities( $product_data->price, ENT_QUOTES, 'utf-8' );
 			$formatted_price = str_replace( array( ',', '&nbsp;zł' ), array( '.', '' ), $price );
 			$formatted_price = html_entity_decode( $formatted_price );
 
 			// Format price_tax_exc
-			$price_tax_exc           = htmlentities( $product_data->price_tax_exc, null, 'utf-8' );
+			$price_tax_exc           = htmlentities( $product_data->price_tax_exc, ENT_QUOTES, 'utf-8' );
 			$formatted_price_tax_exc = str_replace( array( ',', '&nbsp;zł' ), array( '.', '' ), $price_tax_exc );
 			$formatted_price_tax_exc = html_entity_decode( $formatted_price_tax_exc );
 
-			// Format category
-			$category             = esc_attr( $product_data->category );
-			$category_with_spaces = str_replace( '-', ' ', $category );
-			$formatted_category   = ucfirst( strtolower( $category_with_spaces ) );
+			$category_raw         = isset( $product_data->category ) ? (string) $product_data->category : '';
+			$category_for_ga4     = ucfirst( strtolower( str_replace( '-', ' ', $category_raw ) ) );
 
 			// Avoid runtime remote requests for image metadata during page render.
 			$img_width  = isset( $product_data->image_width ) ? absint( $product_data->image_width ) : 0;
@@ -160,6 +158,17 @@ $btn_style = ! empty( $btn_style_parts ) ? ' style="' . implode( ';', $btn_style
 			}
 			if ( $img_height < 1 ) {
 				$img_height = 180;
+			}
+
+			if ( $ga4_view_promotion_enabled ) {
+				$ga4_items[] = array(
+					'item_id'       => isset( $product_data->id ) ? (string) $product_data->id : '',
+					'item_name'     => isset( $product_data->name ) ? (string) $product_data->name : '',
+					'item_category' => $category_for_ga4,
+					'price'         => is_numeric( $formatted_price ) ? (float) $formatted_price : null,
+					'creative_slot' => 'inline-content',
+					'creative_name' => 'Product Inline Banner',
+				);
 			}
 		?>
 		<div class="g4t-ads-content"<?php echo $card_style; ?>>
@@ -186,17 +195,6 @@ $btn_style = ! empty( $btn_style_parts ) ? ' style="' . implode( ';', $btn_style
 			</div>
 			<a href="<?php echo esc_url( $product_data->link ); ?>"
 			   class="g4t-ads-button"<?php echo $btn_style; ?>
-			   data-object-type="promotion"
-			   data-item-category2="<?php echo esc_attr( $formatted_category ); ?>"
-			   data-reference="<?php echo esc_attr( $product_data->reference ); ?>"
-			   data-price-tax-exc="<?php echo esc_attr( $formatted_price_tax_exc ); ?>"
-			   data-price="<?php echo esc_attr( $formatted_price ); ?>"
-			   data-item-name="<?php echo esc_attr( $product_data->name ); ?>"
-			   data-item-id="<?php echo esc_attr( $product_data->id ); ?>"
-			   data-creative-slot="inline-content"
-			   data-creative-name="Product Inline Banner"
-			   data-promotion-name="Go4Taste Product Ads"
-			   data-promotion-id="g4t-ads-<?php echo esc_attr( $post_id ); ?>-<?php echo esc_attr( $product_data->id ); ?>"
 			>Kup w sklepie</a>
 		</div>
 		<?php endforeach; ?>
@@ -209,3 +207,16 @@ $btn_style = ! empty( $btn_style_parts ) ? ' style="' . implode( ';', $btn_style
 	</div>
 	<?php endif; ?>
 </div>
+<?php if ( $ga4_view_promotion_enabled && ! empty( $ga4_items ) ) : ?>
+<script>
+	(function() {
+		window.dataLayer = window.dataLayer || [];
+		window.dataLayer.push({
+			event: 'view_promotion',
+			ecommerce: {
+				items: <?php echo wp_json_encode( array_values( $ga4_items ) ); ?>
+			}
+		});
+	})();
+</script>
+<?php endif; ?>

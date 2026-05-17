@@ -795,6 +795,14 @@ class Go4Taste_Ads_Admin {
             'go4taste-ads', // Page
             'go4taste_ads_setting_section' // Section
         );
+
+        add_settings_field(
+            'ga4_view_promotion_datalayer',
+            'GA4 view_promotion (dataLayer)',
+            array($this, 'ga4_view_promotion_datalayer_callback'),
+            'go4taste-ads',
+            'go4taste_ads_setting_section'
+        );
         
     }
 
@@ -846,7 +854,10 @@ class Go4Taste_Ads_Admin {
         }
         if (isset($input['cache_duration'])) {
             $sanitized_input['cache_duration'] = intval($input['cache_duration']); // Ensure it is an integer
-        }        
+        }
+
+        $sanitized_input['ga4_view_promotion_datalayer'] = isset($input['ga4_view_promotion_datalayer']) ? 1 : 0;
+
         return $sanitized_input;
     }
 
@@ -1020,6 +1031,22 @@ class Go4Taste_Ads_Admin {
         $cache_duration = isset($options['cache_duration']) ? esc_attr($options['cache_duration']) : '0'; // Default to 0 (disabled)
         echo '<input type="number" id="cache_duration" name="go4taste_ads_options[cache_duration]" value="' . $cache_duration . '" min="0" />';
         echo '<p class="description">Set to 0 to disable caching, or specify the number of hours for cache duration.</p>';
+    }
+
+    /**
+     * Callback function for dataLayer view_promotion toggle.
+     *
+     * @since 1.2.0
+     */
+    public function ga4_view_promotion_datalayer_callback() {
+        $options = get_option('go4taste_ads_options');
+        $enabled = ! empty($options['ga4_view_promotion_datalayer']) ? 1 : 0;
+
+        echo '<label for="ga4_view_promotion_datalayer">';
+        echo '<input type="checkbox" id="ga4_view_promotion_datalayer" name="go4taste_ads_options[ga4_view_promotion_datalayer]" value="1" ' . checked(1, $enabled, false) . ' /> ';
+        echo 'Generuj dataLayer.push(event: view_promotion) dla bloku inline-banner';
+        echo '</label>';
+        echo '<p class="description">Tryb dataLayer-only: atrybuty data-* dla promocji nie sa renderowane w markupu przycisku.</p>';
     }
     
     
