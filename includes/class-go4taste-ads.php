@@ -353,7 +353,12 @@ class Go4Taste_Ads{
 			return;
 		}
 
-		$block_type = register_block_type_from_metadata( $block_path );
+		$block_type = register_block_type_from_metadata(
+			$block_path,
+			array(
+				'render_callback' => array( $this, 'render_inline_banner_block' ),
+			)
+		);
 
 		if ( ! $block_type instanceof WP_Block_Type ) {
 			return;
@@ -365,6 +370,11 @@ class Go4Taste_Ads{
 		}
 
 		$options = get_option( 'go4taste_ads_options' );
+		$max_products = intval( apply_filters( 'g4t_ads_inline_banner_max_products', 0 ) );
+		if ( $max_products < 0 ) {
+			$max_products = 0;
+		}
+
 		wp_localize_script(
 			$editor_handle,
 			'g4tAdsBlockData',
@@ -372,8 +382,49 @@ class Go4Taste_Ads{
 				'algoliaAppId'     => isset( $options['algolia_app_id'] ) ? esc_attr( $options['algolia_app_id'] ) : '',
 				'algoliaSearchKey' => isset( $options['algolia_api_key'] ) ? esc_attr( $options['algolia_api_key'] ) : '',
 				'algoliaIndexName' => 'go4taste_product_list',
+				'maxProducts'      => $max_products,
 			)
 		);
+
+	}
+
+	/**
+	 * Render callback for the inline banner block with theme-template override support.
+	 *
+	 * @since 1.2.0
+	 * @param array<string,mixed> $attributes Block attributes.
+	 * @param string              $content    Block content.
+	 * @param WP_Block            $block      Block instance.
+	 * @return string
+	 */
+	public function render_inline_banner_block( $attributes, $content, $block ) {
+
+		$default_template = plugin_dir_path( dirname( __FILE__ ) ) . 'build/blocks/inline-banner/render.php';
+		$theme_template   = locate_template(
+			array(
+				'go4taste-ads/inline-banner.php',
+				'go4taste-ads-inline-banner.php',
+			),
+			false,
+			false
+		);
+
+		$template_path = ! empty( $theme_template ) ? $theme_template : $default_template;
+
+		$template_path = apply_filters( 'g4t_ads_inline_banner_template_path', $template_path, $attributes, $content, $block );
+
+		if ( ! is_string( $template_path ) || '' === $template_path || ! file_exists( $template_path ) ) {
+			$template_path = $default_template;
+		}
+
+		if ( ! file_exists( $template_path ) ) {
+			return '';
+		}
+
+		ob_start();
+		require $template_path;
+
+		return (string) ob_get_clean();
 
 	}
 

@@ -1,10 +1,27 @@
 import { useBlockProps, InspectorControls } from '@wordpress/block-editor';
 import { ColorPalette, PanelBody, Placeholder, SelectControl, __experimentalUnitControl as UnitControl } from '@wordpress/components';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import AlgoliaProductSearch from './components/AlgoliaProductSearch';
 import ProductPreview from './components/ProductPreview';
 
-const MAX_PRODUCTS = 3;
+function getMaxProducts() {
+	const data = window.g4tAdsBlockData || {};
+	const parsedMax = Number.parseInt( data.maxProducts, 10 );
+
+	if ( Number.isFinite( parsedMax ) && parsedMax > 0 ) {
+		return parsedMax;
+	}
+
+	return null;
+}
+
+function hasReachedMaxProducts( currentCount, maxProducts ) {
+	if ( Number.isFinite( maxProducts ) && maxProducts > 0 ) {
+		return currentCount >= maxProducts;
+	}
+
+	return false;
+}
 
 const MOBILE_LAYOUT_OPTIONS = [
 	{
@@ -133,6 +150,7 @@ function buildButtonStyle( attributes ) {
 
 export default function Edit( { attributes, setAttributes } ) {
 	const { products, mobileLayout, productsGap, productsWidth } = attributes;
+	const maxProducts = getMaxProducts();
 	const cardStyle = buildCardStyle( attributes );
 	const buttonStyle = buildButtonStyle( attributes );
 
@@ -141,7 +159,7 @@ export default function Edit( { attributes, setAttributes } ) {
 	} );
 
 	const addProduct = ( product ) => {
-		if ( products.length >= MAX_PRODUCTS ) {
+		if ( hasReachedMaxProducts( products.length, maxProducts ) ) {
 			return;
 		}
 		if ( products.some( ( p ) => p.id === product.id ) ) {
@@ -157,7 +175,7 @@ export default function Edit( { attributes, setAttributes } ) {
 	};
 
 	const hasProducts = products.length > 0;
-	const canAddMore = products.length < MAX_PRODUCTS;
+	const canAddMore = ! hasReachedMaxProducts( products.length, maxProducts );
 
 	if ( ! hasProducts ) {
 		return (
@@ -165,10 +183,15 @@ export default function Edit( { attributes, setAttributes } ) {
 				<Placeholder
 					icon="megaphone"
 					label={ __( 'Go4Taste Inline Banner', 'go4taste-ads' ) }
-					instructions={ __(
-						'Search and select 1-3 products to display inline.',
-						'go4taste-ads'
-					) }
+					instructions={
+						Number.isFinite( maxProducts ) && maxProducts > 0
+							? sprintf(
+								/* translators: %d: maximum number of products allowed in the inline banner block. */
+								__( 'Search and select up to %d products to display inline.', 'go4taste-ads' ),
+								maxProducts
+							)
+							: __( 'Search and select products to display inline.', 'go4taste-ads' )
+					}
 				>
 					<AlgoliaProductSearch
 						onSelect={ addProduct }

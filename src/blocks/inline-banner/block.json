@@ -6,7 +6,7 @@
 	"title": "Go4Taste Inline Banner",
 	"category": "widgets",
 	"icon": "megaphone",
-	"description": "Display 1-3 product ads inline within content.",
+	"description": "Display product ads inline within content.",
 	"textdomain": "go4taste-ads",
 	"keywords": [ "ads", "product", "banner", "go4taste" ],
 	"attributes": {

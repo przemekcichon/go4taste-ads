@@ -823,7 +823,7 @@ class Go4Taste_Ads_API_Fetcher {
     
         // Fetch cache duration from options, default to 0 (cache disabled)
         $options = get_option('go4taste_ads_options');
-        $cache_duration = isset($options['cache_duration']) ? intval($options['cache_duration']) : 0;
+        $cache_duration = isset($options['cache_duration']) ? intval($options['cache_duration']) : 24;
 
         // If cache duration is more than 0, attempt to get cached data
         if ($cache_duration > 0) {
