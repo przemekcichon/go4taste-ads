@@ -172,6 +172,14 @@ Dodatkowo:
 - admin hooks w orchestratorze są teraz puste (feature-local ownership)
 - core/bootstrap.php ładuje teraz także features/admin-assets/index.php
 
+### 12. Finalny cleanup: usunięcie legacy admin class
+
+Po wydzieleniu wszystkich odpowiedzialności usunięto plik:
+
+- admin/class-go4taste-ads-admin.php
+
+To domyka dekompozycję dawnego "god object" i usuwa martwy kod z repozytorium.
+
 ## Weryfikacja
 
 - Brak błędów statycznych/kompilacyjnych w zmienionych plikach.
@@ -183,6 +191,7 @@ Dodatkowo:
 - Brak referencji runtime do go4taste_update_product_ids i g4t_migration_*.
 - admin_menu/admin_init/wp_ajax_g4t_test_prestashop_permissions są rejestrowane w feature slice admin-settings.
 - admin_enqueue_scripts jest rejestrowany w feature slice admin-assets.
+- Brak runtime referencji do Go4Taste_Ads_Admin.
 
 ## Wpływ i kompatybilność
 
