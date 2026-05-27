@@ -17,5 +17,6 @@ if ( ! function_exists( 'g4t_bootstrap_features' ) ) {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/legacy-sidebar-widget/index.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/promoted-product-metabox/index.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/product-catalog-sync/index.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/admin-settings/index.php';
 	}
 }

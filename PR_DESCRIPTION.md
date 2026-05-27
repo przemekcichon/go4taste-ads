@@ -131,6 +131,25 @@ Usunięto powiązaną logikę runtime:
 - metody update/migration w admin/class-go4taste-ads-admin.php (usunięte)
 - migracyjny flow w admin/js/go4taste-ads-admin.js (usunięty)
 
+### 10. Wydzielenie feature slice: admin-settings
+
+Dodano nowy, autonomiczny slice:
+
+- features/admin-settings/index.php
+- features/admin-settings/settings-page.php
+
+Feature sam rejestruje własne hooki:
+
+- admin_menu -> rejestracja strony ustawień
+- admin_init -> rejestracja settings/fields
+- wp_ajax_g4t_test_prestashop_permissions -> test uprawnień API
+
+Dodatkowo:
+
+- usunięto admin settings i permissions hook wiring z includes/class-go4taste-ads.php
+- usunięto metody settings/permissions z admin/class-go4taste-ads-admin.php
+- core/bootstrap.php ładuje teraz także features/admin-settings/index.php
+
 ## Weryfikacja
 
 - Brak błędów statycznych/kompilacyjnych w zmienionych plikach.
@@ -140,13 +159,14 @@ Usunięto powiązaną logikę runtime:
 - add_meta_boxes/save_post/wp_ajax_g4t_fetch_product_preview są rejestrowane w feature slice promoted-product-metabox.
 - wp_ajax_g4t_sync_* są rejestrowane w feature slice product-catalog-sync.
 - Brak referencji runtime do go4taste_update_product_ids i g4t_migration_*.
+- admin_menu/admin_init/wp_ajax_g4t_test_prestashop_permissions są rejestrowane w feature slice admin-settings.
 
 ## Wpływ i kompatybilność
 
 - Brak zmian kontraktu danych dla legacy widgetu (meta key pozostaje bez zmian):
   - _g4t_a_sidebar_regular_widget_ps_product_id
 - Legacy include paths shimów zostały usunięte po potwierdzeniu braku regresji.
-- Funkcjonalność widgetu, metaboxu i syncu pozostaje zachowana, ale logika i hooki zostały przeniesione do vertical slices.
+- Funkcjonalność widgetu, metaboxu, syncu i ustawień pozostaje zachowana, ale logika i hooki zostały przeniesione do vertical slices.
 
 ## Następne kroki (po tym PR)
 
