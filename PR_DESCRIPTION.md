@@ -1,46 +1,95 @@
-# PR: Configurable max products, theme template override, render callback, default cache
+# PR: VSA extraction of legacy sidebar widget (feature slice)
 
-**Branch:** `feature/theme-banner-templates` → `main`
+**Branch:** chore/vertical-slices-architecture → main
 
 ## Motywacja
 
-Blok `go4taste-ads/inline-banner` miał hardcodowany limit 3 produktów oraz brak mechanizmu pozwalającego motywowi podmienić szablon renderowania. Każde wczytanie strony z blokiem generowało synchroniczne żądania HTTP do PrestaShop API bez cachowania, co powodowało znaczny spadek wydajności.
+Rozpoczynamy migrację pluginu do True Vertical Slices Architecture zgodnie z nowym README i guardrails.
+Pierwszym wydzielonym obszarem jest legacy sidebar widget, który wcześniej był rozproszony po warstwach admin/public/includes i zależał od centralnego orchestratora.
 
 ## Zakres zmian
 
-### `includes/class-go4taste-ads.php`
-- Dodano `render_inline_banner_block()` jako server-side render callback rejestrowany przez `register_block_type_from_metadata()`.
-- Callback szuka szablonu w kolejności:
-  1. `{theme}/go4taste-ads/inline-banner.php`
-  2. `{theme}/go4taste-ads-inline-banner.php`
-  3. Fallback do `build/blocks/inline-banner/render.php`
-  4. Filterowalny path przez `g4t_ads_inline_banner_template_path`
-- `maxProducts` lokalizowane przez `wp_localize_script()` z filtrem `g4t_ads_inline_banner_max_products` (domyślnie `null` = bez limitu).
+### 1. Wydzielenie feature slice: legacy-sidebar-widget
 
-### `includes/class-go4taste-ads-api-fetcher.php`
-- Domyślna wartość `cache_duration` zmieniona z `0` (wyłączony) na `24` godziny.
-- Eliminuje N synchronicznych HTTP requestów do PrestaShop przy każdym renderze strony.
+Dodano nowy, autonomiczny slice:
 
-### `src/blocks/inline-banner/edit.js`
-- Usunięto hardcodowany limit 3 produktów.
-- `getMaxProducts()` odczytuje wartość z `window.g4tAdsBlockData.maxProducts`.
-- Gdy `maxProducts` jest `null` lub `0` — brak limitu.
+- features/legacy-sidebar-widget/index.php
+- features/legacy-sidebar-widget/widget-class.php
+- features/legacy-sidebar-widget/widget-template.php
 
-### `src/blocks/inline-banner/block.json`
-- Zaktualizowano opis bloku (usunięto wzmianekę o „1–3 produktach").
+Feature sam rejestruje własne hooki:
 
-### `src/blocks/inline-banner/render.php` + `build/blocks/inline-banner/*`
-- Zaktualizowany render fallback zgodny z nowym API renderowania.
-- Zsynchronizowane artefakty buildowe.
+- widgets_init -> rejestracja widgetu
+- plugins_loaded -> sygnał kompatybilności g4taste_product_ads_sidebar_regular_widget_product_id_function_loaded
+
+### 2. Migracja rejestracji hooka ze starego orchestratora
+
+Usunięto widget wiring ze starej klasy centralnej:
+
+- includes/class-go4taste-ads.php
+
+Usunięte podpięcia:
+
+- widgets_init -> register_widgets
+- plugins_loaded -> load_product_id_function
+
+### 3. Odcięcie widgetu od Go4Taste_Ads::get_instance() w samym slice
+
+Widget w nowej lokalizacji nie korzysta już z singletona orchestratora.
+Wprowadzono core boundary dla pobierania danych:
+
+- core/api-client/product-data.php
+
+Boundary udostępnia helpery:
+
+- g4t_core_get_ads_options()
+- g4t_core_get_sidebar_widget_product_id()
+- g4t_core_fetch_product_data()
+
+### 4. Bootstrap feature’ów przez core
+
+Dodano nowy bootstrap:
+
+- core/bootstrap.php
+
+Entry point pluginu ładuje teraz feature slices przez:
+
+- go4taste-ads.php -> g4t_bootstrap_features()
+
+### 5. Cleanup w legacy admin class
+
+Usunięto widget-only metody ze starej klasy admin:
+
+- get_prestashop_product_id()
+- load_product_id_function()
+- register_widgets()
+
+Plik:
+
+- admin/class-go4taste-ads-admin.php
+
+### 6. Zachowanie kompatybilności ścieżek include
+
+Zostawiono shimy kompatybilności dla starej struktury:
+
+- admin/class-go4taste-ads-sidebar-regular-widget.php -> require feature class
+- public/partials/go4taste-ads-sidebar-regular-widget-public-display.php -> require feature template
 
 ## Weryfikacja
 
-- Dodanie >3 produktów w edytorze działa poprawnie.
-- Po ustawieniu `cache_duration > 0` strona z 4 produktami ładuje się bez opóźnienia przy kolejnych wejściach.
-- Theme override (`go4taste-ads/inline-banner.php` w motywie) jest wykrywany i używany zamiast fallbacku.
+- Brak błędów statycznych/kompilacyjnych w zmienionych plikach.
+- widgets_init jest rejestrowany tylko w feature slice.
+- W kodzie slice legacy-sidebar-widget nie występuje Go4Taste_Ads::get_instance().
+- Hook kompatybilności g4taste_product_ads_sidebar_regular_widget_product_id_function_loaded jest emitowany z feature slice.
 
-## Brak breaking changes
+## Wpływ i kompatybilność
 
-- Bloki bez wybranych produktów renderują pusty string (bez zmian).
-- Istniejące posty z ≤3 produktami działają bez modyfikacji.
-- `cache_duration` ustawione ręcznie w opcjach pluginu ma pierwszeństwo przed domyślnym `24h`.
+- Brak zmian kontraktu danych dla legacy widgetu (meta key pozostaje bez zmian):
+  - _g4t_a_sidebar_regular_widget_ps_product_id
+- Zachowano legacy include paths przez shimy.
+- Funkcjonalność widgetu pozostaje zachowana, ale logika i hooki zostały przeniesione do vertical slice.
+
+## Następne kroki (po tym PR)
+
+- Ręczny smoke test na środowisku zdalnym (widgets admin + frontend render).
+- Po potwierdzeniu braku regresji: usunięcie shimów kompatybilności i dalsza migracja kolejnych feature slices.
