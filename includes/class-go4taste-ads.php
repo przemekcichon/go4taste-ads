@@ -69,11 +69,11 @@ class Go4Taste_Ads{
     private static $instance = null;
 
 	/**
-	 * The admin functionality instance used by hooks and widget compatibility methods.
+	 * Legacy admin functionality instance placeholder.
 	 *
 	 * @since    1.0.0
 	 * @access   protected
-	 * @var      Go4Taste_Ads_Admin    $admin_instance    The admin functionality instance.
+	 * @var      object|null    $admin_instance    Deprecated compatibility property.
 	 */
 	protected $admin_instance;
 
@@ -117,7 +117,7 @@ class Go4Taste_Ads{
 	 * Backward compatible alias for legacy callers.
 	 *
 	 * @since    1.0.0
-	 * @return   Go4Taste_Ads_Admin|null
+	 * @return   object|null
 	 */
 	public function get_public_instance() {
 		return $this->get_admin_instance();
@@ -127,7 +127,7 @@ class Go4Taste_Ads{
 	 * Get the admin functionality instance.
 	 *
 	 * @since    1.2.0
-	 * @return   Go4Taste_Ads_Admin|null
+	 * @return   object|null
 	 */
 	public function get_admin_instance() {
 		return $this->admin_instance;
@@ -140,7 +140,6 @@ class Go4Taste_Ads{
 	 *
 	 * - Go4Taste_Ads_Loader. Orchestrates the hooks of the plugin.
 	 * - Go4Taste_Ads_i18n. Defines internationalization functionality.
-	 * - Go4Taste_Ads_Admin. Defines all hooks for the admin area.
 	 * - Go4Taste_Ads_Public. Defines all hooks for the public side of the site.
 	 *
 	 * Create an instance of the loader which will be used to register the hooks
@@ -162,11 +161,6 @@ class Go4Taste_Ads{
 		 * of the plugin.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-go4taste-ads-i18n.php';
-
-		/**
-		 * The class responsible for defining all actions that occur in the admin area.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-go4taste-ads-admin.php';
 
 		/**
 		 * The class responsible for defining all actions that occur in the public-facing
@@ -224,16 +218,7 @@ class Go4Taste_Ads{
 	 * @access   private
 	 */
 	private function define_admin_hooks() {
-
-		$plugin_admin = new Go4Taste_Ads_Admin( $this->get_plugin_name(), $this->get_version() );
-		$this->admin_instance = $plugin_admin;
-
-		// Enqueue styles and scripts
-		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
-		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
-
-		// Register AJAX handlers for logged-in users
-		// Feature-local AJAX handlers are registered in feature slices.
+		// Admin hooks are registered in feature-local slices.
 
 	}
 

@@ -150,6 +150,28 @@ Dodatkowo:
 - usunięto metody settings/permissions z admin/class-go4taste-ads-admin.php
 - core/bootstrap.php ładuje teraz także features/admin-settings/index.php
 
+### 11. Wydzielenie feature slice: admin-assets
+
+Dodano nowy, autonomiczny slice:
+
+- features/admin-assets/index.php
+
+Feature sam rejestruje własny hook:
+
+- admin_enqueue_scripts -> g4t_admin_assets_enqueue
+
+W slice osadzono:
+
+- enqueue admin CSS/JS
+- enqueue bibliotek Algolia dla panelu
+- wp_localize_script payload dla sync i testu uprawnień API
+
+Dodatkowo:
+
+- usunięto zależność od Go4Taste_Ads_Admin z includes/class-go4taste-ads.php
+- admin hooks w orchestratorze są teraz puste (feature-local ownership)
+- core/bootstrap.php ładuje teraz także features/admin-assets/index.php
+
 ## Weryfikacja
 
 - Brak błędów statycznych/kompilacyjnych w zmienionych plikach.
@@ -160,13 +182,14 @@ Dodatkowo:
 - wp_ajax_g4t_sync_* są rejestrowane w feature slice product-catalog-sync.
 - Brak referencji runtime do go4taste_update_product_ids i g4t_migration_*.
 - admin_menu/admin_init/wp_ajax_g4t_test_prestashop_permissions są rejestrowane w feature slice admin-settings.
+- admin_enqueue_scripts jest rejestrowany w feature slice admin-assets.
 
 ## Wpływ i kompatybilność
 
 - Brak zmian kontraktu danych dla legacy widgetu (meta key pozostaje bez zmian):
   - _g4t_a_sidebar_regular_widget_ps_product_id
 - Legacy include paths shimów zostały usunięte po potwierdzeniu braku regresji.
-- Funkcjonalność widgetu, metaboxu, syncu i ustawień pozostaje zachowana, ale logika i hooki zostały przeniesione do vertical slices.
+- Funkcjonalność widgetu, metaboxu, syncu, ustawień i admin assets pozostaje zachowana, ale logika i hooki zostały przeniesione do vertical slices.
 
 ## Następne kroki (po tym PR)
 
