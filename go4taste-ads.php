@@ -73,6 +73,16 @@ require_once plugin_dir_path( __FILE__ ) . 'vendor/autoload.php';
 require plugin_dir_path( __FILE__ ) . 'includes/class-go4taste-ads.php';
 
 /**
+ * Feature bootstrap registry.
+ */
+require_once plugin_dir_path( __FILE__ ) . 'core/bootstrap.php';
+
+/**
+ * Load shared boundaries and feature slices.
+ */
+g4t_bootstrap_features();
+
+/**
  * Begins execution of the plugin.
  *
  * Since everything within the plugin is registered via hooks,

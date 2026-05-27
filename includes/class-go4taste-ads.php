@@ -238,12 +238,6 @@ class Go4Taste_Ads{
         // Save the meta box data
         $this->loader->add_action( 'save_post', $plugin_admin, 'save_meta_box' );
 
-		// Add the custom hook to load the product ID function
-		$this->loader->add_action( 'plugins_loaded', $plugin_admin, 'load_product_id_function' );
-
-		// Add this function to register widgets
-		$this->loader->add_action( 'widgets_init', $plugin_admin, 'register_widgets' );
-
 		// Add the admin menu and settings page
 		$this->loader->add_action( 'admin_menu', $plugin_admin, 'add_admin_menu' );
 		$this->loader->add_action( 'admin_init', $plugin_admin, 'page_init' );

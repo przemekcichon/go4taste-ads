@@ -1,51 +1,64 @@
-# Go4Taste Ads
+# go4taste-ads
 
-WordPress plugin for displaying product ads in sidebars with Algolia search integration, multi-API support (PrestaShop, WooCommerce), and transient caching.
+WordPress plugin for promoted product integration via PrestaShop/WooCommerce APIs, featuring an inline Gutenberg block, product sync, and legacy migration tools.
 
-## Description
+## 🏗️ Architecture Philosophy: True Vertical Slices (VSA)
 
-Go4Taste Ads provides a sidebar widget that displays product advertisements fetched from external e-commerce APIs. It supports PrestaShop (1.4 and 1.5), WooCommerce, and custom API endpoints. Products can be selected per-post via an Algolia-powered search interface in the post editor.
+This project has been refactored from a legacy horizontal architecture into a **True Vertical Slices Architecture (VSA)**. 
+We prioritize *business features* over *technical layers*. The old God Objects (`class-go4taste-ads-admin.php`) and central hook loaders have been dismantled.
 
-## Features
+- **No Horizontal Layers:** We do not group files by their technical purpose (no global `admin/`, `public/`, or `includes/` folders).
+- **Co-location:** PHP, JS, CSS, and block source files that belong to the same business feature live side-by-side in the exact same folder.
+- **Autonomy:** Each feature slice is 100% self-contained. It registers its own `add_action` and `add_filter` hooks directly. 
 
-- **Sidebar widget** for displaying product ads (image, name, price, buy link)
-- **Algolia search integration** for finding and selecting products in the post editor
-- **Multi-API support**: PrestaShop 1.4, PrestaShop 1.5, WooCommerce, custom
-- **Transient caching** with configurable TTL to reduce API calls
-- **WP-CLI commands** for bulk operations (e.g. extracting product IDs from shortcodes)
-- **Internationalization** ready with `.pot` template
+## 📂 Target Directory Structure
 
-## Requirements
+```text
+go4taste-ads/
+├── core/                                    # Shared foundations (Read-Only for Features)
+│   ├── bootstrap.php                        # Initializes the plugin, loads features
+│   ├── api-client/                          # Shared logic for fetching data from Presta/Woo
+│   └── i18n/                                # Translation loaders
+│
+├── features/                                # TRUE VERTICAL SLICES (Business Functions)
+│   ├── inline-banner-block/                 # Feature: Gutenberg block for inline products
+│   │   ├── block.json                       
+│   │   ├── render.php                       # SSR render callback
+│   │   ├── src/                             # React components (Algolia search, Preview)
+│   │   └── build/                           # Compiled block assets
+│   │
+│   ├── promoted-product-metabox/            # Feature: Post-level metabox for Algolia product search
+│   │   ├── metabox-registration.php         # add_meta_boxes and save_post logic
+│   │   ├── metabox-ui.js                    # Algolia search logic for the metabox
+│   │   └── metabox-style.css
+│   │
+│   ├── product-catalog-sync/                # Feature: PrestaShop/Woo to Algolia batch sync
+│   │   ├── sync-runner.php                  # Logic for batching and Algolia index updates
+│   │   └── sync-ajax-handlers.php           # AJAX endpoints for sync progress
+│   │
+│   ├── legacy-shortcode-migration/          # Feature: Migrating old shortcodes to blocks
+│   │   ├── migration-runner.php             # AJAX batch processing
+│   │   ├── migration-wp-cli.php             # WP-CLI commands related to migration
+│   │   └── migration-ui.js                  
+│   │
+│   ├── legacy-sidebar-widget/               # Feature: The old WP_Widget (isolated for easy removal)
+│   │   └── widget-class.php                 
+│   │
+│   ├── ga4-tracking/                        # Feature: dataLayer pushes for promotion views
+│   │   └── tracking-events.php              
+│   │
+│   └── admin-settings/                      # Feature: Plugin configuration UI
+│       ├── settings-page.php                # Renders the options page
+│       └── options-registration.php         # register_setting logic
+│
+├── .github/                                 
+│   └── copilot-instructions.md              # AI architecture guardrails
+├── package.json                             # Root build scripts (configured to output to features/)
+└── go4taste-ads.php                         # Plugin entrypoint
+```
+## **🤖 Hard Constraints for AI Refactoring**
 
-- WordPress 3.0.1+
-- PHP 5.6+
-- Composer dependencies (Algolia PHP Search Client)
-
-## Installation
-
-1. Upload the `go4taste-ads` folder to `/wp-content/plugins/`
-2. Run `composer install` in the plugin directory (if vendor is not bundled)
-3. Activate the plugin through the **Plugins** menu in WordPress
-4. Configure settings under **Go4Taste Ads** in the admin menu
-
-## Configuration
-
-Navigate to the plugin settings page to configure:
-
-- **API Type** — PrestaShop 1.4, PrestaShop 1.5, WooCommerce, or Custom
-- **API URL** — Base URL of the e-commerce API
-- **API Password** — PrestaShop API key (p parameter)
-- **Language** — PrestaShop language ID
-- **Fallback Product ID** — Default product when none is assigned to a post
-- **Algolia App ID** and **Search-Only API Key** — For product search in the editor
-- **Cache Duration** — Transient cache lifetime in hours
-
-## Usage
-
-1. Edit a post and use the **Go4Taste Ads Widget** meta box to search and select a product
-2. Add the **G4T Ads Sidebar Regular Widget** to a sidebar via **Appearance > Widgets**
-3. The widget displays the selected product's image, name, price, and a link to the store
-
-## License
-
-GPL-2.0+
+1. **Kill the Orchestrator:** Do not use `class-go4taste-ads-loader.php` or `Go4Taste_Ads::get_instance()`. Every feature must call `add_action()` or `add_filter()` directly within its own directory.  
+2. **Dismantle the Admin Class:** `class-go4taste-ads-admin.php` is deprecated. Extract its methods into the appropriate slices (Settings, Sync, Migration, Metabox).  
+3. **No Cross-Feature Dependencies:** `product-catalog-sync` must not depend on `legacy-shortcode-migration`. If they share API logic, that logic belongs in `core/api-client/`.  
+4. **Block Co-location:** The Gutenberg block source code (`src/blocks/inline-banner`) and compiled assets must be moved entirely inside `features/inline-banner-block/`.

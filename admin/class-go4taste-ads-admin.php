@@ -56,9 +56,6 @@ class Go4Taste_Ads_Admin {
 
         $this->plugin_name = $plugin_name;
         $this->version = $version;
-
-        // Include the specific widget class for the sidebar regular widget
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-go4taste-ads-sidebar-regular-widget.php';
     }
 
     /**
@@ -522,44 +519,6 @@ class Go4Taste_Ads_Admin {
         update_post_meta($post_id, '_g4t_a_sidebar_regular_widget_ps_product_id', $product_id);
 
         return $post_id;
-    }
-
-    /**
-     * Retrieve the PrestaShop product ID from post meta.
-     *
-     * @since    1.0.0
-     * @return   string|int    The product ID.
-     */
-    public function get_prestashop_product_id() {
-		
-        global $post;
-
-        // Retrieve the PrestaShop product ID from the post meta
-        $product_id = get_post_meta($post->ID, '_g4t_a_sidebar_regular_widget_ps_product_id', true);
-
-        // Return the product ID
-        return $product_id;
-    }
-
-    /**
-     * Public function to signal that the product ID function is available.
-     *
-     * @since    1.0.0
-     */
-    public function load_product_id_function() {
-        do_action('g4taste_product_ads_sidebar_regular_widget_product_id_function_loaded');
-    }
-
-
-    /**
-     * Public function to register widgets.
-     *
-     * This method registers the Go4Taste Product Ads Sidebar Regular Widget.
-     *
-     * @since    1.0.0
-     */
-    public function register_widgets() {
-        register_widget('Go4Taste_Ads_Sidebar_Regular_Widget');
     }
 
     /**
