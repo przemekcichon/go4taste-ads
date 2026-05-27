@@ -232,12 +232,6 @@ class Go4Taste_Ads{
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
 
-		// Add the meta box
-        $this->loader->add_action( 'add_meta_boxes', $plugin_admin, 'add_meta_box' );
-
-        // Save the meta box data
-        $this->loader->add_action( 'save_post', $plugin_admin, 'save_meta_box' );
-
 		// Add the admin menu and settings page
 		$this->loader->add_action( 'admin_menu', $plugin_admin, 'add_admin_menu' );
 		$this->loader->add_action( 'admin_init', $plugin_admin, 'page_init' );
@@ -245,8 +239,7 @@ class Go4Taste_Ads{
 		// Handle the update product IDs action from the admin page
 		$this->loader->add_action( 'admin_init', $plugin_admin, 'handle_update_product_ids' );
 
-		// Register AJAX handler for logged-in users
-		$this->loader->add_action( 'wp_ajax_g4t_fetch_product_preview', $plugin_admin, 'fetch_product_preview' );
+		// Register AJAX handlers for logged-in users
 		$this->loader->add_action( 'wp_ajax_g4t_migration_start', $plugin_admin, 'ajax_migration_start' );
 		$this->loader->add_action( 'wp_ajax_g4t_migration_batch', $plugin_admin, 'ajax_migration_batch' );
 		$this->loader->add_action( 'wp_ajax_g4t_migration_status', $plugin_admin, 'ajax_migration_status' );
@@ -256,8 +249,6 @@ class Go4Taste_Ads{
 		$this->loader->add_action( 'wp_ajax_g4t_sync_status', $plugin_admin, 'ajax_sync_status' );
 		$this->loader->add_action( 'wp_ajax_g4t_sync_unlock', $plugin_admin, 'ajax_sync_unlock' );
 		$this->loader->add_action( 'wp_ajax_g4t_test_prestashop_permissions', $plugin_admin, 'ajax_test_prestashop_permissions' );
-
-		$this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_admin_preview_styles');
 
 	}
 

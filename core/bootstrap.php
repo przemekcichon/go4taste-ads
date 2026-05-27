@@ -15,5 +15,6 @@ if ( ! function_exists( 'g4t_bootstrap_features' ) ) {
 	function g4t_bootstrap_features() {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'core/api-client/product-data.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/legacy-sidebar-widget/index.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/promoted-product-metabox/index.php';
 	}
 }
