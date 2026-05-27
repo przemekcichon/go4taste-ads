@@ -180,6 +180,16 @@ Po wydzieleniu wszystkich odpowiedzialności usunięto plik:
 
 To domyka dekompozycję dawnego "god object" i usuwa martwy kod z repozytorium.
 
+### 13. Cleanup orchestratora po migracji admin
+
+Uproszczono includes/class-go4taste-ads.php:
+
+- usunięto property admin_instance
+- usunięto metody get_public_instance() i get_admin_instance()
+- usunięto pustą metodę define_admin_hooks() i jej wywołanie z konstruktora
+
+Orchestrator zachowuje tylko odpowiedzialności core (locale/public/block), a hooki admin są w feature slices.
+
 ## Weryfikacja
 
 - Brak błędów statycznych/kompilacyjnych w zmienionych plikach.
@@ -192,6 +202,7 @@ To domyka dekompozycję dawnego "god object" i usuwa martwy kod z repozytorium.
 - admin_menu/admin_init/wp_ajax_g4t_test_prestashop_permissions są rejestrowane w feature slice admin-settings.
 - admin_enqueue_scripts jest rejestrowany w feature slice admin-assets.
 - Brak runtime referencji do Go4Taste_Ads_Admin.
+- Brak runtime referencji do admin_instance/get_public_instance/get_admin_instance.
 
 ## Wpływ i kompatybilność
 

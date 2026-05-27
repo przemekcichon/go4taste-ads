@@ -68,15 +68,6 @@ class Go4Taste_Ads{
      */
     private static $instance = null;
 
-	/**
-	 * Legacy admin functionality instance placeholder.
-	 *
-	 * @since    1.0.0
-	 * @access   protected
-	 * @var      object|null    $admin_instance    Deprecated compatibility property.
-	 */
-	protected $admin_instance;
-
     /**
      * Define the core functionality of the plugin.
      *
@@ -92,7 +83,6 @@ class Go4Taste_Ads{
 
         $this->load_dependencies();
         $this->set_locale();
-        $this->define_admin_hooks();
         $this->define_public_hooks();
 		$this->define_block_hooks();
     }
@@ -112,26 +102,6 @@ class Go4Taste_Ads{
         }
         return self::$instance;
     }
-
-	/**
-	 * Backward compatible alias for legacy callers.
-	 *
-	 * @since    1.0.0
-	 * @return   object|null
-	 */
-	public function get_public_instance() {
-		return $this->get_admin_instance();
-	}
-
-	/**
-	 * Get the admin functionality instance.
-	 *
-	 * @since    1.2.0
-	 * @return   object|null
-	 */
-	public function get_admin_instance() {
-		return $this->admin_instance;
-	}
 
 	/**
 	 * Load the required dependencies for this plugin.
@@ -207,18 +177,6 @@ class Go4Taste_Ads{
 		$plugin_i18n = new Go4Taste_Ads_i18n();
 
 		$this->loader->add_action( 'plugins_loaded', $plugin_i18n, 'load_plugin_textdomain' );
-
-	}
-
-	/**
-	 * Register all of the hooks related to the admin area functionality
-	 * of the plugin.
-	 *
-	 * @since    1.0.0
-	 * @access   private
-	 */
-	private function define_admin_hooks() {
-		// Admin hooks are registered in feature-local slices.
 
 	}
 
