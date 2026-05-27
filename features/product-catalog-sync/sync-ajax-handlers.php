@@ -1,0 +1,246 @@
+<?php
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+require_once __DIR__ . '/sync-runner.php';
+
+if ( ! function_exists( 'g4t_product_catalog_sync_ajax_start' ) ) {
+	/**
+	 * Start async Algolia sync job (AJAX).
+	 *
+	 * @return void
+	 */
+	function g4t_product_catalog_sync_ajax_start() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
+		}
+
+		check_ajax_referer( 'g4t_sync_products_ajax', 'nonce' );
+
+		$job_key      = g4t_product_catalog_sync_get_job_transient_key();
+		$existing_job = get_transient( $job_key );
+		if ( is_array( $existing_job ) && isset( $existing_job['status'] ) && 'running' === $existing_job['status'] ) {
+			if ( ! g4t_product_catalog_sync_is_job_stale( $existing_job ) ) {
+				wp_send_json_error(
+					array(
+						'message' => 'Sync is already running.',
+						'job'     => $existing_job,
+					),
+					409
+				);
+			}
+
+			delete_transient( $job_key );
+		}
+
+		$batch_size = isset( $_POST['batch_size'] ) ? absint( $_POST['batch_size'] ) : 20;
+		$batch_size = max( 1, min( 100, $batch_size ) );
+
+		$options         = g4t_core_get_ads_options();
+		$api_type        = isset( $options['api_type'] ) ? sanitize_text_field( (string) $options['api_type'] ) : 'prestashop_1_5';
+		$p_value         = isset( $options['p_parameter_value'] ) ? sanitize_text_field( (string) $options['p_parameter_value'] ) : '';
+		$lang            = isset( $options['prestashop_lang'] ) ? sanitize_text_field( (string) $options['prestashop_lang'] ) : 'pl';
+		$api_url         = isset( $options['api_url'] ) ? esc_url_raw( (string) $options['api_url'] ) : '';
+		$consumer_key    = isset( $options['woocommerce_consumer_key'] ) ? sanitize_text_field( (string) $options['woocommerce_consumer_key'] ) : null;
+		$consumer_secret = isset( $options['woocommerce_consumer_secret'] ) ? sanitize_text_field( (string) $options['woocommerce_consumer_secret'] ) : null;
+
+		if ( '' === trim( $api_type ) || '' === trim( $api_url ) ) {
+			wp_send_json_error( array( 'message' => 'Missing API settings.' ), 400 );
+		}
+
+		if ( ! class_exists( 'Go4Taste_Ads_API_Fetcher' ) ) {
+			require_once dirname( __DIR__, 2 ) . '/includes/class-go4taste-ads-api-fetcher.php';
+		}
+
+		$api_fetcher = new Go4Taste_Ads_API_Fetcher();
+		$product_ids = $api_fetcher->fetch_product_ids_for_sync( $api_type, $p_value, $lang, $api_url, $consumer_key, $consumer_secret );
+
+		if ( empty( $product_ids ) ) {
+			wp_send_json_error( array( 'message' => 'No products found for sync.' ), 404 );
+		}
+
+		$job_state = array(
+			'status'      => 'running',
+			'api_type'    => $api_type,
+			'p_value'     => $p_value,
+			'lang'        => $lang,
+			'api_url'     => $api_url,
+			'product_ids' => $product_ids,
+			'total'       => count( $product_ids ),
+			'offset'      => 0,
+			'batch_size'  => $batch_size,
+			'synced'      => 0,
+			'errors'      => 0,
+			'created_at'  => time(),
+			'updated_at'  => time(),
+		);
+
+		set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+		wp_send_json_success( array( 'job' => $job_state ) );
+	}
+}
+
+if ( ! function_exists( 'g4t_product_catalog_sync_ajax_batch' ) ) {
+	/**
+	 * Process one async Algolia sync batch (AJAX).
+	 *
+	 * @return void
+	 */
+	function g4t_product_catalog_sync_ajax_batch() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
+		}
+
+		check_ajax_referer( 'g4t_sync_products_ajax', 'nonce' );
+
+		$job_key   = g4t_product_catalog_sync_get_job_transient_key();
+		$job_state = get_transient( $job_key );
+		if ( ! is_array( $job_state ) || empty( $job_state['status'] ) ) {
+			wp_send_json_error( array( 'message' => 'Sync job not found.' ), 404 );
+		}
+
+		if ( 'done' === $job_state['status'] ) {
+			wp_send_json_success( array( 'job' => $job_state, 'done' => true ) );
+		}
+
+		if ( g4t_product_catalog_sync_is_job_stale( $job_state ) ) {
+			$job_state['status']        = 'failed';
+			$job_state['error_message'] = 'Sync job is stale. Please start again.';
+			$job_state['updated_at']    = time();
+			set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+			wp_send_json_error( array( 'message' => 'Sync job is stale.', 'job' => $job_state ), 409 );
+		}
+
+		$total = isset( $job_state['total'] ) ? (int) $job_state['total'] : 0;
+		$offset = isset( $job_state['offset'] ) ? (int) $job_state['offset'] : 0;
+		$remaining = max( 0, $total - $offset );
+
+		if ( 0 === $remaining ) {
+			$job_state['status'] = 'done';
+			$job_state['updated_at'] = time();
+			set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+			wp_send_json_success( array( 'job' => $job_state, 'done' => true ) );
+		}
+
+		$batch_size = isset( $job_state['batch_size'] ) ? (int) $job_state['batch_size'] : 20;
+		$batch_size = max( 1, min( 100, $batch_size ) );
+		$ids_batch = array_slice( $job_state['product_ids'], $offset, $batch_size );
+
+		if ( empty( $ids_batch ) ) {
+			$job_state['status'] = 'done';
+			$job_state['updated_at'] = time();
+			set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+			wp_send_json_success( array( 'job' => $job_state, 'done' => true ) );
+		}
+
+		if ( ! class_exists( 'Go4Taste_Ads_API_Fetcher' ) ) {
+			require_once dirname( __DIR__, 2 ) . '/includes/class-go4taste-ads-api-fetcher.php';
+		}
+
+		$api_fetcher = new Go4Taste_Ads_API_Fetcher();
+		$products = array();
+
+		foreach ( $ids_batch as $product_id ) {
+			$product_data = $api_fetcher->fetch_product_data(
+				$product_id,
+				$job_state['p_value'],
+				$job_state['lang'],
+				$job_state['api_type'],
+				$job_state['api_url']
+			);
+
+			if ( $product_data ) {
+				$products[] = $product_data;
+			} else {
+				$job_state['errors'] = isset( $job_state['errors'] ) ? (int) $job_state['errors'] + 1 : 1;
+			}
+		}
+
+		if ( ! empty( $products ) ) {
+			try {
+				$api_fetcher->store_products_to_algolia( $products );
+				$job_state['synced'] = isset( $job_state['synced'] ) ? (int) $job_state['synced'] + count( $products ) : count( $products );
+			} catch ( Throwable $e ) {
+				$job_state['errors'] = isset( $job_state['errors'] ) ? (int) $job_state['errors'] + count( $products ) : count( $products );
+				$job_state['last_error'] = $e->getMessage();
+			}
+		}
+
+		$job_state['offset'] = $offset + count( $ids_batch );
+		if ( (int) $job_state['offset'] >= $total ) {
+			$job_state['status'] = 'done';
+		}
+
+		$job_state['updated_at'] = time();
+		set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+		wp_send_json_success( array( 'job' => $job_state, 'done' => 'done' === $job_state['status'] ) );
+	}
+}
+
+if ( ! function_exists( 'g4t_product_catalog_sync_ajax_status' ) ) {
+	/**
+	 * Read async sync status (AJAX).
+	 *
+	 * @return void
+	 */
+	function g4t_product_catalog_sync_ajax_status() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
+		}
+
+		check_ajax_referer( 'g4t_sync_products_ajax', 'nonce' );
+
+		$job_key   = g4t_product_catalog_sync_get_job_transient_key();
+		$job_state = get_transient( $job_key );
+		if ( ! is_array( $job_state ) ) {
+			wp_send_json_error( array( 'message' => 'Sync job not found.' ), 404 );
+		}
+
+		if ( g4t_product_catalog_sync_is_job_stale( $job_state ) ) {
+			$job_state['status']        = 'failed';
+			$job_state['error_message'] = 'Sync job is stale. Lock was released.';
+			$job_state['updated_at']    = time();
+			delete_transient( $job_key );
+			wp_send_json_success( array( 'job' => $job_state ) );
+		}
+
+		wp_send_json_success( array( 'job' => $job_state ) );
+	}
+}
+
+if ( ! function_exists( 'g4t_product_catalog_sync_ajax_unlock' ) ) {
+	/**
+	 * Force unlock async sync job (AJAX).
+	 *
+	 * @return void
+	 */
+	function g4t_product_catalog_sync_ajax_unlock() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
+		}
+
+		check_ajax_referer( 'g4t_sync_products_ajax', 'nonce' );
+
+		$job_key   = g4t_product_catalog_sync_get_job_transient_key();
+		$job_state = get_transient( $job_key );
+
+		if ( ! is_array( $job_state ) ) {
+			wp_send_json_success( array( 'message' => 'No active sync lock found.' ) );
+		}
+
+		if ( isset( $job_state['status'] ) && 'running' === $job_state['status'] && ! g4t_product_catalog_sync_is_job_stale( $job_state ) ) {
+			wp_send_json_error(
+				array(
+					'message' => 'Sync is still running. Unlock is allowed only for stale jobs.',
+					'job'     => $job_state,
+				),
+				409
+			);
+		}
+
+		delete_transient( $job_key );
+		wp_send_json_success( array( 'message' => 'Sync lock has been cleared.' ) );
+	}
+}

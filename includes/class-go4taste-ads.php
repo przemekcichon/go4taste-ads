@@ -244,10 +244,6 @@ class Go4Taste_Ads{
 		$this->loader->add_action( 'wp_ajax_g4t_migration_batch', $plugin_admin, 'ajax_migration_batch' );
 		$this->loader->add_action( 'wp_ajax_g4t_migration_status', $plugin_admin, 'ajax_migration_status' );
 		$this->loader->add_action( 'wp_ajax_g4t_migration_unlock', $plugin_admin, 'ajax_migration_unlock' );
-		$this->loader->add_action( 'wp_ajax_g4t_sync_start', $plugin_admin, 'ajax_sync_start' );
-		$this->loader->add_action( 'wp_ajax_g4t_sync_batch', $plugin_admin, 'ajax_sync_batch' );
-		$this->loader->add_action( 'wp_ajax_g4t_sync_status', $plugin_admin, 'ajax_sync_status' );
-		$this->loader->add_action( 'wp_ajax_g4t_sync_unlock', $plugin_admin, 'ajax_sync_unlock' );
 		$this->loader->add_action( 'wp_ajax_g4t_test_prestashop_permissions', $plugin_admin, 'ajax_test_prestashop_permissions' );
 
 	}

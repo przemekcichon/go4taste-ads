@@ -1,11 +1,11 @@
-# PR: VSA extraction of legacy-sidebar-widget + promoted-product-metabox
+# PR: VSA extraction of legacy-sidebar-widget + promoted-product-metabox + product-catalog-sync
 
 **Branch:** chore/vertical-slices-architecture → main
 
 ## Motywacja
 
 Kontynuujemy migrację pluginu do True Vertical Slices Architecture zgodnie z nowym README i guardrails.
-W tym PR wydzielono dwa obszary: legacy sidebar widget oraz promoted product metabox (rejestracja, zapis i preview AJAX).
+W tym PR wydzielono trzy obszary: legacy sidebar widget, promoted product metabox (rejestracja, zapis i preview AJAX) oraz product catalog sync (asynchroniczny sync do Algolia).
 
 ## Zakres zmian
 
@@ -96,6 +96,27 @@ Dodatkowo:
 - usunięto metabox/preview metody z admin/class-go4taste-ads-admin.php
 - core/bootstrap.php ładuje teraz także features/promoted-product-metabox/index.php
 
+### 8. Wydzielenie feature slice: product-catalog-sync
+
+Dodano nowy, autonomiczny slice:
+
+- features/product-catalog-sync/index.php
+- features/product-catalog-sync/sync-runner.php
+- features/product-catalog-sync/sync-ajax-handlers.php
+
+Feature sam rejestruje własne hooki:
+
+- wp_ajax_g4t_sync_start -> g4t_product_catalog_sync_ajax_start
+- wp_ajax_g4t_sync_batch -> g4t_product_catalog_sync_ajax_batch
+- wp_ajax_g4t_sync_status -> g4t_product_catalog_sync_ajax_status
+- wp_ajax_g4t_sync_unlock -> g4t_product_catalog_sync_ajax_unlock
+
+Dodatkowo:
+
+- usunięto sync AJAX wiring z includes/class-go4taste-ads.php
+- usunięto sync helpers i sync AJAX metody z admin/class-go4taste-ads-admin.php
+- core/bootstrap.php ładuje teraz także features/product-catalog-sync/index.php
+
 ## Weryfikacja
 
 - Brak błędów statycznych/kompilacyjnych w zmienionych plikach.
@@ -103,15 +124,16 @@ Dodatkowo:
 - W kodzie slice legacy-sidebar-widget nie występuje Go4Taste_Ads::get_instance().
 - Hook kompatybilności g4taste_product_ads_sidebar_regular_widget_product_id_function_loaded jest emitowany z feature slice.
 - add_meta_boxes/save_post/wp_ajax_g4t_fetch_product_preview są rejestrowane w feature slice promoted-product-metabox.
+- wp_ajax_g4t_sync_* są rejestrowane w feature slice product-catalog-sync.
 
 ## Wpływ i kompatybilność
 
 - Brak zmian kontraktu danych dla legacy widgetu (meta key pozostaje bez zmian):
   - _g4t_a_sidebar_regular_widget_ps_product_id
 - Legacy include paths shimów zostały usunięte po potwierdzeniu braku regresji.
-- Funkcjonalność widgetu i metaboxu pozostaje zachowana, ale logika i hooki zostały przeniesione do vertical slices.
+- Funkcjonalność widgetu, metaboxu i syncu pozostaje zachowana, ale logika i hooki zostały przeniesione do vertical slices.
 
 ## Następne kroki (po tym PR)
 
-- Dalsza migracja kolejnych feature slices (np. product-catalog-sync, legacy-shortcode-migration).
+- Dalsza migracja kolejnych feature slices (np. legacy-shortcode-migration).
 - Stopniowe wygaszanie legacy orchestratora po wydzieleniu pozostałych obszarów.
