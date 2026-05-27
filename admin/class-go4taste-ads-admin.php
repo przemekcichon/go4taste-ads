@@ -395,7 +395,7 @@ class Go4Taste_Ads_Admin {
 
         // Render the ad preview using the same template as the frontend
         ob_start();
-        include plugin_dir_path(dirname(__FILE__)) . 'public/partials/go4taste-ads-sidebar-regular-widget-public-display.php';
+        include plugin_dir_path(dirname(__FILE__)) . 'features/legacy-sidebar-widget/widget-template.php';
         $output = ob_get_clean();
 
         // Return the rendered preview

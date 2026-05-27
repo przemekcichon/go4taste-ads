@@ -68,12 +68,16 @@ Plik:
 
 - admin/class-go4taste-ads-admin.php
 
-### 6. Zachowanie kompatybilności ścieżek include
+### 6. Usunięcie shimów kompatybilności
 
-Zostawiono shimy kompatybilności dla starej struktury:
+Po potwierdzeniu smoke testów usunięto shimy kompatybilności:
 
-- admin/class-go4taste-ads-sidebar-regular-widget.php -> require feature class
-- public/partials/go4taste-ads-sidebar-regular-widget-public-display.php -> require feature template
+- admin/class-go4taste-ads-sidebar-regular-widget.php
+- public/partials/go4taste-ads-sidebar-regular-widget-public-display.php
+
+Podgląd AJAX w panelu admin renderuje teraz bezpośrednio feature template:
+
+- admin/class-go4taste-ads-admin.php -> include features/legacy-sidebar-widget/widget-template.php
 
 ## Weryfikacja
 
@@ -86,10 +90,10 @@ Zostawiono shimy kompatybilności dla starej struktury:
 
 - Brak zmian kontraktu danych dla legacy widgetu (meta key pozostaje bez zmian):
   - _g4t_a_sidebar_regular_widget_ps_product_id
-- Zachowano legacy include paths przez shimy.
+- Legacy include paths shimów zostały usunięte po potwierdzeniu braku regresji.
 - Funkcjonalność widgetu pozostaje zachowana, ale logika i hooki zostały przeniesione do vertical slice.
 
 ## Następne kroki (po tym PR)
 
-- Ręczny smoke test na środowisku zdalnym (widgets admin + frontend render).
-- Po potwierdzeniu braku regresji: usunięcie shimów kompatybilności i dalsza migracja kolejnych feature slices.
+- Dalsza migracja kolejnych feature slices (np. promoted-product-metabox).
+- Stopniowe wygaszanie legacy orchestratora po wydzieleniu pozostałych obszarów.
