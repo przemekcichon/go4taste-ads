@@ -236,14 +236,7 @@ class Go4Taste_Ads{
 		$this->loader->add_action( 'admin_menu', $plugin_admin, 'add_admin_menu' );
 		$this->loader->add_action( 'admin_init', $plugin_admin, 'page_init' );
 
-		// Handle the update product IDs action from the admin page
-		$this->loader->add_action( 'admin_init', $plugin_admin, 'handle_update_product_ids' );
-
 		// Register AJAX handlers for logged-in users
-		$this->loader->add_action( 'wp_ajax_g4t_migration_start', $plugin_admin, 'ajax_migration_start' );
-		$this->loader->add_action( 'wp_ajax_g4t_migration_batch', $plugin_admin, 'ajax_migration_batch' );
-		$this->loader->add_action( 'wp_ajax_g4t_migration_status', $plugin_admin, 'ajax_migration_status' );
-		$this->loader->add_action( 'wp_ajax_g4t_migration_unlock', $plugin_admin, 'ajax_migration_unlock' );
 		$this->loader->add_action( 'wp_ajax_g4t_test_prestashop_permissions', $plugin_admin, 'ajax_test_prestashop_permissions' );
 
 	}

@@ -117,6 +117,20 @@ Dodatkowo:
 - usunięto sync helpers i sync AJAX metody z admin/class-go4taste-ads-admin.php
 - core/bootstrap.php ładuje teraz także features/product-catalog-sync/index.php
 
+### 9. Usunięcie jednorazowych sekcji migracyjnych z panelu admin
+
+Po zakończeniu migracji danych usunięto z UI sekcje jednorazowe:
+
+- Update Product IDs from Shortcode
+- Migrate Legacy Shortcode Banners to Inline Banners
+
+Usunięto powiązaną logikę runtime:
+
+- admin_init -> handle_update_product_ids (odpięte)
+- wp_ajax_g4t_migration_* (odpięte)
+- metody update/migration w admin/class-go4taste-ads-admin.php (usunięte)
+- migracyjny flow w admin/js/go4taste-ads-admin.js (usunięty)
+
 ## Weryfikacja
 
 - Brak błędów statycznych/kompilacyjnych w zmienionych plikach.
@@ -125,6 +139,7 @@ Dodatkowo:
 - Hook kompatybilności g4taste_product_ads_sidebar_regular_widget_product_id_function_loaded jest emitowany z feature slice.
 - add_meta_boxes/save_post/wp_ajax_g4t_fetch_product_preview są rejestrowane w feature slice promoted-product-metabox.
 - wp_ajax_g4t_sync_* są rejestrowane w feature slice product-catalog-sync.
+- Brak referencji runtime do go4taste_update_product_ids i g4t_migration_*.
 
 ## Wpływ i kompatybilność
 
@@ -135,5 +150,5 @@ Dodatkowo:
 
 ## Następne kroki (po tym PR)
 
-- Dalsza migracja kolejnych feature slices (np. legacy-shortcode-migration).
+- Dalsza migracja kolejnych feature slices (bez legacy-shortcode-migration, bo flow został wygaszony po jednorazowym użyciu).
 - Stopniowe wygaszanie legacy orchestratora po wydzieleniu pozostałych obszarów.
