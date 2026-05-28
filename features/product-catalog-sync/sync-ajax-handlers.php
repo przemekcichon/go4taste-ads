@@ -50,11 +50,11 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_start' ) ) {
 			wp_send_json_error( array( 'message' => 'Missing API settings.' ), 400 );
 		}
 
-		if ( ! class_exists( 'Go4Taste_Ads_API_Fetcher' ) ) {
-			require_once dirname( __DIR__, 2 ) . '/includes/class-go4taste-ads-api-fetcher.php';
+		$api_fetcher = g4t_core_get_api_fetcher();
+		if ( ! $api_fetcher ) {
+			wp_send_json_error( array( 'message' => 'API fetcher is unavailable.' ), 500 );
 		}
 
-		$api_fetcher = new Go4Taste_Ads_API_Fetcher();
 		$product_ids = $api_fetcher->fetch_product_ids_for_sync( $api_type, $p_value, $lang, $api_url, $consumer_key, $consumer_secret );
 
 		if ( empty( $product_ids ) ) {
@@ -135,11 +135,15 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_batch' ) ) {
 			wp_send_json_success( array( 'job' => $job_state, 'done' => true ) );
 		}
 
-		if ( ! class_exists( 'Go4Taste_Ads_API_Fetcher' ) ) {
-			require_once dirname( __DIR__, 2 ) . '/includes/class-go4taste-ads-api-fetcher.php';
+		$api_fetcher = g4t_core_get_api_fetcher();
+		if ( ! $api_fetcher ) {
+			$job_state['status']        = 'failed';
+			$job_state['error_message'] = 'API fetcher is unavailable.';
+			$job_state['updated_at']    = time();
+			set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+			wp_send_json_error( array( 'message' => 'API fetcher is unavailable.', 'job' => $job_state ), 500 );
 		}
 
-		$api_fetcher = new Go4Taste_Ads_API_Fetcher();
 		$products = array();
 
 		foreach ( $ids_batch as $product_id ) {

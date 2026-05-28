@@ -291,6 +291,19 @@ Dodatkowo:
   - bezpieczny fallback (`null`) zamiast fatala
 - Zaktualizowano oba miejsca uzycia fetchera (callback pola + AJAX test uprawnien), aby korzystaly z `get_api_fetcher()` i zwracaly czytelny komunikat bledu zamiast zatrzymania strony
 
+### 21. VSA Phase 8: ujednolicenie ladowania API Fetchera przez core boundary
+
+- Dodano wspolny helper `g4t_core_get_api_fetcher()` w `core/api-client/product-data.php`
+  - centralizuje lazy-load `includes/class-go4taste-ads-api-fetcher.php`
+  - zwraca `Go4Taste_Ads_API_Fetcher|null`
+- `g4t_core_fetch_product_data()` korzysta teraz z `g4t_core_get_api_fetcher()` (bez lokalnej duplikacji)
+- `features/product-catalog-sync/sync-ajax-handlers.php` korzysta z helpera core w `ajax_start` i `ajax_batch`
+  - usunieto duplikowane `class_exists + require_once + new`
+  - dodano kontrolowany blad `500` i status job `failed`, gdy fetcher jest niedostepny
+- `features/admin-settings/settings-page.php` korzysta teraz z helpera core zamiast lokalnej metody `get_api_fetcher()`
+  - usunieto duplikacje ladowania klasy w slice settings
+
 ## Następne kroki (po tym PR)
 
-- Testy integracyjne na serwerze remote (frontend + admin + inline-banner block + WP-CLI)
+- Phase 9: porzadki koncowe dokumentacji i usuniecie pozostalosci po legacy loader flow
+- Phase 10: finalna brama release (lint/build + smoke test + merge readiness)

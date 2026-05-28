@@ -34,6 +34,25 @@ if ( ! function_exists( 'g4t_core_get_sidebar_widget_product_id' ) ) {
 	}
 }
 
+if ( ! function_exists( 'g4t_core_get_api_fetcher' ) ) {
+	/**
+	 * Return API fetcher instance with lazy class loading.
+	 *
+	 * @return Go4Taste_Ads_API_Fetcher|null
+	 */
+	function g4t_core_get_api_fetcher() {
+		if ( ! class_exists( 'Go4Taste_Ads_API_Fetcher' ) ) {
+			require_once dirname( __DIR__, 2 ) . '/includes/class-go4taste-ads-api-fetcher.php';
+		}
+
+		if ( ! class_exists( 'Go4Taste_Ads_API_Fetcher' ) ) {
+			return null;
+		}
+
+		return new Go4Taste_Ads_API_Fetcher();
+	}
+}
+
 if ( ! function_exists( 'g4t_core_fetch_product_data' ) ) {
 	/**
 	 * Fetch product data using shared API fetcher.
@@ -48,11 +67,10 @@ if ( ! function_exists( 'g4t_core_fetch_product_data' ) ) {
 			return false;
 		}
 
-		if ( ! class_exists( 'Go4Taste_Ads_API_Fetcher' ) ) {
-			require_once dirname( __DIR__, 2 ) . '/includes/class-go4taste-ads-api-fetcher.php';
+		$api_fetcher = g4t_core_get_api_fetcher();
+		if ( ! $api_fetcher ) {
+			return false;
 		}
-
-		$api_fetcher = new Go4Taste_Ads_API_Fetcher();
 		$p_value    = isset( $options['p_parameter_value'] ) ? (string) $options['p_parameter_value'] : '';
 		$lang       = isset( $options['prestashop_lang'] ) ? (string) $options['prestashop_lang'] : 'en';
 		$api_type   = isset( $options['api_type'] ) ? (string) $options['api_type'] : 'prestashop_1_5';

@@ -9,24 +9,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Go4Taste_Ads_Admin_Settings {
 	/**
-	 * Return API fetcher instance with lazy class loading.
-	 *
-	 * @since 1.2.0
-	 * @return Go4Taste_Ads_API_Fetcher|null
-	 */
-	private function get_api_fetcher() {
-		if ( ! class_exists( 'Go4Taste_Ads_API_Fetcher' ) ) {
-			require_once dirname( __DIR__, 2 ) . '/includes/class-go4taste-ads-api-fetcher.php';
-		}
-
-		if ( ! class_exists( 'Go4Taste_Ads_API_Fetcher' ) ) {
-			return null;
-		}
-
-		return new Go4Taste_Ads_API_Fetcher();
-	}
-
-	/**
 	 * Render permissions report HTML for admin settings panel.
 	 *
 	 * @since 1.2.0
@@ -95,7 +77,7 @@ class Go4Taste_Ads_Admin_Settings {
 			wp_send_json_error( array( 'message' => 'Uzupelnij API URL i zapisz klucz Webservice.' ), 400 );
 		}
 
-		$api_fetcher = $this->get_api_fetcher();
+		$api_fetcher = g4t_core_get_api_fetcher();
 		if ( ! $api_fetcher ) {
 			wp_send_json_error( array( 'message' => 'Brak klasy API fetchera. Sprawdz logi pluginu.' ), 500 );
 		}
@@ -331,7 +313,7 @@ class Go4Taste_Ads_Admin_Settings {
 		$permissions_report_html = '';
 
 		if ( 'prestashop_webservice_api' === $api_type && '' !== trim( (string) $api_url ) && '' !== trim( (string) $stored_key ) ) {
-			$api_fetcher = $this->get_api_fetcher();
+			$api_fetcher = g4t_core_get_api_fetcher();
 			if ( $api_fetcher ) {
 				$cached_report           = $api_fetcher->get_cached_prestashop_webservice_permissions_report( $api_url, $stored_key, $tax_country_iso );
 				$permissions_report_html = $this->render_prestashop_permissions_report_html( $cached_report );
