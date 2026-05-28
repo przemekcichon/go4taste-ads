@@ -56,10 +56,12 @@ if ( ! function_exists( 'g4t_inline_banner_register_block_type' ) ) {
 
 		wp_localize_script(
 			$editor_handle,
-			'g4tAdsInlineBannerConfig',
+			'g4tAdsBlockData',
 			array(
-				'algoliaAppId'  => $options['algolia_app_id'] ?? '',
-				'maxProducts'   => $max_products,
+				'algoliaAppId'     => isset( $options['algolia_app_id'] ) ? esc_attr( $options['algolia_app_id'] ) : '',
+				'algoliaSearchKey' => isset( $options['algolia_api_key'] ) ? esc_attr( $options['algolia_api_key'] ) : '',
+				'algoliaIndexName' => 'go4taste_product_list',
+				'maxProducts'      => $max_products,
 			)
 		);
 
