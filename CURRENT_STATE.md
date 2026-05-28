@@ -85,4 +85,5 @@ Konsumenci:
 
 Migracja do feature-first VSA dla runtime hook ownership jest zakonczona.
 Asset ownership zostal rozdzielony per feature (sidebar/admin-settings/metabox preview), bez wspolnych bucket slices.
-Pozostaje finalna brama release (Phase 10): lint/build + smoke test + merge readiness.
+Statyczna czesc finalnej bramy release (Phase 10) jest zakonczona: lint/build/diagnostyka OK.
+Pozostaje manual smoke test (WP Admin + frontend) dla final merge readiness.

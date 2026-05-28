@@ -366,6 +366,13 @@ Dodatkowo:
 
 - Algolia skrypty dla metabox preview zostaly przeniesione do ownership slice `promoted-product-metabox` (admin enqueue tylko na ekranach edycji posta)
 
+### 26. Phase 10 release gate: walidacja statyczna domknieta
+
+- Potwierdzono czysty working tree po cleanupie lokalnych artefaktow (`build/`, `src/`)
+- PHP lint: `OK` dla calego pluginu
+- Build bloku: `npm run build` zakonczony sukcesem (webpack compiled successfully)
+- Diagnostyka edytora: brak bledow
+
 ## Następne kroki (po tym PR)
 
-- Phase 10: finalna brama release (lint/build + smoke test + merge readiness)
+- Manual smoke test w WP Admin i na froncie (final merge readiness)
