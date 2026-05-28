@@ -1,332 +1,88 @@
 # CURRENT_STATE
 
-Surowy audyt aktualnej architektury pluginu go4taste-ads. Bez propozycji zmian VSA i bez refaktoru - tylko stan obecny.
+Aktualny snapshot architektury pluginu go4taste-ads po zakonczeniu migracji VSA (Fazy 1-8).
 
-## 1. Detailed ASCII Directory Tree
+## 1. Runtime ownership (aktualny)
 
-Uwaga: drzewo jest kompletne dla kodu pluginu. Bardzo glebokie struktury zaleznosci zewnetrznych (`vendor`, `.git`) sa pokazane do poziomu wystarczajacego dla audytu architektury.
+1. Entry point: go4taste-ads.php
+- laduje Composer autoload
+- laduje core/bootstrap.php
+- uruchamia g4t_bootstrap_features()
+- nie korzysta z Go4Taste_Ads::get_instance()
 
-```text
-go4taste-ads/
-|-- .gitignore
-|-- go4taste-ads.php
-|-- index.php
-|-- LICENSE.txt
-|-- package.json
-|-- package-lock.json
-|-- PR_DESCRIPTION.md
-|-- README.md
-|-- README.txt
-|-- uninstall.php
-|
-|-- .github/
-|   |-- copilot-instructions.md
-|   |-- agents/
-|   |   |-- go4taste-api-security-reviewer.agent.md
-|   |   |-- go4taste-plugin-auditor.agent.md
-|   |   |-- go4taste-plugin-cleanup.agent.md
-|   |   |-- go4taste-plugin-developer.agent.md
-|   |   |-- go4taste-plugin-reviewer.agent.md
-|   |   |-- go4taste-prestashop-native-api.agent.md
-|   |   `-- go4taste-security-hardening.agent.md
-|   |-- instructions/
-|   |   |-- prestashop-api-price-url-mapping.instructions.md
-|   |   `-- review-first-findings.instructions.md
-|   |-- plugin/
-|   |   `-- plugin.json
-|   `-- skills/
-|       |-- wordpress-router/
-|       |   |-- SKILL.md
-|       |   `-- references/
-|       |-- wp-abilities-api/
-|       |   |-- SKILL.md
-|       |   `-- references/
-|       |-- wp-block-development/
-|       |   |-- SKILL.md
-|       |   |-- references/
-|       |   `-- scripts/
-|       |-- wp-block-themes/
-|       |   |-- SKILL.md
-|       |   |-- references/
-|       |   `-- scripts/
-|       |-- wp-interactivity-api/
-|       |   |-- SKILL.md
-|       |   `-- references/
-|       |-- wp-performance/
-|       |   |-- SKILL.md
-|       |   |-- references/
-|       |   `-- scripts/
-|       |-- wp-phpstan/
-|       |   |-- SKILL.md
-|       |   |-- references/
-|       |   `-- scripts/
-|       |-- wp-playground/
-|       |   |-- SKILL.md
-|       |   `-- references/
-|       |-- wp-plugin-development/
-|       |   |-- SKILL.md
-|       |   |-- references/
-|       |   `-- scripts/
-|       |-- wp-project-triage/
-|       |   |-- SKILL.md
-|       |   |-- references/
-|       |   `-- scripts/
-|       |-- wp-rest-api/
-|       |   |-- SKILL.md
-|       |   `-- references/
-|       |-- wp-wpcli-and-ops/
-|       |   |-- SKILL.md
-|       |   |-- references/
-|       |   `-- scripts/
-|       `-- wpds/
-|           `-- SKILL.md
-|
-|-- admin/
-|   |-- class-go4taste-ads-admin.php
-|   |-- class-go4taste-ads-sidebar-regular-widget.php
-|   |-- index.php
-|   |-- css/
-|   |   `-- go4taste-ads-admin.css
-|   `-- js/
-|       `-- go4taste-ads-admin.js
-|
-|-- build/
-|   `-- blocks/
-|       `-- inline-banner/
-|           |-- block.json
-|           |-- index.asset.php
-|           |-- index.css
-|           |-- index.js
-|           |-- render.php
-|           |-- style-index.css
-|           |-- view.asset.php
-|           `-- view.js
-|
-|-- includes/
-|   |-- class-go4taste-ads-activator.php
-|   |-- class-go4taste-ads-api-fetcher.php
-|   |-- class-go4taste-ads-deactivator.php
-|   |-- class-go4taste-ads-i18n.php
-|   |-- class-go4taste-ads-loader.php
-|   |-- class-go4taste-ads-wp-cli-command.php
-|   |-- class-go4taste-ads.php
-|   `-- index.php
-|
-|-- languages/
-|   `-- go4taste-ads.pot
-|
-|-- public/
-|   |-- class-go4taste-ads-public.php
-|   |-- index.php
-|   |-- css/
-|   |   `-- go4taste-ads-public.css
-|   `-- partials/
-|       `-- go4taste-ads-sidebar-regular-widget-public-display.php
-|
-|-- src/
-|   `-- blocks/
-|       `-- inline-banner/
-|           |-- block.json
-|           |-- edit.js
-|           |-- editor.css
-|           |-- index.js
-|           |-- render.php
-|           |-- style.css
-|           |-- view.js
-|           `-- components/
-|               |-- AlgoliaProductSearch.js
-|               `-- ProductPreview.js
-|
-|-- vendor/
-|   |-- autoload.php
-|   |-- bin/
-|   |   |-- algolia-doctor
-|   |   `-- algolia-doctor.bat
-|   |-- composer/
-|   |   |-- ClassLoader.php
-|   |   |-- InstalledVersions.php
-|   |   |-- autoload_classmap.php
-|   |   |-- autoload_files.php
-|   |   |-- autoload_namespaces.php
-|   |   |-- autoload_psr4.php
-|   |   |-- autoload_real.php
-|   |   |-- autoload_static.php
-|   |   |-- installed.json
-|   |   |-- installed.php
-|   |   |-- LICENSE
-|   |   `-- platform_check.php
-|   |-- algolia/
-|   |   `-- algoliasearch-client-php/
-|   |       |-- autoload.php
-|   |       |-- src/
-|   |       |-- bin/
-|   |       |-- LICENSE
-|   |       `-- SECURITY.md
-|   `-- psr/
-|       |-- http-message/
-|       |   |-- src/
-|       |   |-- docs/
-|       |   |-- README.md
-|       |   `-- LICENSE
-|       |-- log/
-|       |   |-- Psr/
-|       |   `-- README.md
-|       `-- simple-cache/
-|           |-- src/
-|           `-- README.md
-|
-`-- .git/
-		|-- HEAD
-		|-- config
-		|-- index
-		|-- packed-refs
-		|-- refs/
-		|-- logs/
-		|-- objects/
-		`-- hooks/
-```
+2. Core boundaries: core/
+- core/api-client/product-data.php
+- core/i18n/index.php
+- core/i18n/loader.php
 
-### Tests and QA assets (actual state)
+3. Feature slices: features/
+- features/public-assets
+- features/admin-assets
+- features/admin-settings
+- features/legacy-sidebar-widget
+- features/promoted-product-metabox
+- features/product-catalog-sync
+- features/inline-banner-block
+- features/ga4-tracking
 
-- Brak plugin-owned test suite (`tests`, `__tests__`, `phpunit.xml`, `jest.config`, `playwright.config` - nie znaleziono).
-- Jedyne pliki testowe pochodza z zaleznosci (`vendor/psr/log/.../Test/*`) i nie testuja pluginu.
+4. Legacy classes usuniete z runtime orchestracji
+- includes/class-go4taste-ads.php
+- includes/class-go4taste-ads-loader.php
+- public/class-go4taste-ads-public.php
 
-## 2. Core Business Features Actually Delivered
+## 2. Hook strategy (aktualny)
 
-To, co plugin realnie daje dzisiaj:
+Hooki sa rejestrowane feature-local, bez centralnego loadera:
 
-1. **Inline Banner Gutenberg block** (`go4taste-ads/inline-banner`)
-- Wybieranie i wyswietlanie produktow inline w tresci.
-- Atrybuty layoutu mobilnego (`column`, `carousel`, `single`) i stylowania kart/przyciskow.
-- SSR render callback z mozliwoscia override szablonu przez motyw.
+- admin_enqueue_scripts: features/admin-assets/index.php
+- admin_menu, admin_init, wp_ajax_g4t_test_prestashop_permissions: features/admin-settings/index.php
+- widgets_init, plugins_loaded: features/legacy-sidebar-widget/index.php
+- add_meta_boxes, save_post, wp_ajax_g4t_fetch_product_preview, admin_enqueue_scripts: features/promoted-product-metabox/index.php
+- wp_ajax_g4t_sync_start, wp_ajax_g4t_sync_batch, wp_ajax_g4t_sync_status, wp_ajax_g4t_sync_unlock: features/product-catalog-sync/index.php
+- init, wp_theme_json_data_theme: features/inline-banner-block/index.php
+- wp_enqueue_scripts: features/public-assets/index.php
+- plugins_loaded (textdomain): core/i18n/index.php
 
-2. **Sidebar product widget (legacy)**
-- Klasyczny `WP_Widget` dla promowania produktu w sidebarze.
-- Widget jest oznaczony jako przestarzaly i sugeruje uzycie bloku.
+## 3. Block ownership (aktualny)
 
-3. **Post-level promoted product meta box**
-- Metabox na `post`, wybor produktu przez Algolia search.
-- Zapis product ID do post meta.
+Inline banner block jest w pelni co-located w feature slice:
 
-4. **Admin settings page**
-- Konfiguracja zrodla API (PrestaShop/WooCommerce), URL-i, kluczy, jezyka, fallback product ID.
-- Konfiguracja Algolia (`app_id`, `api_key`) oraz cache/GA4 toggle.
+- Source: features/inline-banner-block/src/
+- Build: features/inline-banner-block/build/
+- Registration + render callback: features/inline-banner-block/render.php
 
-5. **PrestaShop/WooCommerce API integration + Algolia sync**
-- Pobieranie danych produktow z API.
-- Batch sync produktow do indeksu Algolia.
+npm scripts:
+- npm run build -> wp-scripts build --webpack-src-dir=features/inline-banner-block/src --output-path=features/inline-banner-block/build
+- npm run start -> wp-scripts start --webpack-src-dir=features/inline-banner-block/src --output-path=features/inline-banner-block/build
 
-6. **Legacy migration tools**
-- Migracja starych shortcode bannerow (`prestashop_*`) do bloku inline-banner.
-- Tryb dry-run, batch processing, status/progress przez AJAX.
+## 4. API fetcher loading strategy
 
-7. **WP-CLI utility**
-- Komenda do aktualizacji meta product ID z shortcode (`wp go4taste update_product_ids`).
+Jedno miejsce ladowania klasy fetchera:
 
-8. **GA4 dataLayer event for promotion views**
-- Opcjonalne `view_promotion` push podczas renderu inline-banner.
+- g4t_core_get_api_fetcher() w core/api-client/product-data.php
 
-## 3. Architectural Breakdown (PHP, JS/CSS, Tests)
+Konsumenci:
+- g4t_core_fetch_product_data()
+- features/product-catalog-sync/sync-ajax-handlers.php
+- features/admin-settings/settings-page.php
 
-### PHP logic location
+## 5. Delivered business features
 
-- **Bootstrap + lifecycle**: `go4taste-ads.php`
-- **Core orchestrator + hook wiring**: `includes/class-go4taste-ads.php`
-- **Hook loader abstraction**: `includes/class-go4taste-ads-loader.php`
-- **Admin runtime (UI + AJAX + migration + sync + settings + metabox)**: `admin/class-go4taste-ads-admin.php`
-- **Public runtime**: `public/class-go4taste-ads-public.php`
-- **Data/API integration**: `includes/class-go4taste-ads-api-fetcher.php`
-- **WP-CLI command**: `includes/class-go4taste-ads-wp-cli-command.php`
-- **Widget**: `admin/class-go4taste-ads-sidebar-regular-widget.php`
+1. Inline banner Gutenberg block (SSR + theme template override)
+2. Legacy sidebar widget (compat mode)
+3. Promoted product metabox + preview AJAX
+4. Admin settings page + API permissions test
+5. Product catalog sync do Algolia (async AJAX)
+6. PrestaShop/WooCommerce integrations
+7. GA4 view_promotion payload for inline banner
+8. WP-CLI command: wp go4taste update_product_ids
 
-### JS/CSS assets location
+## 6. Known gaps
 
-- **Admin CSS/JS**: `admin/css/go4taste-ads-admin.css`, `admin/js/go4taste-ads-admin.js`
-- **Public CSS**: `public/css/go4taste-ads-public.css`
-- **Block source assets**: `src/blocks/inline-banner/*`
-- **Compiled block assets**: `build/blocks/inline-banner/*`
+1. Brak plugin-owned automated test suite (PHP/JS).
+2. Duza odpowiedzialnosc pozostaje w includes/class-go4taste-ads-api-fetcher.php (kandydat do dalszej dekompozycji po release).
 
-### Tests location
+## 7. Summary
 
-- **Brak testow pluginu** (PHP unit/integration i JS unit/e2e).
-
-### Co-location vs horizontal layers
-
-**Wniosek: architektura jest horyzontalna (technical-layer based), nie feature-sliced.**
-
-- Rozklad katalogow: `admin`, `public`, `includes`, `src`, `build`.
-- Feature'y biznesowe (migracja, sync, metabox, settings, preview) sa upchniete glownie w jednej klasie admin.
-- Block ma osobny pipeline (`src` -> `build`), ale reszta pluginu nie jest organizowana per feature slice.
-
-## 4. Hook Strategy
-
-### Jak hooki sa rejestrowane
-
-Hook strategy jest **scentralizowana**.
-
-- Entry point: `go4taste-ads.php` wywoluje `Go4Taste_Ads::get_instance()->run()`.
-- `Go4Taste_Ads` buduje zestawy hookow w metodach:
-	- `define_admin_hooks()`
-	- `define_public_hooks()`
-	- `define_block_hooks()`
-- Rejestracje trafiaja do `Go4Taste_Ads_Loader` (`add_action`, `add_filter`).
-- Finalne `add_action`/`add_filter` odpala dopiero `Go4Taste_Ads_Loader::run()`.
-
-### Czy jest central orchestrator czy scattering
-
-- **Tak, jest central orchestrator**: `includes/class-go4taste-ads.php`.
-- **Nie ma istotnego scattering hookow po wielu plikach** - wiring siedzi centralnie.
-- Logika callbackow jest jednak ciezka i skondensowana glownie w klasie admin/API.
-
-### Najwazniejsze zarejestrowane hook groups
-
-- `plugins_loaded` (i18n, helper init)
-- `admin_enqueue_scripts`, `wp_enqueue_scripts`
-- `add_meta_boxes`, `save_post`
-- `widgets_init`
-- `admin_menu`, `admin_init`
-- wiele `wp_ajax_*` (preview, migration, sync, permissions)
-- `init` (register blocks)
-- `wp_theme_json_data_theme` (border settings)
-
-## 5. Data Strategy (CPT, Taxonomies, Custom Fields)
-
-### CPT
-
-- **Brak** `register_post_type()` w plugin-owned kodzie.
-
-### Taxonomies
-
-- **Brak** `register_taxonomy()` w plugin-owned kodzie.
-
-### Custom Fields / ACF
-
-- **Brak ACF registrations** (`acf_add_local_field_group()` nie wystepuje).
-- Plugin używa klasycznego **meta box + post meta**.
-
-### Co plugin rejestruje i jak przechowuje dane
-
-1. **Meta box** na `post` + zapis product ID do post meta:
-- `_g4t_a_sidebar_regular_widget_ps_product_id`
-
-2. **Settings API option bucket**:
-- `go4taste_ads_options` (serialized array)
-
-3. **Transient-based async job state**:
-- migration i sync status/progress/locks w transientach
-
-4. **External data sources**:
-- PrestaShop API
-- WooCommerce API
-- Algolia index jako storage/search layer dla product lookup
-
-5. **Brak plugin-owned DB schema**:
-- Brak custom tables, brak migration layer dla schematu danych.
-
-## Brutally Honest Snapshot
-
-- Architektura jest uporzadkowana pod katem bootstrapa i hook wiringu, ale nadal klasycznie horyzontalna.
-- Runtime biznesowy jest skoncentrowany glownie w 2 duzych klasach (`Admin`, `API_Fetcher`).
-- Block jest nowoczesny (block.json + src/build), ale reszta pluginu ma starszy, proceduralno-adminowy charakter.
-- Brak testow pluginu to najwieksza luka techniczna w obecnym stanie.
-
+Migracja do feature-first VSA dla runtime hook ownership jest zakonczona.
+Pozostaje finalna brama release (Phase 10): lint/build + smoke test + merge readiness.

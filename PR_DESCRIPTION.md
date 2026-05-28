@@ -303,7 +303,15 @@ Dodatkowo:
 - `features/admin-settings/settings-page.php` korzysta teraz z helpera core zamiast lokalnej metody `get_api_fetcher()`
   - usunieto duplikacje ladowania klasy w slice settings
 
+### 22. VSA Phase 9: porzadki koncowe dokumentacji po usunieciu legacy loader flow
+
+- Zaktualizowano `CURRENT_STATE.md` do aktualnej architektury po Fazach 1-8
+  - usunieto nieaktualne odniesienia do `includes/class-go4taste-ads.php`, `includes/class-go4taste-ads-loader.php`, `public/class-go4taste-ads-public.php`
+  - opisano aktualny feature-first runtime i ownership hookow
+- Przepisano `VSA_FULL_MIGRATION_PLAN_NEXT.md` do postaci `Completion + Release Gate` zamiast planu migracji pre-Phase 6
+  - status: migracja VSA zakonczona przez Fazy 1-8
+  - pozostawiono tylko checklist do finalnej bramy release
+
 ## Następne kroki (po tym PR)
 
-- Phase 9: porzadki koncowe dokumentacji i usuniecie pozostalosci po legacy loader flow
 - Phase 10: finalna brama release (lint/build + smoke test + merge readiness)
