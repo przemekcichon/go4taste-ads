@@ -67,12 +67,6 @@ register_deactivation_hook( __FILE__, 'deactivate_go4taste_ads' );
 require_once plugin_dir_path( __FILE__ ) . 'vendor/autoload.php';
 
 /**
- * The core plugin class that is used to define internationalization,
- * admin-specific hooks, and public-facing site hooks.
- */
-require plugin_dir_path( __FILE__ ) . 'includes/class-go4taste-ads.php';
-
-/**
  * Feature bootstrap registry.
  */
 require_once plugin_dir_path( __FILE__ ) . 'core/bootstrap.php';
@@ -82,19 +76,3 @@ require_once plugin_dir_path( __FILE__ ) . 'core/bootstrap.php';
  */
 g4t_bootstrap_features();
 
-/**
- * Begins execution of the plugin.
- *
- * Since everything within the plugin is registered via hooks,
- * then kicking off the plugin from this point in the file does
- * not affect the page life cycle.
- *
- * @since    1.0.0
- */
-function run_go4taste_ads() {
-
-	$plugin = Go4Taste_Ads::get_instance();
-	$plugin->run();
-
-}
-run_go4taste_ads();

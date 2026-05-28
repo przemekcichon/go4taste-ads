@@ -272,6 +272,17 @@ Dodatkowo:
   - `npm run start` -> `wp-scripts start --webpack-src-dir=features/inline-banner-block/src --output-path=features/inline-banner-block/build`
 - Efekt: pelna co-lokacja PHP + JS/CSS + block assets dla inline-banner w jednym feature folderze
 
+### 19. VSA Phase 6: finalny cleanup orchestratora i central hook loadera
+
+- Entry point `go4taste-ads.php` nie uruchamia juz `Go4Taste_Ads::get_instance()->run()`
+- Usunieto legacy orchestrator i centralny loader:
+  - `includes/class-go4taste-ads.php`
+  - `includes/class-go4taste-ads-loader.php`
+  - `public/class-go4taste-ads-public.php`
+- Dodano feature slice `features/public-assets/index.php` jako nowego wlasciciela hooka `wp_enqueue_scripts` dla frontowego CSS pluginu
+- Przeniesiono ladowanie komendy WP-CLI do `core/bootstrap.php` (conditional include przy `WP_CLI`), aby zachowac dotychczasowa funkcjonalnosc CLI bez zaleznosci od orchestratora
+- Weryfikacja: brak referencji do `Go4Taste_Ads::get_instance` i `Go4Taste_Ads_Loader` w kodzie wykonywanym pluginu
+
 ## Następne kroki (po tym PR)
 
-- Phase 6: finalny cleanup orchestratora `includes/class-go4taste-ads.php`
+- Testy integracyjne na serwerze remote (frontend + admin + inline-banner block + WP-CLI)
