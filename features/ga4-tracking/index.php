@@ -28,7 +28,7 @@ require_once plugin_dir_path( __FILE__ ) . 'payload-builder.php';
 if ( ! function_exists( 'g4t_ga4_tracking_init_hooks' ) ) {
 	function g4t_ga4_tracking_init_hooks() {
 
-		// Hooks will be registered by consuming features (inline-banner-block, etc.)
+		// Hooks will be registered by consuming features (banner-inline-block, etc.)
 		// This module provides payload building and event schema helpers.
 
 	}

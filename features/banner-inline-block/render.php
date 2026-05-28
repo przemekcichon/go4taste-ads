@@ -6,7 +6,7 @@
  * Handles block registration, rendering callback, and theme.json border support.
  *
  * @package    Go4Taste_Ads
- * @subpackage Go4Taste_Ads/features/inline-banner-block
+ * @subpackage Go4Taste_Ads/features/banner-inline-block
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
