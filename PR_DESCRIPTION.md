@@ -283,6 +283,14 @@ Dodatkowo:
 - Przeniesiono ladowanie komendy WP-CLI do `core/bootstrap.php` (conditional include przy `WP_CLI`), aby zachowac dotychczasowa funkcjonalnosc CLI bez zaleznosci od orchestratora
 - Weryfikacja: brak referencji do `Go4Taste_Ads::get_instance` i `Go4Taste_Ads_Loader` w kodzie wykonywanym pluginu
 
+### 20. Hotfix po Phase 6: brak klasy `Go4Taste_Ads_API_Fetcher` na ekranie ustawien
+
+- Naprawiono krytyczny blad na stronie opcji przy polu "Prestashop Webservice API Key"
+- W `features/admin-settings/settings-page.php` dodano lazy-loader `get_api_fetcher()`:
+  - `require_once includes/class-go4taste-ads-api-fetcher.php` gdy klasa nie jest jeszcze zaladowana
+  - bezpieczny fallback (`null`) zamiast fatala
+- Zaktualizowano oba miejsca uzycia fetchera (callback pola + AJAX test uprawnien), aby korzystaly z `get_api_fetcher()` i zwracaly czytelny komunikat bledu zamiast zatrzymania strony
+
 ## Następne kroki (po tym PR)
 
 - Testy integracyjne na serwerze remote (frontend + admin + inline-banner block + WP-CLI)
