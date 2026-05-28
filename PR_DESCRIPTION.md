@@ -7,6 +7,12 @@
 Ujednolicamy nazewnictwo feature slices i odchodzimy od nazwy `legacy-sidebar-widget`.
 Zakres jest celowo kosmetyczny: rename sciezek i referencji bez zmiany publicznego kontraktu bloku oraz bez zmian zachowania runtime.
 
+## TL;DR dla reviewera
+
+- To jest rename-only PR dla nazw slice'ow (`inline-banner` i `sidebar widget`) + aktualizacja referencji.
+- Nie ma zmian logiki biznesowej ani kontraktu bloku `go4taste-ads/inline-banner`.
+- Build i lint sa zielone; stare katalogi po rename nie odtworzyly sie.
+
 ## Zakres zmian
 
 ### 1. Rename folderow feature slices (zachowanie historii przez `git mv`)
