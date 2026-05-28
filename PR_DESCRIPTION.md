@@ -211,7 +211,41 @@ Orchestrator zachowuje tylko odpowiedzialności core (locale/public/block), a ho
 - Legacy include paths shimów zostały usunięte po potwierdzeniu braku regresji.
 - Funkcjonalność widgetu, metaboxu, syncu, ustawień i admin assets pozostaje zachowana, ale logika i hooki zostały przeniesione do vertical slices.
 
+### 14. VSA Phase 1: scaffolding granic dla i18n, inline-banner-block, ga4-tracking
+
+Dodano trzy nowe moduły bez zmiany zachowania (passive scaffolds):
+
+**core/i18n/**
+- `core/i18n/index.php` — rejestracja hooka `plugins_loaded`
+- `core/i18n/loader.php` — funkcja `g4t_load_plugin_textdomain()`
+
+**features/inline-banner-block/**
+- `features/inline-banner-block/index.php` — rejestracja hooków bloku
+- `features/inline-banner-block/render.php` — `g4t_inline_banner_register_block_type()`, `g4t_inline_banner_render_block()`, `g4t_inline_banner_enable_border_settings()`
+- `features/inline-banner-block/helpers.php` — helpery opcji bloku
+
+**features/ga4-tracking/**
+- `features/ga4-tracking/index.php` — init modułu
+- `features/ga4-tracking/tracking-events.php` — schematy eventów GA4, normalizacja itemów
+- `features/ga4-tracking/payload-builder.php` — budowanie payloadu `view_promotion`, output inline script
+
+Dodatkowo:
+
+- usunięto z `includes/class-go4taste-ads.php`: `set_locale()`, `define_block_hooks()`, `enable_border_settings()`, `register_blocks()`, `render_inline_banner_block()`, dependency `Go4Taste_Ads_i18n`
+- `core/bootstrap.php` ładuje teraz `core/i18n/index.php`, `features/inline-banner-block/index.php`, `features/ga4-tracking/index.php`
+
+**Fix regressji:** przywrócono `g4tAdsBlockData` jako nazwę obiektu `wp_localize_script` oraz brakujące klucze `algoliaSearchKey` i `algoliaIndexName` (zmiana nazwy z Phase 1 zepsuła wyszukiwarkę produktów w block editorze).
+
+### 15. VSA Phase 2: migracja i18n do core/i18n, usunięcie legacy klasy
+
+- Usunięto `includes/class-go4taste-ads-i18n.php` (47 linii martwego kodu)
+- `g4t_load_plugin_textdomain()` w `core/i18n/loader.php` jest teraz jedynym właścicielem ładowania textdomainu
+- Ścieżka do `/languages/` identyczna jak poprzednio (`go4taste-ads/languages/`)
+- Brak zmiany zachowania
+
 ## Następne kroki (po tym PR)
 
-- Dalsza migracja kolejnych feature slices (bez legacy-shortcode-migration, bo flow został wygaszony po jednorazowym użyciu).
-- Stopniowe wygaszanie legacy orchestratora po wydzieleniu pozostałych obszarów.
+- Phase 3: aktywacja `features/inline-banner-block` jako jedynego właściciela rejestracji bloku
+- Phase 4: ekstrakcja logiki GA4 z `build/blocks/inline-banner/render.php` do `features/ga4-tracking/`
+- Phase 5: przeniesienie `src/blocks/inline-banner/` i `build/blocks/inline-banner/` do `features/inline-banner-block/`
+- Phase 6: finalny cleanup orchestratora `includes/class-go4taste-ads.php`
