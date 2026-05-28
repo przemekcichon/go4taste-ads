@@ -243,9 +243,16 @@ Dodatkowo:
 - Ścieżka do `/languages/` identyczna jak poprzednio (`go4taste-ads/languages/`)
 - Brak zmiany zachowania
 
+### 16. VSA Phase 3: usunięcie singletona Go4Taste_Ads z block render template
+
+- Zamieniono `Go4Taste_Ads::get_instance()->fetch_product_data()` na `g4t_core_fetch_product_data()` z core boundary
+- Usunięto zbędne zmienne lokalne `$p_value`, `$lang`, `$api_type`, `$api_url` — core boundary wyciąga je wewnętrznie z `$options`
+- Zmiana zastosowana w `src/blocks/inline-banner/render.php` oraz `build/blocks/inline-banner/render.php`
+- Brak zmiany renderowanego HTML
+- `features/inline-banner-block` jest teraz jedynym właścicielem hooków bloku; template nie ma zależności do orchestratora
+
 ## Następne kroki (po tym PR)
 
-- Phase 3: aktywacja `features/inline-banner-block` jako jedynego właściciela rejestracji bloku
 - Phase 4: ekstrakcja logiki GA4 z `build/blocks/inline-banner/render.php` do `features/ga4-tracking/`
 - Phase 5: przeniesienie `src/blocks/inline-banner/` i `build/blocks/inline-banner/` do `features/inline-banner-block/`
 - Phase 6: finalny cleanup orchestratora `includes/class-go4taste-ads.php`
