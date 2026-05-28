@@ -19,7 +19,7 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_enqueue_preview_styles' ) 
 
 		$plugin_root      = dirname( __DIR__, 2 );
 		$plugin_entry     = $plugin_root . '/go4taste-ads.php';
-		$preview_relative = 'features/promoted-product-metabox/assets/css/go4taste-ads-metabox-preview.css';
+		$preview_relative = 'features/metabox-banner-sidebar-widget/assets/css/go4taste-ads-metabox-preview.css';
 		$preview_url      = plugins_url( $preview_relative, $plugin_entry );
 		$version          = defined( 'GO4TASTE_ADS_VERSION' ) ? GO4TASTE_ADS_VERSION : null;
 

@@ -21,8 +21,8 @@ Aktualny snapshot architektury pluginu go4taste-ads po zakonczeniu migracji VSA 
 3. Feature slices: features/
 - features/admin-settings
 - features/banner-sidebar-widget
-- features/promoted-product-metabox
-- features/product-catalog-sync
+- features/metabox-banner-sidebar-widget
+- features/algolia-product-sync
 - features/banner-inline-block
 - features/ga4-tracking
 
@@ -37,8 +37,8 @@ Hooki sa rejestrowane feature-local, bez centralnego loadera:
 
 - admin_menu, admin_init, wp_ajax_g4t_test_prestashop_permissions, admin_enqueue_scripts: features/admin-settings/index.php
 - widgets_init, plugins_loaded, wp_enqueue_scripts: features/banner-sidebar-widget/index.php
-- add_meta_boxes, save_post, wp_ajax_g4t_fetch_product_preview, admin_enqueue_scripts: features/promoted-product-metabox/index.php
-- wp_ajax_g4t_sync_start, wp_ajax_g4t_sync_batch, wp_ajax_g4t_sync_status, wp_ajax_g4t_sync_unlock: features/product-catalog-sync/index.php
+- add_meta_boxes, save_post, wp_ajax_g4t_fetch_product_preview, admin_enqueue_scripts: features/metabox-banner-sidebar-widget/index.php
+- wp_ajax_g4t_sync_start, wp_ajax_g4t_sync_batch, wp_ajax_g4t_sync_status, wp_ajax_g4t_sync_unlock: features/algolia-product-sync/index.php
 - init, wp_theme_json_data_theme: features/banner-inline-block/index.php
 - plugins_loaded (textdomain): core/i18n/index.php
 
@@ -62,7 +62,7 @@ Jedno miejsce ladowania klasy fetchera:
 
 Konsumenci:
 - g4t_core_fetch_product_data()
-- features/product-catalog-sync/sync-ajax-handlers.php
+- features/algolia-product-sync/sync-ajax-handlers.php
 - features/admin-settings/settings-page.php
 
 ## 5. Delivered business features
