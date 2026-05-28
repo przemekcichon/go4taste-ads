@@ -17,7 +17,7 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_enqueue_preview_styles' ) 
 			return;
 		}
 
-		$style_url = plugins_url( 'public/css/go4taste-ads-public.css', dirname( __DIR__, 2 ) . '/go4taste-ads.php' );
+		$style_url = plugins_url( 'features/public-assets/assets/css/go4taste-ads-public.css', dirname( __DIR__, 2 ) . '/go4taste-ads.php' );
 
 		wp_enqueue_style(
 			'go4taste-ads-public',

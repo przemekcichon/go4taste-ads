@@ -312,6 +312,21 @@ Dodatkowo:
   - status: migracja VSA zakonczona przez Fazy 1-8
   - pozostawiono tylko checklist do finalnej bramy release
 
+### 23. Dodatkowy cleanup legacy katalogow i co-location assetow
+
+- Przeniesiono assety admin do feature slice:
+  - `admin/css/go4taste-ads-admin.css` -> `features/admin-assets/assets/css/go4taste-ads-admin.css`
+  - `admin/js/go4taste-ads-admin.js` -> `features/admin-assets/assets/js/go4taste-ads-admin.js`
+- Przeniesiono publiczny CSS do feature slice:
+  - `public/css/go4taste-ads-public.css` -> `features/public-assets/assets/css/go4taste-ads-public.css`
+- Zaktualizowano sciezki enqueue w:
+  - `features/admin-assets/index.php`
+  - `features/public-assets/index.php`
+  - `features/promoted-product-metabox/metabox-registration.php`
+- Usunieto legacy puste szkielety katalogow/pliki placeholder:
+  - `admin/index.php`, `public/index.php`
+  - puste katalogi `admin/`, `public/`, `src/`, `build/`
+
 ## Następne kroki (po tym PR)
 
 - Phase 10: finalna brama release (lint/build + smoke test + merge readiness)

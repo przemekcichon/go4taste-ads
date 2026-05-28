@@ -13,8 +13,8 @@ if ( ! function_exists( 'g4t_admin_assets_enqueue' ) ) {
 	function g4t_admin_assets_enqueue() {
 		$plugin_root         = dirname( __DIR__, 2 );
 		$plugin_entry_file   = $plugin_root . '/go4taste-ads.php';
-		$script_relative     = 'admin/js/go4taste-ads-admin.js';
-		$style_relative      = 'admin/css/go4taste-ads-admin.css';
+		$script_relative     = 'features/admin-assets/assets/js/go4taste-ads-admin.js';
+		$style_relative      = 'features/admin-assets/assets/css/go4taste-ads-admin.css';
 		$admin_script_path   = $plugin_root . '/' . $script_relative;
 		$admin_script_url    = plugins_url( $script_relative, $plugin_entry_file );
 		$admin_style_url     = plugins_url( $style_relative, $plugin_entry_file );

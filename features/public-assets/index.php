@@ -13,7 +13,7 @@ if ( ! function_exists( 'g4t_public_assets_enqueue' ) ) {
 	function g4t_public_assets_enqueue() {
 		$plugin_root       = dirname( __DIR__, 2 );
 		$plugin_entry_file = $plugin_root . '/go4taste-ads.php';
-		$style_relative    = 'public/css/go4taste-ads-public.css';
+		$style_relative    = 'features/public-assets/assets/css/go4taste-ads-public.css';
 		$style_url         = plugins_url( $style_relative, $plugin_entry_file );
 		$plugin_version    = defined( 'GO4TASTE_ADS_VERSION' ) ? GO4TASTE_ADS_VERSION : null;
 
