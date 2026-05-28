@@ -22,6 +22,7 @@ Aktualny snapshot architektury pluginu go4taste-ads po zakonczeniu migracji VSA 
 - features/admin-settings
 - features/banner-sidebar-widget
 - features/metabox-banner-sidebar-widget
+- features/algolia-ad-server
 - features/algolia-product-sync
 - features/banner-inline-block
 - features/ga4-tracking
@@ -38,6 +39,7 @@ Hooki sa rejestrowane feature-local, bez centralnego loadera:
 - admin_menu, admin_init, wp_ajax_g4t_test_prestashop_permissions, admin_enqueue_scripts: features/admin-settings/index.php
 - widgets_init, plugins_loaded, wp_enqueue_scripts: features/banner-sidebar-widget/index.php
 - add_meta_boxes, save_post, wp_ajax_g4t_fetch_product_preview, admin_enqueue_scripts: features/metabox-banner-sidebar-widget/index.php
+- go4taste_ads_get_product_data (filter provider): features/algolia-ad-server/algolia-ad-server.php
 - wp_ajax_g4t_sync_start, wp_ajax_g4t_sync_batch, wp_ajax_g4t_sync_status, wp_ajax_g4t_sync_unlock: features/algolia-product-sync/index.php
 - init, wp_theme_json_data_theme: features/banner-inline-block/index.php
 - plugins_loaded (textdomain): core/i18n/index.php
@@ -72,7 +74,7 @@ Konsumenci:
 3. Promoted product metabox + preview AJAX
 4. Admin settings page + API permissions test
 5. Product catalog sync do Algolia (async AJAX)
-6. PrestaShop/WooCommerce integrations
+6. PrestaShop Webservice API integration
 7. GA4 view_promotion payload for inline banner
 8. Brak aktywnej komendy WP-CLI w runtime pluginu
 

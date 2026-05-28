@@ -23,16 +23,6 @@ class Go4Taste_Ads_Sidebar_Regular_Widget extends WP_Widget {
 	}
 
 	/**
-	 * Get the "p" parameter value from options.
-	 *
-	 * @return string
-	 */
-	public function get_p_parameter_value() {
-		$options = g4t_core_get_ads_options();
-		return isset( $options['p_parameter_value'] ) ? $options['p_parameter_value'] : 'default_value';
-	}
-
-	/**
 	 * Get fallback product ID from options.
 	 *
 	 * @return string

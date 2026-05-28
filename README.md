@@ -1,6 +1,6 @@
 # go4taste-ads
 
-WordPress plugin for promoted product integration via PrestaShop/WooCommerce APIs, featuring an inline Gutenberg block, product sync, and GA4 promotion tracking.
+WordPress plugin for promoted product integration via PrestaShop Webservice API, featuring an inline Gutenberg block, product sync, and GA4 promotion tracking.
 
 ## 🏗️ Architecture Philosophy: True Vertical Slices (VSA)
 
@@ -17,7 +17,7 @@ We prioritize *business features* over *technical layers*. The old God Objects (
 go4taste-ads/
 ├── core/                                    # Shared foundations (Read-Only for Features)
 │   ├── bootstrap.php                        # Initializes the plugin, loads features
-│   ├── api-client/                          # Shared logic for fetching data from Presta/Woo
+│   ├── api-client/                          # Shared logic for fetching data from PrestaShop Webservice API
 │   ├── i18n/                                # Translation loaders
 │   └── lifecycle/                           # Activation/deactivation classes
 │
@@ -35,7 +35,7 @@ go4taste-ads/
 │   │   ├── preview-template.php             # Preview markup
 │   │   └── assets/css/                      # Feature-local metabox preview styles
 │   │
-│   ├── algolia-product-sync/                # Feature: PrestaShop/Woo to Algolia batch sync
+│   ├── algolia-product-sync/                # Feature: PrestaShop Webservice to Algolia batch sync
 │   │   ├── index.php                        # Hook registration for sync feature
 │   │   ├── sync-runner.php                  # Logic for batching and Algolia index updates
 │   │   └── sync-ajax-handlers.php           # AJAX endpoints for sync progress

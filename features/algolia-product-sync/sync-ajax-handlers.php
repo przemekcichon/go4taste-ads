@@ -39,14 +39,10 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_start' ) ) {
 		$batch_size = max( 1, min( 100, $batch_size ) );
 
 		$options         = g4t_core_get_ads_options();
-		$api_type        = isset( $options['api_type'] ) ? sanitize_text_field( (string) $options['api_type'] ) : 'prestashop_1_5';
-		$p_value         = isset( $options['p_parameter_value'] ) ? sanitize_text_field( (string) $options['p_parameter_value'] ) : '';
 		$lang            = isset( $options['prestashop_lang'] ) ? sanitize_text_field( (string) $options['prestashop_lang'] ) : 'pl';
 		$api_url         = isset( $options['api_url'] ) ? esc_url_raw( (string) $options['api_url'] ) : '';
-		$consumer_key    = isset( $options['woocommerce_consumer_key'] ) ? sanitize_text_field( (string) $options['woocommerce_consumer_key'] ) : null;
-		$consumer_secret = isset( $options['woocommerce_consumer_secret'] ) ? sanitize_text_field( (string) $options['woocommerce_consumer_secret'] ) : null;
 
-		if ( '' === trim( $api_type ) || '' === trim( $api_url ) ) {
+		if ( '' === trim( $api_url ) ) {
 			wp_send_json_error( array( 'message' => 'Missing API settings.' ), 400 );
 		}
 
@@ -55,7 +51,7 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_start' ) ) {
 			wp_send_json_error( array( 'message' => 'API fetcher is unavailable.' ), 500 );
 		}
 
-		$product_ids = $api_fetcher->fetch_product_ids_for_sync( $api_type, $p_value, $lang, $api_url, $consumer_key, $consumer_secret );
+		$product_ids = $api_fetcher->fetch_product_ids_for_sync( $lang, $api_url );
 
 		if ( empty( $product_ids ) ) {
 			wp_send_json_error( array( 'message' => 'No products found for sync.' ), 404 );
@@ -63,8 +59,6 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_start' ) ) {
 
 		$job_state = array(
 			'status'      => 'running',
-			'api_type'    => $api_type,
-			'p_value'     => $p_value,
 			'lang'        => $lang,
 			'api_url'     => $api_url,
 			'product_ids' => $product_ids,
@@ -149,9 +143,7 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_batch' ) ) {
 		foreach ( $ids_batch as $product_id ) {
 			$product_data = $api_fetcher->fetch_product_data(
 				$product_id,
-				$job_state['p_value'],
 				$job_state['lang'],
-				$job_state['api_type'],
 				$job_state['api_url']
 			);
 

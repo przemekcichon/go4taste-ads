@@ -71,15 +71,13 @@ if ( ! function_exists( 'g4t_core_fetch_product_data' ) ) {
 		if ( ! $api_fetcher ) {
 			return false;
 		}
-		$p_value    = isset( $options['p_parameter_value'] ) ? (string) $options['p_parameter_value'] : '';
-		$lang       = isset( $options['prestashop_lang'] ) ? (string) $options['prestashop_lang'] : 'en';
-		$api_type   = isset( $options['api_type'] ) ? (string) $options['api_type'] : 'prestashop_1_5';
+		$lang       = isset( $options['prestashop_lang'] ) ? (string) $options['prestashop_lang'] : 'pl';
 		$api_url    = isset( $options['api_url'] ) ? (string) $options['api_url'] : '';
 
-		if ( '' === trim( $api_url ) || '' === trim( $api_type ) ) {
+		if ( '' === trim( $api_url ) ) {
 			return false;
 		}
 
-		return $api_fetcher->fetch_product_data( $product_id, $p_value, $lang, $api_type, $api_url );
+		return $api_fetcher->fetch_product_data( $product_id, $lang, $api_url );
 	}
 }

@@ -8,17 +8,17 @@ Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Display product ads in WordPress sidebars with data fetched from PrestaShop, WooCommerce, or custom e-commerce APIs.
+Display product ads in WordPress sidebars with data fetched from PrestaShop Webservice API.
 
 == Description ==
 
-Go4Taste Ads provides a sidebar widget that displays product advertisements fetched from external e-commerce APIs. Products can be selected per-post using an Algolia-powered search interface in the WordPress editor.
+Go4Taste Ads provides a sidebar widget that displays product advertisements fetched from PrestaShop Webservice API. Products can be selected per-post using an Algolia-powered search interface in the WordPress editor.
 
 Features:
 
 * Sidebar widget displaying product image, name, price, and buy link
 * Algolia search integration for product selection in the post editor
-* Multi-API support: PrestaShop 1.4, PrestaShop 1.5, WooCommerce, custom endpoints
+* Data source support: PrestaShop Webservice API
 * Transient caching with configurable TTL
 * WP-CLI commands for bulk product ID updates
 * Internationalization ready
@@ -32,9 +32,10 @@ Features:
 
 == Frequently Asked Questions ==
 
-= Which e-commerce platforms are supported? =
 
-PrestaShop 1.4, PrestaShop 1.5, WooCommerce, and custom API endpoints.
+= Which data source is supported? =
+
+PrestaShop Webservice API.
 
 = How does product selection work? =
 
