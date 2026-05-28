@@ -29,13 +29,13 @@ go4taste-ads/
 │   │   ├── src/                             # Block source (JS/CSS/render template)
 │   │   └── build/                           # Compiled block assets
 │   │
-│   ├── promoted-product-metabox/            # Feature: Post-level metabox for Algolia product search
+│   ├── metabox-banner-sidebar-widget/       # Feature: Post-level metabox for Algolia product search
 │   │   ├── index.php                        # Hook registration for metabox feature
 │   │   ├── metabox-registration.php         # add_meta_boxes, save_post, AJAX preview
 │   │   ├── preview-template.php             # Preview markup
 │   │   └── assets/css/                      # Feature-local metabox preview styles
 │   │
-│   ├── product-catalog-sync/                # Feature: PrestaShop/Woo to Algolia batch sync
+│   ├── algolia-product-sync/                # Feature: PrestaShop/Woo to Algolia batch sync
 │   │   ├── index.php                        # Hook registration for sync feature
 │   │   ├── sync-runner.php                  # Logic for batching and Algolia index updates
 │   │   └── sync-ajax-handlers.php           # AJAX endpoints for sync progress

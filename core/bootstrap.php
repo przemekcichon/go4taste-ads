@@ -19,8 +19,8 @@ if ( ! function_exists( 'g4t_bootstrap_features' ) ) {
 
 		// Feature slices
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/banner-sidebar-widget/index.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/promoted-product-metabox/index.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/product-catalog-sync/index.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/metabox-banner-sidebar-widget/index.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/algolia-product-sync/index.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/admin-settings/index.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/banner-inline-block/index.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/ga4-tracking/index.php';
