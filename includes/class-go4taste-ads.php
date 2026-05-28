@@ -82,9 +82,7 @@ class Go4Taste_Ads{
         $this->version = '1.0.0';
 
         $this->load_dependencies();
-        $this->set_locale();
         $this->define_public_hooks();
-		$this->define_block_hooks();
     }
 
     /**
@@ -109,7 +107,6 @@ class Go4Taste_Ads{
 	 * Include the following files that make up the plugin:
 	 *
 	 * - Go4Taste_Ads_Loader. Orchestrates the hooks of the plugin.
-	 * - Go4Taste_Ads_i18n. Defines internationalization functionality.
 	 * - Go4Taste_Ads_Public. Defines all hooks for the public side of the site.
 	 *
 	 * Create an instance of the loader which will be used to register the hooks
@@ -125,12 +122,6 @@ class Go4Taste_Ads{
 		 * core plugin.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-go4taste-ads-loader.php';
-
-		/**
-		 * The class responsible for defining internationalization functionality
-		 * of the plugin.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-go4taste-ads-i18n.php';
 
 		/**
 		 * The class responsible for defining all actions that occur in the public-facing
@@ -164,23 +155,7 @@ class Go4Taste_Ads{
 	}
 
 	/**
-	 * Define the locale for this plugin for internationalization.
-	 *
-	 * Uses the Go4Taste_Ads_i18n class in order to set the domain and to register the hook
-	 * with WordPress.
-	 *
-	 * @since    1.0.0
-	 * @access   private
-	 */
-	private function set_locale() {
 
-		$plugin_i18n = new Go4Taste_Ads_i18n();
-
-		$this->loader->add_action( 'plugins_loaded', $plugin_i18n, 'load_plugin_textdomain' );
-
-	}
-
-	/**
 	 * Register all of the hooks related to the public-facing functionality
 	 * of the plugin.
 	 *
@@ -195,151 +170,7 @@ class Go4Taste_Ads{
 
 	}
 
-	/**
-	 * Register all of the hooks related to Gutenberg block functionality.
-	 *
-	 * @since    1.2.0
-	 * @access   private
-	 */
-	private function define_block_hooks() {
 
-		if ( ! function_exists( 'register_block_type_from_metadata' ) ) {
-			return;
-		}
-
-		$this->loader->add_action( 'init', $this, 'register_blocks' );
-
-		if ( class_exists( 'WP_Theme_JSON_Data' ) ) {
-			$this->loader->add_filter( 'wp_theme_json_data_theme', $this, 'enable_border_settings' );
-		}
-
-	}
-
-	/**
-	 * Ensure border settings are enabled in theme.json so that
-	 * __experimentalBorder block supports render their controls.
-	 *
-	 * Classic themes (without theme.json) do not opt-in to border
-	 * settings by default, which hides the UI even when a block
-	 * declares support.
-	 *
-	 * @since  1.2.0
-	 * @param  WP_Theme_JSON_Data $theme_json Current theme JSON data.
-	 * @return WP_Theme_JSON_Data
-	 */
-	public function enable_border_settings( $theme_json ) {
-
-		if ( ! is_object( $theme_json ) || ! method_exists( $theme_json, 'update_with' ) ) {
-			return $theme_json;
-		}
-
-		$new_data = array(
-			'version'  => 3,
-			'settings' => array(
-				'border' => array(
-					'color'  => true,
-					'radius' => true,
-					'style'  => true,
-					'width'  => true,
-				),
-			),
-		);
-
-		return $theme_json->update_with( $new_data );
-
-	}
-
-	/**
-	 * Register Gutenberg blocks bundled with this plugin.
-	 *
-	 * @since    1.2.0
-	 */
-	public function register_blocks() {
-
-		if ( ! function_exists( 'register_block_type_from_metadata' ) || ! class_exists( 'WP_Block_Type' ) ) {
-			return;
-		}
-
-		$block_path = plugin_dir_path( dirname( __FILE__ ) ) . 'build/blocks/inline-banner';
-
-		if ( ! file_exists( $block_path . '/block.json' ) ) {
-			return;
-		}
-
-		$block_type = register_block_type_from_metadata(
-			$block_path,
-			array(
-				'render_callback' => array( $this, 'render_inline_banner_block' ),
-			)
-		);
-
-		if ( ! $block_type instanceof WP_Block_Type ) {
-			return;
-		}
-
-		$editor_handle = $block_type->editor_script_handles[0] ?? '';
-		if ( empty( $editor_handle ) ) {
-			return;
-		}
-
-		$options = get_option( 'go4taste_ads_options' );
-		$max_products = intval( apply_filters( 'g4t_ads_inline_banner_max_products', 0 ) );
-		if ( $max_products < 0 ) {
-			$max_products = 0;
-		}
-
-		wp_localize_script(
-			$editor_handle,
-			'g4tAdsBlockData',
-			array(
-				'algoliaAppId'     => isset( $options['algolia_app_id'] ) ? esc_attr( $options['algolia_app_id'] ) : '',
-				'algoliaSearchKey' => isset( $options['algolia_api_key'] ) ? esc_attr( $options['algolia_api_key'] ) : '',
-				'algoliaIndexName' => 'go4taste_product_list',
-				'maxProducts'      => $max_products,
-			)
-		);
-
-	}
-
-	/**
-	 * Render callback for the inline banner block with theme-template override support.
-	 *
-	 * @since 1.2.0
-	 * @param array<string,mixed> $attributes Block attributes.
-	 * @param string              $content    Block content.
-	 * @param WP_Block            $block      Block instance.
-	 * @return string
-	 */
-	public function render_inline_banner_block( $attributes, $content, $block ) {
-
-		$default_template = plugin_dir_path( dirname( __FILE__ ) ) . 'build/blocks/inline-banner/render.php';
-		$theme_template   = locate_template(
-			array(
-				'go4taste-ads/inline-banner.php',
-				'go4taste-ads-inline-banner.php',
-			),
-			false,
-			false
-		);
-
-		$template_path = ! empty( $theme_template ) ? $theme_template : $default_template;
-
-		$template_path = apply_filters( 'g4t_ads_inline_banner_template_path', $template_path, $attributes, $content, $block );
-
-		if ( ! is_string( $template_path ) || '' === $template_path || ! file_exists( $template_path ) ) {
-			$template_path = $default_template;
-		}
-
-		if ( ! file_exists( $template_path ) ) {
-			return '';
-		}
-
-		ob_start();
-		require $template_path;
-
-		return (string) ob_get_clean();
-
-	}
 
 	/**
      * Fetch product data using the API Fetcher class.
