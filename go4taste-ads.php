@@ -39,19 +39,19 @@ define( 'GO4TASTE_ADS_VERSION', '1.1.0' );
 
 /**
  * The code that runs during plugin activation.
- * This action is documented in includes/class-go4taste-ads-activator.php
+ * This action is documented in core/lifecycle/class-go4taste-ads-activator.php
  */
 function activate_go4taste_ads() {
-	require_once plugin_dir_path( __FILE__ ) . 'includes/class-go4taste-ads-activator.php';
+	require_once plugin_dir_path( __FILE__ ) . 'core/lifecycle/class-go4taste-ads-activator.php';
 	Go4Taste_Ads_Activator::activate();
 }
 
 /**
  * The code that runs during plugin deactivation.
- * This action is documented in includes/class-go4taste-ads-deactivator.php
+ * This action is documented in core/lifecycle/class-go4taste-ads-deactivator.php
  */
 function deactivate_go4taste_ads() {
-	require_once plugin_dir_path( __FILE__ ) . 'includes/class-go4taste-ads-deactivator.php';
+	require_once plugin_dir_path( __FILE__ ) . 'core/lifecycle/class-go4taste-ads-deactivator.php';
 	Go4Taste_Ads_Deactivator::deactivate();
 }
 
@@ -67,24 +67,12 @@ register_deactivation_hook( __FILE__, 'deactivate_go4taste_ads' );
 require_once plugin_dir_path( __FILE__ ) . 'vendor/autoload.php';
 
 /**
- * The core plugin class that is used to define internationalization,
- * admin-specific hooks, and public-facing site hooks.
+ * Feature bootstrap registry.
  */
-require plugin_dir_path( __FILE__ ) . 'includes/class-go4taste-ads.php';
+require_once plugin_dir_path( __FILE__ ) . 'core/bootstrap.php';
 
 /**
- * Begins execution of the plugin.
- *
- * Since everything within the plugin is registered via hooks,
- * then kicking off the plugin from this point in the file does
- * not affect the page life cycle.
- *
- * @since    1.0.0
+ * Load shared boundaries and feature slices.
  */
-function run_go4taste_ads() {
+g4t_bootstrap_features();
 
-	$plugin = Go4Taste_Ads::get_instance();
-	$plugin->run();
-
-}
-run_go4taste_ads();

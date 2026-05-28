@@ -1,15 +1,22 @@
-The following instructions are only to be applied when performing a code review.
+# Global Repository Context & Architecture
+This WordPress plugin uses a strict **True Vertical Slices Architecture (VSA)**.
+- **NEVER** suggest code that adds to global orchestrators (e.g., central loader classes).
+- **ALWAYS** co-locate PHP, JS, and CSS in the specific feature folder within `features/`.
+- Features cannot depend on other features. 
+- For heavy refactoring tasks, use the dedicated `@go4taste-plugin-developer` agent (or whatever your VSA agent is named).
+
+---
+
+# Copilot Extensions & AI Config Review Rules
+The following instructions are only to be applied when performing a code review on AI configuration files.
 
 ## README updates
-
 - [ ] The new file should be added to the `docs/README.<type>.md`.
 
 ## Prompt file guide
-
 **Only apply to files that end in `.prompt.md`**
-
 - [ ] The prompt has markdown front matter.
-- [ ] The prompt has a `agent` field specified of either `agent`, `ask`, or `Plan`.
+- [ ] The prompt has an `agent` field specified of either `agent`, `ask`, or `Plan`.
 - [ ] The prompt has a `description` field.
 - [ ] The `description` field is not empty.
 - [ ] The file name is lower case, with words separated by hyphens.
@@ -18,19 +25,15 @@ The following instructions are only to be applied when performing a code review.
 - [ ] Strongly encourage the use of `name` to set the name for the prompt.
 
 ## Instruction file guide
-
 **Only apply to files that end in `.instructions.md`**
-
 - [ ] The instruction has markdown front matter.
 - [ ] The instruction has a `description` field.
 - [ ] The `description` field is not empty.
 - [ ] The file name is lower case, with words separated by hyphens.
-- [ ] The instruction has an `applyTo` field that specifies the file or files to which the instructions apply. If they wish to specify multiple file paths they should formatted like `'**.js, **.ts'`.
+- [ ] The instruction has an `applyTo` field that specifies the file or files to which the instructions apply. If they wish to specify multiple file paths they should be formatted like `'**.js, **.ts'`.
 
 ## Agent file guide
-
 **Only apply to files that end in `.agent.md`**
-
 - [ ] The agent has markdown front matter.
 - [ ] The agent has a `description` field.
 - [ ] The `description` field is not empty.
@@ -40,9 +43,7 @@ The following instructions are only to be applied when performing a code review.
 - [ ] Strongly encourage the use of `name` to set the name for the agent.
 
 ## Agent Skills guide
-
 **Only apply to folders in the `skills/` directory**
-
 - [ ] The skill folder contains a `SKILL.md` file.
 - [ ] The SKILL.md has markdown front matter.
 - [ ] The SKILL.md has a `name` field.
@@ -56,9 +57,7 @@ The following instructions are only to be applied when performing a code review.
 - [ ] Bundled assets are reasonably sized (under 5MB per file).
 
 ## Plugin guide
-
 **Only apply to directories in the `plugins/` directory**
-
 - [ ] The plugin directory contains a `.github/plugin/plugin.json` file.
 - [ ] The plugin directory contains a `README.md` file.
 - [ ] The plugin.json has a `name` field matching the directory name.
