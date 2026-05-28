@@ -22,7 +22,7 @@ go4taste-ads/
 │   └── lifecycle/                           # Activation/deactivation classes
 │
 ├── features/                                # TRUE VERTICAL SLICES (Business Functions)
-│   ├── inline-banner-block/                 # Feature: Gutenberg block for inline products
+│   ├── banner-inline-block/                 # Feature: Gutenberg block for inline products
 │   │   ├── index.php                        # Hook registration for the block feature
 │   │   ├── render.php                       # SSR registration + fallback render wiring
 │   │   ├── helpers.php                      # Feature-local block helpers
@@ -40,7 +40,7 @@ go4taste-ads/
 │   │   ├── sync-runner.php                  # Logic for batching and Algolia index updates
 │   │   └── sync-ajax-handlers.php           # AJAX endpoints for sync progress
 │   │
-│   ├── legacy-sidebar-widget/               # Feature: The old WP_Widget (isolated for easy removal)
+│   ├── banner-sidebar-widget/               # Feature: Sidebar banner widget
 │   │   ├── index.php                        # Hook registration for widget feature
 │   │   ├── widget-class.php
 │   │   ├── widget-template.php
@@ -66,4 +66,4 @@ go4taste-ads/
 1. **Kill the Orchestrator:** Do not use `class-go4taste-ads-loader.php` or `Go4Taste_Ads::get_instance()`. Every feature must call `add_action()` or `add_filter()` directly within its own directory.  
 2. **Do Not Reintroduce God Objects:** Do not reintroduce `class-go4taste-ads-admin.php` or centralize feature logic in one class/file. Keep ownership inside dedicated slices.  
 3. **No Cross-Feature Dependencies:** Features cannot depend on other features. Shared logic must live in `core/` (for example `core/api-client/`).  
-4. **Block Co-location:** Inline banner block source and compiled assets must stay inside `features/inline-banner-block/src` and `features/inline-banner-block/build`.
+4. **Block Co-location:** Inline banner block source and compiled assets must stay inside `features/banner-inline-block/src` and `features/banner-inline-block/build`.

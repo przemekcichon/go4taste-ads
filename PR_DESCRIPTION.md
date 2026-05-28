@@ -1,45 +1,64 @@
-# PR: Follow-up docs alignment after VSA merge
+# PR: Rename feature slices to banner-inline-block and banner-sidebar-widget
 
-**Branch:** chore/vsa-postmerge-pr-description -> main
+**Branch:** chore/rename-banner-slices -> main
 
 ## Motywacja
 
-Po merge PR #2 opis architektury w dokumentacji byl czesciowo niespojny z aktualnym stanem repo.
-Ten PR domyka dokumentacje po migracji VSA i aktualizuje guidance dla agenta developerskiego.
+Ujednolicamy nazewnictwo feature slices i odchodzimy od nazwy `legacy-sidebar-widget`.
+Zakres jest celowo kosmetyczny: rename sciezek i referencji bez zmiany publicznego kontraktu bloku oraz bez zmian zachowania runtime.
 
 ## Zakres zmian
 
-### 1. README: aktualizacja do realnej struktury pluginu
+### 1. Rename folderow feature slices (zachowanie historii przez `git mv`)
 
-Zaktualizowano [README.md](README.md), aby odzwierciedlal aktualny runtime po migracji VSA:
+- `features/inline-banner-block` -> `features/banner-inline-block`
+- `features/legacy-sidebar-widget` -> `features/banner-sidebar-widget`
 
-- sekcja "Current Directory Structure" zamiast "Target Directory Structure"
-- dodane `core/lifecycle`
-- poprawione wpisy dla feature slices (`index.php`, `assets/`, `helpers.php`, `payload-builder.php`)
-- usuniete nieaktualne odniesienia do nieistniejacych elementow (np. `legacy-shortcode-migration`, `metabox-ui.js`, `metabox-style.css`, `options-registration.php`)
-- doprecyzowane hard constraints pod etap utrzymania po migracji
+### 2. Aktualizacja runtime referencji po rename
 
-### 2. Agent developer: aktualizacja kontekstu po migracji
+- `core/bootstrap.php` laduje teraz:
+  - `features/banner-inline-block/index.php`
+  - `features/banner-sidebar-widget/index.php`
+- `features/banner-sidebar-widget/index.php`:
+  - nowe callbacki `g4t_banner_sidebar_widget_*`
+  - poprawiona sciezka assetu do `features/banner-sidebar-widget/assets/css/go4taste-ads-sidebar-widget.css`
 
-Zaktualizowano [.github/agents/go4taste-plugin-developer.agent.md](.github/agents/go4taste-plugin-developer.agent.md):
+### 3. Aktualizacja build pipeline
 
-- mission statement: z "refactor legacy plugin" na utrzymanie i rozwoj w gotowym VSA
-- kontekst: usunieto guidance sugerujacy standardowa prace na `admin/public/includes`
-- doprecyzowano, ze nie nalezy reintrodukowac poziomych runtime layers
+- `package.json`:
+  - `npm run build` i `npm run start` wskazuja `features/banner-inline-block/src` oraz `features/banner-inline-block/build`
 
-## Weryfikacja
+### 4. Usuniecie nazewnictwa legacy w widget feature
 
-- Zmiany obejmuja tylko dokumentacje (`*.md`)
-- Brak zmian w kodzie runtime pluginu
-- Sprawdzono, ze diff wzgledem `main` obejmuje tylko:
-  - [README.md](README.md)
-  - [.github/agents/go4taste-plugin-developer.agent.md](.github/agents/go4taste-plugin-developer.agent.md)
+- `features/banner-sidebar-widget/widget-class.php`:
+  - komentarz klasy bez "Legacy"
+  - label widgetu zmieniony na `G4T Ads Sidebar Banner Widget`
+
+### 5. Aktualizacja dokumentacji i komentarzy technicznych
+
+- `README.md`
+- `CURRENT_STATE.md`
+- `VSA_FULL_MIGRATION_PLAN_NEXT.md`
+- `features/banner-inline-block/{index.php,render.php,helpers.php}` (`@subpackage`)
+- `features/ga4-tracking/index.php` (komentarz cross-feature)
+
+## Weryfikacja (bramki ryzyka)
+
+- Build: `npm run build` -> **OK**
+- PHP lint (caly plugin) -> **OK**
+- Safety grep: brak wystapien `inline-banner-block` i `legacy-sidebar-widget` w runtime/docs operacyjnych (pozostaly tylko kontrolowane wzmianki historyczne w tym PR opisie) -> **OK**
+- Artefakty: brak odtworzonych katalogow:
+  - `features/inline-banner-block`
+  - `features/legacy-sidebar-widget`
+  - root `build/`
+  - root `src/`
 
 ## Wplyw i kompatybilnosc
 
-- Brak wplywu na runtime, API i dane
-- Zmiany poprawiaja onboarding i zmniejszaja ryzyko blednych refaktorow wynikajacych z nieaktualnej dokumentacji
+- Brak zmiany publicznego kontraktu bloku (`go4taste-ads/inline-banner` pozostaje bez zmian)
+- Brak zmian danych i API
+- Zmiana dotyczy nazewnictwa feature slices, sciezek i dokumentacji
 
 ## Release readiness
 
-- READY FOR MERGE (docs-only follow-up)
+- READY FOR MERGE

@@ -4,11 +4,11 @@
 
 Migracja VSA zaplanowana w fazach 1-6 zostala wykonana i rozszerzona do faz 7-9:
 
-1. Phase 1: scaffolding core/i18n + inline-banner-block + ga4-tracking
+1. Phase 1: scaffolding core/i18n + banner-inline-block + ga4-tracking
 2. Phase 2: i18n ownership moved to core/i18n
 3. Phase 3: inline-banner render odciety od Go4Taste_Ads singleton
 4. Phase 4: GA4 extracted from block template to feature slice
-5. Phase 5: block source/build co-located in features/inline-banner-block
+5. Phase 5: block source/build co-located in features/banner-inline-block
 6. Phase 6: legacy orchestrator and central hook loader removed
 7. Phase 7: remote smoke verification confirmed
 8. Phase 8: API fetcher loading unified via core boundary helper

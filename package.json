@@ -3,8 +3,8 @@
   "version": "1.1.0",
   "private": true,
   "scripts": {
-    "build": "wp-scripts build --webpack-src-dir=features/inline-banner-block/src --output-path=features/inline-banner-block/build",
-    "start": "wp-scripts start --webpack-src-dir=features/inline-banner-block/src --output-path=features/inline-banner-block/build"
+    "build": "wp-scripts build --webpack-src-dir=features/banner-inline-block/src --output-path=features/banner-inline-block/build",
+    "start": "wp-scripts start --webpack-src-dir=features/banner-inline-block/src --output-path=features/banner-inline-block/build"
   },
   "devDependencies": {
     "@wordpress/scripts": "^26.0.0"

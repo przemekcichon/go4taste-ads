@@ -5,7 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Legacy sidebar widget kept as a dedicated VSA feature slice.
+ * Sidebar banner widget kept as a dedicated VSA feature slice.
  */
 class Go4Taste_Ads_Sidebar_Regular_Widget extends WP_Widget {
 	/** constructor */
@@ -17,7 +17,7 @@ class Go4Taste_Ads_Sidebar_Regular_Widget extends WP_Widget {
 
 		parent::__construct(
 			'g4t-ads-sidebar-regular-widget',
-			__( '[Przestarzaly] G4T Ads Sidebar Regular Widget - uzyj bloku', 'go4taste-ads' ),
+			__( 'G4T Ads Sidebar Banner Widget', 'go4taste-ads' ),
 			$widget_ops
 		);
 	}

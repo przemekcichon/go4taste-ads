@@ -20,10 +20,10 @@ Aktualny snapshot architektury pluginu go4taste-ads po zakonczeniu migracji VSA 
 
 3. Feature slices: features/
 - features/admin-settings
-- features/legacy-sidebar-widget
+- features/banner-sidebar-widget
 - features/promoted-product-metabox
 - features/product-catalog-sync
-- features/inline-banner-block
+- features/banner-inline-block
 - features/ga4-tracking
 
 4. Legacy classes usuniete z runtime orchestracji
@@ -36,23 +36,23 @@ Aktualny snapshot architektury pluginu go4taste-ads po zakonczeniu migracji VSA 
 Hooki sa rejestrowane feature-local, bez centralnego loadera:
 
 - admin_menu, admin_init, wp_ajax_g4t_test_prestashop_permissions, admin_enqueue_scripts: features/admin-settings/index.php
-- widgets_init, plugins_loaded, wp_enqueue_scripts: features/legacy-sidebar-widget/index.php
+- widgets_init, plugins_loaded, wp_enqueue_scripts: features/banner-sidebar-widget/index.php
 - add_meta_boxes, save_post, wp_ajax_g4t_fetch_product_preview, admin_enqueue_scripts: features/promoted-product-metabox/index.php
 - wp_ajax_g4t_sync_start, wp_ajax_g4t_sync_batch, wp_ajax_g4t_sync_status, wp_ajax_g4t_sync_unlock: features/product-catalog-sync/index.php
-- init, wp_theme_json_data_theme: features/inline-banner-block/index.php
+- init, wp_theme_json_data_theme: features/banner-inline-block/index.php
 - plugins_loaded (textdomain): core/i18n/index.php
 
 ## 3. Block ownership (aktualny)
 
 Inline banner block jest w pelni co-located w feature slice:
 
-- Source: features/inline-banner-block/src/
-- Build: features/inline-banner-block/build/
-- Registration + render callback: features/inline-banner-block/render.php
+- Source: features/banner-inline-block/src/
+- Build: features/banner-inline-block/build/
+- Registration + render callback: features/banner-inline-block/render.php
 
 npm scripts:
-- npm run build -> wp-scripts build --webpack-src-dir=features/inline-banner-block/src --output-path=features/inline-banner-block/build
-- npm run start -> wp-scripts start --webpack-src-dir=features/inline-banner-block/src --output-path=features/inline-banner-block/build
+- npm run build -> wp-scripts build --webpack-src-dir=features/banner-inline-block/src --output-path=features/banner-inline-block/build
+- npm run start -> wp-scripts start --webpack-src-dir=features/banner-inline-block/src --output-path=features/banner-inline-block/build
 
 ## 4. API fetcher loading strategy
 
@@ -68,7 +68,7 @@ Konsumenci:
 ## 5. Delivered business features
 
 1. Inline banner Gutenberg block (SSR + theme template override)
-2. Legacy sidebar widget (compat mode)
+2. Sidebar banner widget (compat mode)
 3. Promoted product metabox + preview AJAX
 4. Admin settings page + API permissions test
 5. Product catalog sync do Algolia (async AJAX)

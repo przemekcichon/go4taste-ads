@@ -7,7 +7,7 @@
  * business logic. These are made available to block templates via require.
  *
  * @package    Go4Taste_Ads
- * @subpackage Go4Taste_Ads/features/inline-banner-block
+ * @subpackage Go4Taste_Ads/features/banner-inline-block
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
