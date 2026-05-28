@@ -26,7 +26,7 @@ if ( ! function_exists( 'g4t_inline_banner_register_block_type' ) ) {
 			return;
 		}
 
-		$block_path = plugin_dir_path( dirname( dirname( __FILE__ ) ) ) . 'build/blocks/inline-banner';
+		$block_path = plugin_dir_path( __FILE__ ) . 'build';
 
 		if ( ! file_exists( $block_path . '/block.json' ) ) {
 			return;
@@ -81,7 +81,7 @@ if ( ! function_exists( 'g4t_inline_banner_render_block' ) ) {
 	 */
 	function g4t_inline_banner_render_block( $attributes, $content, $block ) {
 
-		$default_template = plugin_dir_path( dirname( dirname( __FILE__ ) ) ) . 'build/blocks/inline-banner/render.php';
+		$default_template = plugin_dir_path( __FILE__ ) . 'build/render.php';
 		$theme_template   = locate_template(
 			array(
 				'go4taste-ads/inline-banner.php',

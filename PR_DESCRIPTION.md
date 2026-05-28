@@ -260,7 +260,18 @@ Dodatkowo:
 - Kontrakt eventu GA4 niezmieniony: `event: view_promotion`, `ecommerce.items` z identycznym schematem
 - Zmiana zastosowana w `src/blocks` i `build/blocks` (identyczne szablony)
 
+### 18. VSA Phase 5: co-location artefaktow bloku inline-banner wewnatrz feature slice
+
+- Przeniesiono kod zrodlowy bloku z `src/blocks/inline-banner/` do `features/inline-banner-block/src/`
+- Przeniesiono artefakty build z `build/blocks/inline-banner/` do `features/inline-banner-block/build/`
+- Zaktualizowano `g4t_inline_banner_register_block_type()` i `g4t_inline_banner_render_block()`:
+  - metadata path: `features/inline-banner-block/build/block.json`
+  - fallback template path: `features/inline-banner-block/build/render.php`
+- Zaktualizowano skrypty npm:
+  - `npm run build` -> `wp-scripts build --webpack-src-dir=features/inline-banner-block/src --output-path=features/inline-banner-block/build`
+  - `npm run start` -> `wp-scripts start --webpack-src-dir=features/inline-banner-block/src --output-path=features/inline-banner-block/build`
+- Efekt: pelna co-lokacja PHP + JS/CSS + block assets dla inline-banner w jednym feature folderze
+
 ## Następne kroki (po tym PR)
 
-- Phase 5: przeniesienie `src/blocks/inline-banner/` i `build/blocks/inline-banner/` do `features/inline-banner-block/`
 - Phase 6: finalny cleanup orchestratora `includes/class-go4taste-ads.php`
