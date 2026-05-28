@@ -20,8 +20,7 @@ if ( empty( $products_attr ) ) {
 	return '';
 }
 
-$options  = get_option( 'go4taste_ads_options' );
-$ga4_view_promotion_enabled = ! empty( $options['ga4_view_promotion_datalayer'] );
+$options = get_option( 'go4taste_ads_options' );
 
 $products_data = array();
 foreach ( $products_attr as $product_entry ) {
@@ -154,16 +153,14 @@ $ga4_items = array();
 				$img_height = 180;
 			}
 
-			if ( $ga4_view_promotion_enabled ) {
-				$ga4_items[] = array(
-					'item_id'       => isset( $product_data->id ) ? (string) $product_data->id : '',
-					'item_name'     => isset( $product_data->name ) ? (string) $product_data->name : '',
-					'item_category' => $category_for_ga4,
-					'price'         => is_numeric( $formatted_price ) ? (float) $formatted_price : null,
-					'creative_slot' => 'inline-content',
-					'creative_name' => 'Product Inline Banner',
-				);
-			}
+			$ga4_items[] = array(
+				'item_id'       => isset( $product_data->id ) ? (string) $product_data->id : '',
+				'item_name'     => isset( $product_data->name ) ? (string) $product_data->name : '',
+				'item_category' => $category_for_ga4,
+				'price'         => is_numeric( $formatted_price ) ? (float) $formatted_price : null,
+				'creative_slot' => 'inline-content',
+				'creative_name' => 'Product Inline Banner',
+			);
 		?>
 		<div class="g4t-ads-content"<?php echo $card_style; ?>>
 			<div class="g4t-ads-image">
@@ -201,16 +198,4 @@ $ga4_items = array();
 	</div>
 	<?php endif; ?>
 </div>
-<?php if ( $ga4_view_promotion_enabled && ! empty( $ga4_items ) ) : ?>
-<script>
-	(function() {
-		window.dataLayer = window.dataLayer || [];
-		window.dataLayer.push({
-			event: 'view_promotion',
-			ecommerce: {
-				items: <?php echo wp_json_encode( array_values( $ga4_items ) ); ?>
-			}
-		});
-	})();
-</script>
-<?php endif; ?>
+<?php g4t_ga4_output_view_promotion_script( $ga4_items ); ?>

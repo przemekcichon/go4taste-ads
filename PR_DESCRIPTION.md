@@ -251,8 +251,16 @@ Dodatkowo:
 - Brak zmiany renderowanego HTML
 - `features/inline-banner-block` jest teraz jedynym właścicielem hooków bloku; template nie ma zależności do orchestratora
 
+### 17. VSA Phase 4: ekstrakcja GA4 z block render template do features/ga4-tracking
+
+- Usunięto inline logikę GA4 z `src/blocks/inline-banner/render.php` i `build/blocks/inline-banner/render.php`
+- Usunięto `$ga4_view_promotion_enabled` — decyzja o outputcie przeniesiona do `g4t_ga4_is_tracking_enabled()` w feature slice
+- Usunięto warunek `if ( $ga4_view_promotion_enabled )` w pętli foreach — items zawsze się zbierają, payload-builder sam sprawdza flagę
+- Zastąpiono cały blok `<script>` wywołaniem `g4t_ga4_output_view_promotion_script( $ga4_items )` z `features/ga4-tracking/payload-builder.php`
+- Kontrakt eventu GA4 niezmieniony: `event: view_promotion`, `ecommerce.items` z identycznym schematem
+- Zmiana zastosowana w `src/blocks` i `build/blocks` (identyczne szablony)
+
 ## Następne kroki (po tym PR)
 
-- Phase 4: ekstrakcja logiki GA4 z `build/blocks/inline-banner/render.php` do `features/ga4-tracking/`
 - Phase 5: przeniesienie `src/blocks/inline-banner/` i `build/blocks/inline-banner/` do `features/inline-banner-block/`
 - Phase 6: finalny cleanup orchestratora `includes/class-go4taste-ads.php`
