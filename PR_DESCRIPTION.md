@@ -339,7 +339,7 @@ Dodatkowo:
 - Usunieto runtime WP-CLI command:
   - usuniety plik `includes/class-go4taste-ads-wp-cli-command.php`
   - usuniete ladowanie WP-CLI command z `core/bootstrap.php`
-- Efekt: `includes/` nie zawiera juz aktywnych elementow runtime
+- Usunieto `includes/index.php` i caly katalog `includes/` (brak pozostalosci runtime i placeholderow)
 
 ## Następne kroki (po tym PR)
 
