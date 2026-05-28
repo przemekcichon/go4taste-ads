@@ -12,8 +12,11 @@ Aktualny snapshot architektury pluginu go4taste-ads po zakonczeniu migracji VSA 
 
 2. Core boundaries: core/
 - core/api-client/product-data.php
+- core/api-client/class-go4taste-ads-api-fetcher.php
 - core/i18n/index.php
 - core/i18n/loader.php
+- core/lifecycle/class-go4taste-ads-activator.php
+- core/lifecycle/class-go4taste-ads-deactivator.php
 
 3. Feature slices: features/
 - features/public-assets
@@ -75,12 +78,12 @@ Konsumenci:
 5. Product catalog sync do Algolia (async AJAX)
 6. PrestaShop/WooCommerce integrations
 7. GA4 view_promotion payload for inline banner
-8. WP-CLI command: wp go4taste update_product_ids
+8. Brak aktywnej komendy WP-CLI w runtime pluginu
 
 ## 6. Known gaps
 
 1. Brak plugin-owned automated test suite (PHP/JS).
-2. Duza odpowiedzialnosc pozostaje w includes/class-go4taste-ads-api-fetcher.php (kandydat do dalszej dekompozycji po release).
+2. Duza odpowiedzialnosc pozostaje w core/api-client/class-go4taste-ads-api-fetcher.php (kandydat do dalszej dekompozycji po release).
 
 ## 7. Summary
 

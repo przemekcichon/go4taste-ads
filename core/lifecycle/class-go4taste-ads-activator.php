@@ -1,26 +1,26 @@
 <?php
 
 /**
- * Fired during plugin deactivation
+ * Fired during plugin activation
  *
  * @link       https://go4taste.pl/techlab
  * @since      1.0.0
  *
  * @package    Go4Taste_Ads
- * @subpackage Go4Taste_Ads/includes
+ * @subpackage Go4Taste_Ads/core/lifecycle
  */
 
 /**
- * Fired during plugin deactivation.
+ * Fired during plugin activation.
  *
- * This class defines all code necessary to run during the plugin's deactivation.
+ * This class defines all code necessary to run during the plugin's activation.
  *
  * @since      1.0.0
  * @package    Go4Taste_Ads
- * @subpackage Go4Taste_Ads/includes
+ * @subpackage Go4Taste_Ads/core/lifecycle
  * @author     Go4Taste Techlab <przemekcichon@gmail.com>
  */
-class Go4Taste_Ads_Deactivator {
+class Go4Taste_Ads_Activator {
 
 	/**
 	 * Short Description. (use period)
@@ -29,7 +29,7 @@ class Go4Taste_Ads_Deactivator {
 	 *
 	 * @since    1.0.0
 	 */
-	public static function deactivate() {
+	public static function activate() {
 
 	}
 

@@ -39,19 +39,19 @@ define( 'GO4TASTE_ADS_VERSION', '1.1.0' );
 
 /**
  * The code that runs during plugin activation.
- * This action is documented in includes/class-go4taste-ads-activator.php
+ * This action is documented in core/lifecycle/class-go4taste-ads-activator.php
  */
 function activate_go4taste_ads() {
-	require_once plugin_dir_path( __FILE__ ) . 'includes/class-go4taste-ads-activator.php';
+	require_once plugin_dir_path( __FILE__ ) . 'core/lifecycle/class-go4taste-ads-activator.php';
 	Go4Taste_Ads_Activator::activate();
 }
 
 /**
  * The code that runs during plugin deactivation.
- * This action is documented in includes/class-go4taste-ads-deactivator.php
+ * This action is documented in core/lifecycle/class-go4taste-ads-deactivator.php
  */
 function deactivate_go4taste_ads() {
-	require_once plugin_dir_path( __FILE__ ) . 'includes/class-go4taste-ads-deactivator.php';
+	require_once plugin_dir_path( __FILE__ ) . 'core/lifecycle/class-go4taste-ads-deactivator.php';
 	Go4Taste_Ads_Deactivator::deactivate();
 }
 

@@ -42,7 +42,7 @@ if ( ! function_exists( 'g4t_core_get_api_fetcher' ) ) {
 	 */
 	function g4t_core_get_api_fetcher() {
 		if ( ! class_exists( 'Go4Taste_Ads_API_Fetcher' ) ) {
-			require_once dirname( __DIR__, 2 ) . '/includes/class-go4taste-ads-api-fetcher.php';
+			require_once dirname( __FILE__ ) . '/class-go4taste-ads-api-fetcher.php';
 		}
 
 		if ( ! class_exists( 'Go4Taste_Ads_API_Fetcher' ) ) {

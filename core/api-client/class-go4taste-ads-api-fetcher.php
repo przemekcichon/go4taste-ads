@@ -7,7 +7,7 @@
  * @since      1.0.0
  *
  * @package    Go4Taste_Ads
- * @subpackage Go4Taste_Ads/includes
+ * @subpackage Go4Taste_Ads/core/api-client
  */
 
 use Algolia\AlgoliaSearch\SearchClient;

@@ -287,14 +287,14 @@ Dodatkowo:
 
 - Naprawiono krytyczny blad na stronie opcji przy polu "Prestashop Webservice API Key"
 - W `features/admin-settings/settings-page.php` dodano lazy-loader `get_api_fetcher()`:
-  - `require_once includes/class-go4taste-ads-api-fetcher.php` gdy klasa nie jest jeszcze zaladowana
+  - `require_once` klasy fetchera gdy klasa nie jest jeszcze zaladowana
   - bezpieczny fallback (`null`) zamiast fatala
 - Zaktualizowano oba miejsca uzycia fetchera (callback pola + AJAX test uprawnien), aby korzystaly z `get_api_fetcher()` i zwracaly czytelny komunikat bledu zamiast zatrzymania strony
 
 ### 21. VSA Phase 8: ujednolicenie ladowania API Fetchera przez core boundary
 
 - Dodano wspolny helper `g4t_core_get_api_fetcher()` w `core/api-client/product-data.php`
-  - centralizuje lazy-load `includes/class-go4taste-ads-api-fetcher.php`
+  - centralizuje lazy-load klasy fetchera
   - zwraca `Go4Taste_Ads_API_Fetcher|null`
 - `g4t_core_fetch_product_data()` korzysta teraz z `g4t_core_get_api_fetcher()` (bez lokalnej duplikacji)
 - `features/product-catalog-sync/sync-ajax-handlers.php` korzysta z helpera core w `ajax_start` i `ajax_batch`
@@ -326,6 +326,20 @@ Dodatkowo:
 - Usunieto legacy puste szkielety katalogow/pliki placeholder:
   - `admin/index.php`, `public/index.php`
   - puste katalogi `admin/`, `public/`, `src/`, `build/`
+
+### 24. Cleanup runtime includes: lifecycle + API fetcher moved to core
+
+- Przeniesiono runtime lifecycle do `core/lifecycle/`:
+  - `includes/class-go4taste-ads-activator.php` -> `core/lifecycle/class-go4taste-ads-activator.php`
+  - `includes/class-go4taste-ads-deactivator.php` -> `core/lifecycle/class-go4taste-ads-deactivator.php`
+- Entry point `go4taste-ads.php` laduje teraz lifecycle z `core/lifecycle/*`
+- Przeniesiono API fetcher do core boundary:
+  - `includes/class-go4taste-ads-api-fetcher.php` -> `core/api-client/class-go4taste-ads-api-fetcher.php`
+  - `g4t_core_get_api_fetcher()` laduje klase z nowej lokalizacji core
+- Usunieto runtime WP-CLI command:
+  - usuniety plik `includes/class-go4taste-ads-wp-cli-command.php`
+  - usuniete ladowanie WP-CLI command z `core/bootstrap.php`
+- Efekt: `includes/` nie zawiera juz aktywnych elementow runtime
 
 ## Następne kroki (po tym PR)
 

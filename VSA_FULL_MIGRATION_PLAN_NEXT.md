@@ -35,7 +35,6 @@ Finalna brama release:
 - promoted product metabox + preview AJAX
 - inline banner block (editor + frontend render)
 - public/admin assets enqueue
-- wp go4taste update_product_ids (CLI availability)
 
 3. PR/release gate
 - PR_DESCRIPTION contains phases 1-9 and validation notes
@@ -44,5 +43,5 @@ Finalna brama release:
 
 ## Out of scope for this release
 
-1. Deep dekompozycja includes/class-go4taste-ads-api-fetcher.php.
+1. Deep dekompozycja core/api-client/class-go4taste-ads-api-fetcher.php.
 2. Building automated test suite (PHP/JS) from scratch.
