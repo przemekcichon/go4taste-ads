@@ -76,14 +76,9 @@ class Go4Taste_Ads_Admin_Settings {
 		check_ajax_referer( 'g4t_test_permissions_ajax', 'nonce' );
 
 		$options         = get_option( 'go4taste_ads_options' );
-		$api_type        = isset( $options['api_type'] ) ? sanitize_text_field( $options['api_type'] ) : '';
 		$api_url         = isset( $options['api_url'] ) ? esc_url_raw( $options['api_url'] ) : '';
 		$stored_key      = isset( $options['prestashop_webservice_api_key'] ) ? sanitize_text_field( $options['prestashop_webservice_api_key'] ) : '';
 		$tax_country_iso = isset( $options['prestashop_tax_country_iso'] ) ? strtoupper( sanitize_text_field( $options['prestashop_tax_country_iso'] ) ) : 'PL';
-
-		if ( 'prestashop_webservice_api' !== $api_type ) {
-			wp_send_json_error( array( 'message' => 'Wybierz API Type: Prestashop Webservice API.' ), 400 );
-		}
 
 		if ( '' === trim( (string) $api_url ) || '' === trim( (string) $stored_key ) ) {
 			wp_send_json_error( array( 'message' => 'Uzupelnij API URL i zapisz klucz Webservice.' ), 400 );
@@ -195,9 +190,7 @@ class Go4Taste_Ads_Admin_Settings {
 			'algolia_settings'
 		);
 
-		add_settings_field( 'api_type', 'API Type', array( $this, 'api_type_callback' ), 'go4taste-ads', 'go4taste_ads_setting_section' );
 		add_settings_field( 'api_url', 'API URL', array( $this, 'api_url_callback' ), 'go4taste-ads', 'go4taste_ads_setting_section' );
-		add_settings_field( 'p_parameter_value', 'PrestaShop API Password', array( $this, 'p_parameter_callback' ), 'go4taste-ads', 'go4taste_ads_setting_section' );
 		add_settings_field( 'prestashop_webservice_api_key', 'PrestaShop Webservice API Key', array( $this, 'prestashop_webservice_api_key_callback' ), 'go4taste-ads', 'go4taste_ads_setting_section' );
 		add_settings_field( 'prestashop_lang', 'PrestaShop Language', array( $this, 'prestashop_lang_callback' ), 'go4taste-ads', 'go4taste_ads_setting_section' );
 		add_settings_field( 'prestashop_tax_country_iso', 'PrestaShop Tax Country ISO', array( $this, 'prestashop_tax_country_iso_callback' ), 'go4taste-ads', 'go4taste_ads_setting_section' );
@@ -220,14 +213,9 @@ class Go4Taste_Ads_Admin_Settings {
 	public function sanitize( $input ) {
 		$sanitized_input  = array();
 		$existing_options = get_option( 'go4taste_ads_options', array() );
-		if ( isset( $input['api_type'] ) ) {
-			$sanitized_input['api_type'] = sanitize_text_field( $input['api_type'] );
-		}
+		$sanitized_input['api_type'] = 'prestashop_webservice_api';
 		if ( isset( $input['api_url'] ) ) {
 			$sanitized_input['api_url'] = esc_url_raw( $input['api_url'] );
-		}
-		if ( isset( $input['p_parameter_value'] ) ) {
-			$sanitized_input['p_parameter_value'] = sanitize_text_field( $input['p_parameter_value'] );
 		}
 		if ( isset( $input['prestashop_webservice_api_key'] ) ) {
 			$submitted_key = trim( (string) $input['prestashop_webservice_api_key'] );
@@ -270,26 +258,6 @@ class Go4Taste_Ads_Admin_Settings {
 	}
 
 	/**
-	 * Callback function for the api_type field.
-	 *
-	 * @since    1.0.0
-	 * @return void
-	 */
-	public function api_type_callback() {
-		$options  = get_option( 'go4taste_ads_options' );
-		$api_type = isset( $options['api_type'] ) ? esc_attr( $options['api_type'] ) : '';
-		?>
-		<select id="api_type" name="go4taste_ads_options[api_type]">
-			<option value="prestashop_1_4" <?php selected( $api_type, 'prestashop_1_4' ); ?>>PrestaShop 1.4</option>
-			<option value="prestashop_1_5" <?php selected( $api_type, 'prestashop_1_5' ); ?>>PrestaShop 1.5</option>
-			<option value="woocommerce" <?php selected( $api_type, 'woocommerce' ); ?>>WooCommerce</option>
-			<option value="prestashop_webservice_api" <?php selected( $api_type, 'prestashop_webservice_api' ); ?>>Prestashop Webservice API</option>
-			<option value="custom" <?php selected( $api_type, 'custom' ); ?>>Custom API</option>
-		</select>
-		<?php
-	}
-
-	/**
 	 * Callback function for the API URL field.
 	 *
 	 * @since    1.0.0
@@ -303,18 +271,6 @@ class Go4Taste_Ads_Admin_Settings {
 	}
 
 	/**
-	 * Callback function for the "p" parameter field.
-	 *
-	 * @since    1.0.0
-	 * @return void
-	 */
-	public function p_parameter_callback() {
-		$options = get_option( 'go4taste_ads_options' );
-		$p_value = isset( $options['p_parameter_value'] ) ? esc_attr( $options['p_parameter_value'] ) : '';
-		echo '<input type="password" id="p_parameter_value" name="go4taste_ads_options[p_parameter_value]" value="' . $p_value . '" />';
-	}
-
-	/**
 	 * Callback function for the PrestaShop Webservice API key field.
 	 *
 	 * @since    1.2.0
@@ -322,13 +278,12 @@ class Go4Taste_Ads_Admin_Settings {
 	 */
 	public function prestashop_webservice_api_key_callback() {
 		$options              = get_option( 'go4taste_ads_options' );
-		$api_type             = isset( $options['api_type'] ) ? sanitize_text_field( $options['api_type'] ) : '';
 		$api_url              = isset( $options['api_url'] ) ? esc_url_raw( $options['api_url'] ) : '';
 		$stored_key           = isset( $options['prestashop_webservice_api_key'] ) ? sanitize_text_field( $options['prestashop_webservice_api_key'] ) : '';
 		$tax_country_iso      = isset( $options['prestashop_tax_country_iso'] ) ? strtoupper( sanitize_text_field( $options['prestashop_tax_country_iso'] ) ) : 'PL';
 		$permissions_report_html = '';
 
-		if ( 'prestashop_webservice_api' === $api_type && '' !== trim( (string) $api_url ) && '' !== trim( (string) $stored_key ) ) {
+		if ( '' !== trim( (string) $api_url ) && '' !== trim( (string) $stored_key ) ) {
 			$api_fetcher = g4t_core_get_api_fetcher();
 			if ( $api_fetcher ) {
 				$cached_report           = $api_fetcher->get_cached_prestashop_webservice_permissions_report( $api_url, $stored_key, $tax_country_iso );
@@ -341,11 +296,6 @@ class Go4Taste_Ads_Admin_Settings {
 		echo '<input type="password" id="prestashop_webservice_api_key" name="go4taste_ads_options[prestashop_webservice_api_key]" value="" autocomplete="new-password" />';
 		echo '<p class="description">Dla bezpieczenstwa klucz nie jest wyswietlany. Wpisz nowy klucz tylko gdy chcesz go zaktualizowac.</p>';
 		echo '<p class="description"><strong>Wymagane uprawnienia klucza Webservice (GET/READ):</strong> products, taxes, tax_rules, countries.</p>';
-
-		if ( 'prestashop_webservice_api' !== $api_type ) {
-			echo '<p class="description">Weryfikacja uprawnien jest aktywna po wybraniu API Type: Prestashop Webservice API.</p>';
-			return;
-		}
 
 		if ( '' === trim( (string) $api_url ) || '' === trim( (string) $stored_key ) ) {
 			echo '<p class="description" style="color:#a00;">Aby zweryfikowac uprawnienia, uzupelnij API URL i zapisz klucz Webservice.</p>';
