@@ -376,3 +376,27 @@ Dodatkowo:
 ## Następne kroki (po tym PR)
 
 - Manual smoke test w WP Admin i na froncie (final merge readiness)
+
+## Manual Smoke Test Result
+
+- Data: 2026-05-28
+- Srodowisko: local
+- Wykonal: <uzupelnic>
+
+Checklist:
+
+- [ ] 1. Go4Taste Ads settings page laduje sie bez fatali; Test API Permissions dziala
+- [ ] 2. Sync Products flow dziala (start/progress/log/done)
+- [ ] 3. Assets admin-settings sa zaladowane tylko na `toplevel_page_go4taste-ads`
+- [ ] 4. Metabox promoted produktu: Algolia search + preview + save/reload dzialaja
+- [ ] 5. Metabox preview korzysta z dedykowanego CSS (`g4t-banner-metabox-preview`)
+- [ ] 6. Frontend sidebar widget renderuje sie poprawnie (desktop/mobile)
+- [ ] 7. Inline banner block renderuje sie poprawnie i bez konfliktow CSS/JS
+
+Wynik manual smoke:
+
+- `PENDING` (do uzupelnienia po przejsciu checklisty)
+
+## Release Readiness
+
+- `BLOCKED` — oczekuje na finalny manual smoke test (7/7 PASS)
