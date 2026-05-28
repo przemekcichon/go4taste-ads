@@ -28,7 +28,7 @@ foreach ( $products_attr as $product_entry ) {
 	if ( empty( $product_id ) ) {
 		continue;
 	}
-	$data = g4t_core_fetch_product_data( $product_id, $options );
+	$data = apply_filters( 'go4taste_ads_get_product_data', null, $product_id );
 	if ( $data ) {
 		$products_data[] = $data;
 	}
