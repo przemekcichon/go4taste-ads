@@ -1016,13 +1016,13 @@ class Go4Taste_Ads_API_Fetcher {
      */
     public function store_products_to_algolia($products) {
 
-        // Retrieve Algolia App ID and Search-Only API Key from settings
+        // Retrieve Algolia App ID and Admin API Key from settings
         $options = get_option('go4taste_ads_options');
         $algolia_app_id = isset($options['algolia_app_id']) ? esc_attr($options['algolia_app_id']) : '';
-        $algolia_api_key = isset($options['algolia_api_key']) ? esc_attr($options['algolia_api_key']) : '';
+        $algolia_admin_api_key = isset($options['algolia_admin_api_key']) ? esc_attr($options['algolia_admin_api_key']) : '';
 
-        // Create the Algolia client using your App ID and API key
-        $client = SearchClient::create( $algolia_app_id, $algolia_api_key );
+        // Create the Algolia client using your App ID and Admin API key
+        $client = SearchClient::create( $algolia_app_id, $algolia_admin_api_key );
         
         // Initialize the index
         $index = $client->initIndex('go4taste_product_list');

@@ -6,13 +6,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once __DIR__ . '/settings-page.php';
 
-if ( ! function_exists( 'g4t_admin_settings_feature_instance' ) ) {
+if ( ! function_exists( 'g4ta_admin_settings_feature_instance' ) ) {
 	/**
 	 * Return singleton instance for admin settings feature.
 	 *
 	 * @return Go4Taste_Ads_Admin_Settings
 	 */
-	function g4t_admin_settings_feature_instance() {
+	function g4ta_admin_settings_feature_instance() {
 		static $instance = null;
 
 		if ( null === $instance ) {
@@ -23,47 +23,47 @@ if ( ! function_exists( 'g4t_admin_settings_feature_instance' ) ) {
 	}
 }
 
-if ( ! function_exists( 'g4t_admin_settings_register_menu' ) ) {
+if ( ! function_exists( 'g4ta_admin_settings_register_menu' ) ) {
 	/**
 	 * Register plugin admin menu.
 	 *
 	 * @return void
 	 */
-	function g4t_admin_settings_register_menu() {
-		g4t_admin_settings_feature_instance()->add_admin_menu();
+	function g4ta_admin_settings_register_menu() {
+		g4ta_admin_settings_feature_instance()->add_admin_menu();
 	}
 }
 
-if ( ! function_exists( 'g4t_admin_settings_register_fields' ) ) {
+if ( ! function_exists( 'g4ta_admin_settings_register_fields' ) ) {
 	/**
 	 * Register settings sections and fields.
 	 *
 	 * @return void
 	 */
-	function g4t_admin_settings_register_fields() {
-		g4t_admin_settings_feature_instance()->page_init();
+	function g4ta_admin_settings_register_fields() {
+		g4ta_admin_settings_feature_instance()->page_init();
 	}
 }
 
-if ( ! function_exists( 'g4t_admin_settings_ajax_test_permissions' ) ) {
+if ( ! function_exists( 'g4ta_admin_settings_ajax_test_permissions' ) ) {
 	/**
 	 * AJAX handler for PrestaShop permissions test.
 	 *
 	 * @return void
 	 */
-	function g4t_admin_settings_ajax_test_permissions() {
-		g4t_admin_settings_feature_instance()->ajax_test_prestashop_permissions();
+	function g4ta_admin_settings_ajax_test_permissions() {
+		g4ta_admin_settings_feature_instance()->ajax_test_prestashop_permissions();
 	}
 }
 
-if ( ! function_exists( 'g4t_admin_settings_enqueue_assets' ) ) {
+if ( ! function_exists( 'g4ta_admin_settings_enqueue_assets' ) ) {
 	/**
 	 * Enqueue settings page scripts/styles owned by this feature slice.
 	 *
 	 * @param string $hook_suffix Current admin page hook suffix.
 	 * @return void
 	 */
-	function g4t_admin_settings_enqueue_assets( $hook_suffix ) {
+	function g4ta_admin_settings_enqueue_assets( $hook_suffix ) {
 		if ( 'toplevel_page_go4taste-ads' !== $hook_suffix ) {
 			return;
 		}
@@ -111,7 +111,7 @@ if ( ! function_exists( 'g4t_admin_settings_enqueue_assets' ) ) {
 	}
 }
 
-add_action( 'admin_menu', 'g4t_admin_settings_register_menu' );
-add_action( 'admin_init', 'g4t_admin_settings_register_fields' );
-add_action( 'wp_ajax_g4t_test_prestashop_permissions', 'g4t_admin_settings_ajax_test_permissions' );
-add_action( 'admin_enqueue_scripts', 'g4t_admin_settings_enqueue_assets' );
+add_action( 'admin_menu', 'g4ta_admin_settings_register_menu' );
+add_action( 'admin_init', 'g4ta_admin_settings_register_fields' );
+add_action( 'wp_ajax_g4t_test_prestashop_permissions', 'g4ta_admin_settings_ajax_test_permissions' );
+add_action( 'admin_enqueue_scripts', 'g4ta_admin_settings_enqueue_assets' );

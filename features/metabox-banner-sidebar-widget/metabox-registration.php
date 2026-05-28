@@ -248,7 +248,7 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_fetch_product_preview' ) )
 		}
 
 		$options = g4t_core_get_ads_options();
-		$product_data = g4t_core_fetch_product_data( $product_id, $options );
+		$product_data = apply_filters( 'go4taste_ads_get_product_data', null, $product_id );
 
 		if ( ! $product_data ) {
 			wp_send_json_error( 'Failed to fetch product data.' );

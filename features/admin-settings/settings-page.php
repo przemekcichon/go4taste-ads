@@ -8,6 +8,18 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Admin settings page feature slice.
  */
 class Go4Taste_Ads_Admin_Settings {
+
+		/**
+		 * Callback for Algolia Admin API Key field.
+		 *
+		 * @since 1.3.0
+		 * @return void
+		 */
+		public function algolia_admin_api_key_callback() {
+			// For security, do not prefill the value.
+			echo '<input type="password" id="algolia_admin_api_key" name="go4taste_ads_options[algolia_admin_api_key]" value="" autocomplete="new-password" />';
+			echo '<p class="description">This key is required for backend sync (write access). For security, it is not displayed. Enter a new key only to update.</p>';
+		}
 	/**
 	 * Render permissions report HTML for admin settings panel.
 	 *
@@ -192,6 +204,7 @@ class Go4Taste_Ads_Admin_Settings {
 		add_settings_field( 'fallback_product_id', 'Fallback Product ID', array( $this, 'fallback_product_id_callback' ), 'go4taste-ads', 'go4taste_ads_setting_section' );
 		add_settings_field( 'algolia_app_id', 'Algolia App ID', array( $this, 'algolia_app_id_callback' ), 'algolia_settings', 'algolia_settings' );
 		add_settings_field( 'algolia_api_key', 'Algolia Search-Only API Key', array( $this, 'algolia_api_key_callback' ), 'algolia_settings', 'algolia_settings' );
+		add_settings_field( 'algolia_admin_api_key', 'Algolia Admin API Key', array( $this, 'algolia_admin_api_key_callback' ), 'algolia_settings', 'algolia_settings' );
 		add_settings_field( 'cache_duration', 'Transient Cache Duration (hours)', array( $this, 'cache_duration_callback' ), 'go4taste-ads', 'go4taste_ads_setting_section' );
 		add_settings_field( 'ga4_view_promotion_datalayer', 'GA4 view_promotion (dataLayer)', array( $this, 'ga4_view_promotion_datalayer_callback' ), 'go4taste-ads', 'go4taste_ads_setting_section' );
 	}
@@ -243,6 +256,9 @@ class Go4Taste_Ads_Admin_Settings {
 		}
 		if ( isset( $input['algolia_api_key'] ) ) {
 			$sanitized_input['algolia_api_key'] = sanitize_text_field( $input['algolia_api_key'] );
+		}
+		if ( isset( $input['algolia_admin_api_key'] ) ) {
+			$sanitized_input['algolia_admin_api_key'] = sanitize_text_field( $input['algolia_admin_api_key'] );
 		}
 		if ( isset( $input['cache_duration'] ) ) {
 			$sanitized_input['cache_duration'] = intval( $input['cache_duration'] );
