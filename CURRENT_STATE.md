@@ -19,8 +19,6 @@ Aktualny snapshot architektury pluginu go4taste-ads po zakonczeniu migracji VSA 
 - core/lifecycle/class-go4taste-ads-deactivator.php
 
 3. Feature slices: features/
-- features/public-assets
-- features/admin-assets
 - features/admin-settings
 - features/legacy-sidebar-widget
 - features/promoted-product-metabox
@@ -37,13 +35,11 @@ Aktualny snapshot architektury pluginu go4taste-ads po zakonczeniu migracji VSA 
 
 Hooki sa rejestrowane feature-local, bez centralnego loadera:
 
-- admin_enqueue_scripts: features/admin-assets/index.php
-- admin_menu, admin_init, wp_ajax_g4t_test_prestashop_permissions: features/admin-settings/index.php
-- widgets_init, plugins_loaded: features/legacy-sidebar-widget/index.php
+- admin_menu, admin_init, wp_ajax_g4t_test_prestashop_permissions, admin_enqueue_scripts: features/admin-settings/index.php
+- widgets_init, plugins_loaded, wp_enqueue_scripts: features/legacy-sidebar-widget/index.php
 - add_meta_boxes, save_post, wp_ajax_g4t_fetch_product_preview, admin_enqueue_scripts: features/promoted-product-metabox/index.php
 - wp_ajax_g4t_sync_start, wp_ajax_g4t_sync_batch, wp_ajax_g4t_sync_status, wp_ajax_g4t_sync_unlock: features/product-catalog-sync/index.php
 - init, wp_theme_json_data_theme: features/inline-banner-block/index.php
-- wp_enqueue_scripts: features/public-assets/index.php
 - plugins_loaded (textdomain): core/i18n/index.php
 
 ## 3. Block ownership (aktualny)
@@ -88,4 +84,5 @@ Konsumenci:
 ## 7. Summary
 
 Migracja do feature-first VSA dla runtime hook ownership jest zakonczona.
+Asset ownership zostal rozdzielony per feature (sidebar/admin-settings/metabox preview), bez wspolnych bucket slices.
 Pozostaje finalna brama release (Phase 10): lint/build + smoke test + merge readiness.

@@ -49,7 +49,7 @@ if ( '' === trim( $img_url ) ) {
 	}
 }
 ?>
-<div class="g4t-ads-banner g4t-banner-sidebar-regular">
+<div class="g4t-ads-banner g4t-banner-metabox-preview">
 	<div class="g4t-ads-content">
 		<div class="g4t-ads-image">
 			<img src="<?php echo esc_url( $product_data->picture ); ?>" alt="<?php echo esc_attr( $product_data->name ); ?>" width="<?php echo esc_attr( $img_dimensions['width'] ); ?>" height="<?php echo esc_attr( $img_dimensions['height'] ); ?>" />

@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 if ( ! function_exists( 'g4t_promoted_product_metabox_enqueue_preview_styles' ) ) {
 	/**
-	 * Enqueue frontend ad styles on post editor screens for preview consistency.
+	 * Enqueue promoted product metabox preview assets on post editor screens.
 	 *
 	 * @return void
 	 */
@@ -17,14 +17,34 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_enqueue_preview_styles' ) 
 			return;
 		}
 
-		$style_url = plugins_url( 'features/public-assets/assets/css/go4taste-ads-public.css', dirname( __DIR__, 2 ) . '/go4taste-ads.php' );
+		$plugin_root      = dirname( __DIR__, 2 );
+		$plugin_entry     = $plugin_root . '/go4taste-ads.php';
+		$preview_relative = 'features/promoted-product-metabox/assets/css/go4taste-ads-metabox-preview.css';
+		$preview_url      = plugins_url( $preview_relative, $plugin_entry );
+		$version          = defined( 'GO4TASTE_ADS_VERSION' ) ? GO4TASTE_ADS_VERSION : null;
 
 		wp_enqueue_style(
-			'go4taste-ads-public',
-			$style_url,
+			'go4taste-ads-metabox-preview',
+			$preview_url,
 			array(),
-			defined( 'GO4TASTE_ADS_VERSION' ) ? GO4TASTE_ADS_VERSION : null,
+			$version,
 			'all'
+		);
+
+		wp_enqueue_script(
+			'algolia-instantsearch',
+			'https://cdn.jsdelivr.net/npm/instantsearch.js@4',
+			array(),
+			null,
+			true
+		);
+
+		wp_enqueue_script(
+			'algolia-search-client',
+			'https://cdn.jsdelivr.net/npm/algoliasearch@4',
+			array(),
+			null,
+			true
 		);
 	}
 }

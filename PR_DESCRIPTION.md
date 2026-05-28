@@ -341,6 +341,31 @@ Dodatkowo:
   - usuniete ladowanie WP-CLI command z `core/bootstrap.php`
 - Usunieto `includes/index.php` i caly katalog `includes/` (brak pozostalosci runtime i placeholderow)
 
+### 25. Option B: rozdzial ownership `public-assets` i `admin-assets` do docelowych feature slices
+
+- Usunieto bucket slices i ich runtime hook ownership:
+  - `features/public-assets/index.php`
+  - `features/admin-assets/index.php`
+  - usuniete katalogi `features/public-assets/` i `features/admin-assets/`
+- `core/bootstrap.php` nie laduje juz `public-assets`/`admin-assets`
+
+- Frontend sidebar CSS jest teraz wlascicielem slice `legacy-sidebar-widget`:
+  - `features/legacy-sidebar-widget/assets/css/go4taste-ads-sidebar-widget.css`
+  - enqueue przeniesiony do `features/legacy-sidebar-widget/index.php` (`wp_enqueue_scripts`)
+
+- Admin settings assets sa teraz wlascicielem slice `admin-settings`:
+  - `features/admin-settings/assets/css/go4taste-ads-admin-settings.css`
+  - `features/admin-settings/assets/js/go4taste-ads-admin-settings.js`
+  - enqueue + `wp_localize_script` w `features/admin-settings/index.php`
+  - scope enqueue tylko dla strony `toplevel_page_go4taste-ads`
+
+- Metabox preview ma osobny styl (niezalezny od sidebar CSS), zgodnie z opcja B:
+  - nowy plik `features/promoted-product-metabox/assets/css/go4taste-ads-metabox-preview.css`
+  - `features/promoted-product-metabox/metabox-registration.php` enqueue tylko tego stylu na `post.php`/`post-new.php`
+  - `features/promoted-product-metabox/preview-template.php`: klasa zmieniona na `g4t-banner-metabox-preview`
+
+- Algolia skrypty dla metabox preview zostaly przeniesione do ownership slice `promoted-product-metabox` (admin enqueue tylko na ekranach edycji posta)
+
 ## Następne kroki (po tym PR)
 
 - Phase 10: finalna brama release (lint/build + smoke test + merge readiness)
