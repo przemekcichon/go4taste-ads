@@ -14,6 +14,9 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_start' ) ) {
 	 */
 	function g4t_product_catalog_sync_ajax_start() {
 		if ( ! current_user_can( 'manage_options' ) ) {
+			if ( ob_get_length() ) {
+				ob_clean();
+			}
 			wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
 		}
 
@@ -21,17 +24,8 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_start' ) ) {
 
 		$job_key      = g4t_product_catalog_sync_get_job_transient_key();
 		$existing_job = get_transient( $job_key );
-		if ( is_array( $existing_job ) && isset( $existing_job['status'] ) && 'running' === $existing_job['status'] ) {
-			if ( ! g4t_product_catalog_sync_is_job_stale( $existing_job ) ) {
-				wp_send_json_error(
-					array(
-						'message' => 'Sync is already running.',
-						'job'     => $existing_job,
-					),
-					409
-				);
-			}
-
+		if ( is_array( $existing_job ) ) {
+			// Admin-triggered start is a hard reset: always overwrite any previous sync state.
 			delete_transient( $job_key );
 		}
 
@@ -43,17 +37,26 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_start' ) ) {
 		$api_url         = isset( $options['api_url'] ) ? esc_url_raw( (string) $options['api_url'] ) : '';
 
 		if ( '' === trim( $api_url ) ) {
+			if ( ob_get_length() ) {
+				ob_clean();
+			}
 			wp_send_json_error( array( 'message' => 'Missing API settings.' ), 400 );
 		}
 
 		$api_fetcher = g4t_core_get_api_fetcher();
 		if ( ! $api_fetcher ) {
+			if ( ob_get_length() ) {
+				ob_clean();
+			}
 			wp_send_json_error( array( 'message' => 'API fetcher is unavailable.' ), 500 );
 		}
 
 		$product_ids = $api_fetcher->fetch_product_ids_for_sync( $lang, $api_url );
 
 		if ( empty( $product_ids ) ) {
+			if ( ob_get_length() ) {
+				ob_clean();
+			}
 			wp_send_json_error( array( 'message' => 'No products found for sync.' ), 404 );
 		}
 
@@ -72,6 +75,9 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_start' ) ) {
 		);
 
 		set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+		if ( ob_get_length() ) {
+			ob_clean();
+		}
 		wp_send_json_success( array( 'job' => $job_state ) );
 	}
 }
@@ -84,6 +90,9 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_batch' ) ) {
 	 */
 	function g4t_product_catalog_sync_ajax_batch() {
 		if ( ! current_user_can( 'manage_options' ) ) {
+			if ( ob_get_length() ) {
+				ob_clean();
+			}
 			wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
 		}
 
@@ -92,10 +101,16 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_batch' ) ) {
 		$job_key   = g4t_product_catalog_sync_get_job_transient_key();
 		$job_state = get_transient( $job_key );
 		if ( ! is_array( $job_state ) || empty( $job_state['status'] ) ) {
+			if ( ob_get_length() ) {
+				ob_clean();
+			}
 			wp_send_json_error( array( 'message' => 'Sync job not found.' ), 404 );
 		}
 
 		if ( 'done' === $job_state['status'] ) {
+			if ( ob_get_length() ) {
+				ob_clean();
+			}
 			wp_send_json_success( array( 'job' => $job_state, 'done' => true ) );
 		}
 
@@ -104,6 +119,9 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_batch' ) ) {
 			$job_state['error_message'] = 'Sync job is stale. Please start again.';
 			$job_state['updated_at']    = time();
 			set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+			if ( ob_get_length() ) {
+				ob_clean();
+			}
 			wp_send_json_error( array( 'message' => 'Sync job is stale.', 'job' => $job_state ), 409 );
 		}
 
@@ -115,6 +133,9 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_batch' ) ) {
 			$job_state['status'] = 'done';
 			$job_state['updated_at'] = time();
 			set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+			if ( ob_get_length() ) {
+				ob_clean();
+			}
 			wp_send_json_success( array( 'job' => $job_state, 'done' => true ) );
 		}
 
@@ -126,6 +147,9 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_batch' ) ) {
 			$job_state['status'] = 'done';
 			$job_state['updated_at'] = time();
 			set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+			if ( ob_get_length() ) {
+				ob_clean();
+			}
 			wp_send_json_success( array( 'job' => $job_state, 'done' => true ) );
 		}
 
@@ -135,6 +159,9 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_batch' ) ) {
 			$job_state['error_message'] = 'API fetcher is unavailable.';
 			$job_state['updated_at']    = time();
 			set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+			if ( ob_get_length() ) {
+				ob_clean();
+			}
 			wp_send_json_error( array( 'message' => 'API fetcher is unavailable.', 'job' => $job_state ), 500 );
 		}
 
@@ -171,6 +198,9 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_batch' ) ) {
 
 		$job_state['updated_at'] = time();
 		set_transient( $job_key, $job_state, HOUR_IN_SECONDS );
+		if ( ob_get_length() ) {
+			ob_clean();
+		}
 		wp_send_json_success( array( 'job' => $job_state, 'done' => 'done' === $job_state['status'] ) );
 	}
 }

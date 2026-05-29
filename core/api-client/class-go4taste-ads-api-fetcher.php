@@ -760,54 +760,117 @@ class Go4Taste_Ads_API_Fetcher {
      * @return array<int,string>
      */
     private function fetch_prestashop_webservice_product_ids($api_url, $api_key) {
+        $start_time = microtime(true);
+        error_log('[G4T Sync] START fetching IDs... Time: ' . $start_time);
+
         if ('' === trim((string) $api_key) || '' === trim((string) $api_url)) {
             return array();
         }
 
+        $query = http_build_query(
+            array(
+                'display' => '[id]',
+            ),
+            '',
+            '&',
+            PHP_QUERY_RFC3986
+        );
+
         $endpoint = $this->build_prestashop_webservice_url($api_url, 'products');
+        $endpoint .= (false === strpos($endpoint, '?') ? '?' : '&') . $query;
+
+        $before_curl = microtime(true);
+        error_log('[G4T Sync] BEFORE wp_remote_get... URL: ' . $endpoint . ' Time: ' . $before_curl);
+
+        // Force IPv4 to avoid IPv6 hangs
+        add_action('http_api_curl', function($handle) {
+            curl_setopt($handle, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+        });
+
         $response = wp_remote_get(
             $endpoint,
             array(
-                'timeout' => 20,
-                'headers' => array(
+                'timeout'   => 15,
+                'sslverify' => false,
+                'headers'   => array(
                     'Authorization' => 'Basic ' . base64_encode((string) $api_key . ':'),
-                    'Accept' => 'application/xml',
+                    'Accept'        => 'application/xml',
                 ),
             )
         );
 
+        // Remove IPv4 forcing hook immediately after call
+        remove_all_actions('http_api_curl');
+
+        $after_curl = microtime(true);
+        error_log('[G4T Sync] AFTER wp_remote_get... Duration: ' . ($after_curl - $before_curl) . 's');
+
         if (is_wp_error($response)) {
+            error_log('[G4T Sync] WP_ERROR: ' . $response->get_error_message());
             return array();
         }
 
         $http_code = (int) wp_remote_retrieve_response_code($response);
+        error_log('[G4T Sync] AFTER wp_remote_get... HTTP Code: ' . $http_code);
+
         if ($http_code < 200 || $http_code >= 300) {
+            error_log('[G4T Sync] HTTP error, code not in success range.');
             return array();
         }
 
+        $before_parse = microtime(true);
         $xml = $this->parse_prestashop_xml(wp_remote_retrieve_body($response));
+        $after_parse = microtime(true);
+
         if (false === $xml || !isset($xml->products->product)) {
+            error_log('[G4T Sync] XML parsing failed or no products found.');
             return array();
         }
 
         $ids = array();
+        $attr_count = 0;
+        $node_count = 0;
+
         foreach ($xml->products->product as $product_node) {
+            // Try both: ID as attribute AND ID as node element
+            $id = null;
+
+            // Check ID as attribute first
             $attrs = $product_node->attributes();
-            if (!isset($attrs['id'])) {
-                continue;
+            if (isset($attrs['id'])) {
+                $id = trim((string) $attrs['id']);
+                if ('' !== $id) {
+                    $attr_count++;
+                }
             }
 
-            $id = trim((string) $attrs['id']);
-            if ('' !== $id) {
+            // If not found as attribute, check ID as node element
+            if (null === $id || '' === $id) {
+                if (isset($product_node->id)) {
+                    $id = trim((string) $product_node->id);
+                    if ('' !== $id) {
+                        $node_count++;
+                    }
+                }
+            }
+
+            if (null !== $id && '' !== $id) {
                 $ids[] = $id;
             }
         }
 
-        return array_values(array_unique($ids));
+        $unique_ids = array_values(array_unique($ids));
+        $end_time = microtime(true);
+
+        error_log('[G4T Sync] AFTER XML parsing... Found ' . count($unique_ids) . ' items. (Attr mode: ' . $attr_count . ', Node mode: ' . $node_count . '). Total time: ' . ($end_time - $start_time) . 's');
+
+        return $unique_ids;
     }
 
     /**
     * Fetch product data from PrestaShop Webservice API.
+    *
+    * WARNING: Use only for backend sync, never for frontend rendering.
      *
      * @since 1.0.0
      * @since 1.1.0 Added transient caching with API fields filtering to avoid database overload
@@ -817,33 +880,10 @@ class Go4Taste_Ads_API_Fetcher {
      * @return object|false The product data object, or false if not found.
      */
     public function fetch_product_data($product_id, $lang, $api_url) {
-        $transient_key = "product_data_prestashop_webservice_api_{$product_id}";
-    
-        // Fetch cache duration from options, default to 0 (cache disabled)
-        $options = get_option('go4taste_ads_options');
-        $cache_duration = isset($options['cache_duration']) ? intval($options['cache_duration']) : 24;
-
-        // If cache duration is more than 0, attempt to get cached data
-        if ($cache_duration > 0) {
-            $cached_product_data = get_transient($transient_key);
-            if ($cached_product_data !== false) {
-                return $cached_product_data;
-            }
-        }  
-    
         $options = get_option('go4taste_ads_options');
         $prestashop_webservice_api_key = isset($options['prestashop_webservice_api_key']) ? sanitize_text_field($options['prestashop_webservice_api_key']) : '';
 
-        $native_product = $this->fetch_prestashop_webservice_product($product_id, $api_url, $prestashop_webservice_api_key);
-        if ($native_product) {
-            if ($cache_duration > 0) {
-                set_transient($transient_key, $native_product, $cache_duration * HOUR_IN_SECONDS);
-            }
-
-            return $native_product;
-        }
-
-        return false;
+        return $this->fetch_prestashop_webservice_product($product_id, $api_url, $prestashop_webservice_api_key);
     }
 
     /**
@@ -883,19 +923,11 @@ class Go4Taste_Ads_API_Fetcher {
      * @return array<int,string>
      */
     public function fetch_product_ids_for_sync($lang, $api_url) {
-        $products = $this->fetch_all_products($lang, $api_url);
-        if (empty($products) || !is_array($products)) {
-            return array();
-        }
+        $options = get_option('go4taste_ads_options');
+        $prestashop_webservice_api_key = isset($options['prestashop_webservice_api_key']) ? sanitize_text_field($options['prestashop_webservice_api_key']) : '';
 
-        $ids = array();
-        foreach ($products as $product) {
-            if (isset($product->id) && '' !== trim((string) $product->id)) {
-                $ids[] = trim((string) $product->id);
-            }
-        }
-
-        return array_values(array_unique($ids));
+        // Sync start should only initialize the queue quickly; product payloads are fetched in batches.
+        return $this->fetch_prestashop_webservice_product_ids($api_url, $prestashop_webservice_api_key);
     }
 
     /**

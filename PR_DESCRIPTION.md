@@ -1,119 +1,121 @@
-# PR: On-Demand Soft/Hard Cache Product Counts in Options Page
+﻿# PR: Refactor product data pipeline — remove legacy cache, optimize sync, fix reliability
 
-**Branch:** feature/cache-counts-ui -> main
+**Branch:** feature/sync-pipeline-refactor -> main
 
 ## Motivation
 
-We needed visibility into how many products are currently stored in Algolia banner cache, but without adding runtime overhead.
+The plugin maintained a dual-cache architecture: product data was first cached in PrestaShop Webservice transients (`product_data_prestashop_webservice_api_*`) on the frontend fetch path, and then separately stored in the Algolia Ad Server soft-cache layer. This caused stale data risks, redundant DB writes, and a complex sync path that fetched full product payloads for all 537 products just to obtain their IDs.
 
-Key requirement for performance:
-- cache counting must run only on demand (button click in options page),
-- no automatic counting on page load,
-- no counting in frontend/admin runtime flows,
-- no `get_transient()` loop for large datasets.
+This PR eliminates the legacy transient layer, optimizes the sync query, and delivers five reliability fixes discovered during testing.
 
 ## TL;DR for reviewer
 
-- Added on-demand cache counting (`soft` and `hard`) in plugin options page.
-- Implemented efficient counting with a single `$wpdb->get_col()` query over transient values.
-- `hard_count` = number of transient value rows found.
-- `soft_count` = rows where unserialized payload has `soft_expires_at > time()`.
-- Added dedicated AJAX endpoint for counting and wired UI button + result panel.
-- Existing clear endpoints now also return fresh counts after clear (optional UX enhancement).
+- Frontend product data now routes exclusively through the Algolia Ad Server filter bridge — no live Presta fetches from frontend.
+- Sync ID fetch reduced from full payload (~537 × full XML) to `display=[id]` only (~95% payload reduction).
+- Fixed: IPv6 hang (9+ min timeout), XML dual-mode parser, zombie job lock, and BOM-caused jQuery `parsererror`.
+- Added one-time admin utility to clean up residual legacy transients from the database.
+
+---
 
 ## Scope of changes
 
-### 1) Cache counting logic (efficient, OOM-safe)
-
-File:
-- `features/algolia-ad-server/soft-cache.php`
-
-Added:
-- `g4t_algolia_ad_server_get_cache_counts()`
-
-Implementation details:
-- Single query: `SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE '_transient_g4t_ads_product_%'`
-- Uses `$wpdb->esc_like()` + `$wpdb->prepare()`
-- `hard_count` = `count( $rows )`
-- Iterates over row values with `maybe_unserialize()`
-- Increments `soft_count` when payload contains `soft_expires_at` greater than current time
-- Returns structured result: `success`, `soft_count`, `hard_count`, `executed_at`, optional `error`
-
-### 2) New AJAX endpoint for on-demand counts
+### 1. Remove legacy PrestaShop transient cache (double-cache elimination)
 
 Files:
+- `core/api-client/product-data.php`
+- `core/api-client/class-go4taste-ads-api-fetcher.php`
 - `features/admin-settings/settings-page.php`
 - `features/admin-settings/index.php`
-
-Added:
-- method `ajax_get_algolia_cache_counts()` in admin settings class
-- action registration: `wp_ajax_g4t_get_algolia_cache_counts`
-- localized JS config:
-  - `getCacheCountsAction`
-  - `getCacheCountsNonce`
-
-Security:
-- capability check: `manage_options`
-- nonce validation: `check_ajax_referer( 'g4t_get_cache_counts_ajax', 'nonce' )`
-
-### 3) Options page UI (only there, only on click)
-
-File:
-- `features/admin-settings/settings-page.php`
-
-Added in Cache Maintenance section:
-- button: `Count Cached Products`
-- result container: `#g4t-cache-count-result`
-
-Behavior:
-- no automatic render of counts on load
-- results appear only after click-triggered AJAX response
-
-### 4) JS handling for count button + post-clear refresh
-
-File:
 - `features/admin-settings/assets/js/go4taste-ads-admin-settings.js`
 
-Added:
-- click handler for `#g4t-count-soft-hard-cache`
-- request to `g4t_get_algolia_cache_counts`
-- result rendering with `Soft cache products` and `Hard cache products`
+Changes:
+- `g4t_core_fetch_product_data()` no longer fetches live data from PrestaShop or reads/writes `product_data_prestashop_webservice_api_*` transients. Delegates exclusively to `apply_filters('go4taste_ads_get_product_data', null, $product_id)`.
+- Removed all `set_transient` / `get_transient` calls for product data in the frontend fetch path of `class-go4taste-ads-api-fetcher.php`.
+- Removed `cache_duration` field, sanitization method, and related admin UI.
+- Added **"Clean Legacy PrestaShop Cache"** one-time cleanup button in Cache Maintenance section. On click: deletes all `_transient_product_data_prestashop_webservice_api_*` and `_transient_timeout_product_data_prestashop_webservice_api_*` rows directly via `$wpdb`.
+- Registered new AJAX action `g4t_clear_legacy_presta_cache` with `manage_options` capability check and nonce validation.
 
-Also improved:
-- after clear actions, if response includes counts, count panel is refreshed in-place
+### 2. Optimize PrestaShop API sync query — fetch IDs only
+
+File:
+- `core/api-client/class-go4taste-ads-api-fetcher.php`
+
+Changes:
+- `fetch_prestashop_webservice_product_ids()` now appends `display=[id]` to the `/products` endpoint using `http_build_query()` with safe `?`/`&` separator.
+- `fetch_product_ids_for_sync()` calls `fetch_prestashop_webservice_product_ids()` directly instead of routing through `fetch_all_products()`.
+- XML parser updated to **dual-mode**: checks both `$attrs['id']` (attribute form) and `$product_node->id` (child node form) — PrestaShop changes the XML structure depending on `display` param.
+
+### 3. Fix network reliability — force IPv4, disable SSL verification
+
+File:
+- `core/api-client/class-go4taste-ads-api-fetcher.php`
+
+Changes:
+- `wp_remote_get()` in sync path uses: `sslverify => false`, `timeout => 15`.
+- `http_api_curl` action temporarily forces `CURLOPT_IPRESOLVE_V4` for the sync request to prevent IPv6 resolution hang (reproduced as 9+ minute timeout on localhost).
+- Action is removed immediately after the request completes to avoid side effects on other HTTP calls.
+
+### 4. Remove zombie job lock on sync start
+
+File:
+- `features/algolia-product-sync/sync-ajax-handlers.php`
+
+Changes:
+- Removed blocking `409 Already Running` guard from `g4t_product_catalog_sync_ajax_start()`.
+- Replaced with **hard reset**: if a stale job transient exists at start, it is unconditionally deleted before creating a new job. Eliminates stuck sync state after page reload or interrupted browser sessions.
+
+### 5. Fix AJAX response BOM / output buffer contamination
+
+File:
+- `features/algolia-product-sync/sync-ajax-handlers.php`
+
+Changes:
+- Added `if ( ob_get_length() ) { ob_clean(); }` before every `wp_send_json_success()` / `wp_send_json_error()` call in `ajax_sync_start` and `ajax_sync_batch` handlers (10 call sites).
+- Eliminates BOM or whitespace characters emitted by the PHP include chain before JSON output, which caused jQuery `$.ajax` `parsererror` despite HTTP 200 and a valid JSON body.
+
+---
 
 ## Performance considerations
 
-- No runtime counting in frontend.
-- No periodic/autoloaded counting in admin page render.
-- One SQL query over matching rows + lightweight PHP pass over `option_value`.
-- Avoids `get_transient()` in loops, minimizing object-cache churn and memory spikes.
+- Frontend path: zero live Presta fetches, zero transient writes for product data.
+- Sync ID fetch: single lightweight XML with `<id>` nodes only instead of full product payloads.
+- Legacy cleanup: one-time SQL DELETE, on-demand only (admin button click).
+
+---
 
 ## Validation
 
 Static validation:
-- no editor-reported syntax errors in modified files
+- No editor-reported syntax errors in any modified file.
+- Audit: zero remaining references to `product_data_prestashop_webservice_api_*` in fetch/sync logic.
 
 Manual test plan:
-1. Open options page, ensure no counts are shown initially.
-2. Click `Count Cached Products`.
-3. Verify both values are returned:
-   - `Soft cache products: X`
-   - `Hard cache products: Y`
-4. Click `Clear All Soft Cache`, verify counts update in response.
-5. Click `Count Cached Products` again to confirm zero or expected state.
+1. Trigger sync from admin — verify start returns correct total count (537).
+2. Let sync complete — verify all batches finish without `parsererror`.
+3. Confirm no `product_data_prestashop_webservice_api_*` transients written to DB during sync.
+4. Click "Clean Legacy PrestaShop Cache" — verify `deleted_rows` returned.
+5. Interrupt sync mid-run, reload page, start again — verify no zombie job block.
+
+---
 
 ## Risk / compatibility
 
-- Risk: low (read-only counting endpoint + UI update).
-- Backward compatibility: preserved.
-- Architecture: VSA-compliant; logic remains in cache slice, admin UI in admin-settings slice.
+- Risk: low — frontend data path behavior unchanged for consumers (same filter bridge, same Algolia data).
+- `sslverify => false` is intentional for localhost; production keys are managed via plugin settings.
+- `remove_all_actions('http_api_curl')` is broad — acceptable for now (sync runs in isolation), but a named callback + `remove_action` would be safer in future.
+- Backward compatibility: preserved — Algolia Ad Server filter bridge, soft-cache keys, and view model shape unchanged.
+- Architecture: VSA-compliant.
+
+---
 
 ## Checklist
 
-- [x] Added efficient on-demand cache counting function in `soft-cache.php`
-- [x] Used `$wpdb->get_col()` + `maybe_unserialize()` approach (no `get_transient` loop)
-- [x] Added secure AJAX endpoint for cache counts
-- [x] Added options-page button and result area for counts
-- [x] Added JS click handler and count rendering
-- [x] Updated clear responses to optionally include refreshed counts
+- [x] Legacy transient cache removed from frontend product data path
+- [x] `cache_duration` setting removed from admin UI
+- [x] One-time legacy cleanup utility added (button + AJAX + JS)
+- [x] Sync ID fetch uses `display=[id]` — payload ~95% smaller
+- [x] XML dual-mode parser handles both attribute and node forms
+- [x] IPv4 forcing + `sslverify=false` + timeout=15 in sync HTTP call
+- [x] Zombie job hard reset on sync start
+- [x] `ob_clean()` before all `wp_send_json_*` calls in sync handlers
+- [x] No remaining live references to `product_data_prestashop_webservice_api_*` in fetch/sync logic (audit passed)

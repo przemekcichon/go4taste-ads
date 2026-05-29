@@ -67,6 +67,17 @@ if ( ! function_exists( 'g4ta_admin_settings_ajax_clear_soft_cache' ) ) {
 	}
 }
 
+if ( ! function_exists( 'g4ta_admin_settings_ajax_clear_legacy_presta_cache' ) ) {
+	/**
+	 * AJAX handler for one-time legacy PrestaShop transient cleanup.
+	 *
+	 * @return void
+	 */
+	function g4ta_admin_settings_ajax_clear_legacy_presta_cache() {
+		g4ta_admin_settings_feature_instance()->ajax_clear_legacy_presta_cache();
+	}
+}
+
 if ( ! function_exists( 'g4ta_admin_settings_ajax_clear_current_page_soft_cache' ) ) {
 	/**
 	 * AJAX handler for current-page Algolia soft-cache clear.
@@ -156,6 +167,8 @@ if ( ! function_exists( 'g4ta_admin_settings_enqueue_assets' ) ) {
 				'permissionsTestAction' => 'g4t_test_prestashop_permissions',
 				'clearCacheNonce'       => wp_create_nonce( 'g4t_clear_soft_cache_ajax' ),
 				'clearCacheAction'      => 'g4t_clear_algolia_soft_cache',
+				'clearLegacyPrestaCacheNonce'  => wp_create_nonce( 'g4t_clear_legacy_presta_cache_ajax' ),
+				'clearLegacyPrestaCacheAction' => 'g4t_clear_legacy_presta_cache',
 				'getCacheCountsNonce'   => wp_create_nonce( 'g4t_get_cache_counts_ajax' ),
 				'getCacheCountsAction'  => 'g4t_get_algolia_cache_counts',
 				'clearCurrentPageCacheNonce'  => wp_create_nonce( 'g4t_clear_current_page_soft_cache_ajax' ),
@@ -185,6 +198,7 @@ add_action( 'admin_menu', 'g4ta_admin_settings_register_menu' );
 add_action( 'admin_init', 'g4ta_admin_settings_register_fields' );
 add_action( 'wp_ajax_g4t_test_prestashop_permissions', 'g4ta_admin_settings_ajax_test_permissions' );
 add_action( 'wp_ajax_g4t_clear_algolia_soft_cache', 'g4ta_admin_settings_ajax_clear_soft_cache' );
+add_action( 'wp_ajax_g4t_clear_legacy_presta_cache', 'g4ta_admin_settings_ajax_clear_legacy_presta_cache' );
 add_action( 'wp_ajax_g4t_clear_current_page_algolia_soft_cache', 'g4ta_admin_settings_ajax_clear_current_page_soft_cache' );
 add_action( 'wp_ajax_g4t_get_algolia_cache_counts', 'g4ta_admin_settings_ajax_get_cache_counts' );
 add_action( 'admin_enqueue_scripts', 'g4ta_admin_settings_enqueue_assets' );
