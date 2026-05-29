@@ -100,6 +100,168 @@ class Go4Taste_Ads_Admin_Settings {
 	}
 
 	/**
+	 * AJAX: clear all Algolia product soft-cache transients.
+	 *
+	 * @since 1.3.0
+	 * @return void
+	 */
+	public function ajax_clear_algolia_soft_cache() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
+		}
+
+		check_ajax_referer( 'g4t_clear_soft_cache_ajax', 'nonce' );
+
+		require_once dirname( __DIR__ ) . '/algolia-ad-server/soft-cache.php';
+		if ( ! function_exists( 'g4t_algolia_ad_server_clear_all_cache' ) ) {
+			wp_send_json_error( array( 'message' => 'Cache clear function is not available.' ), 500 );
+		}
+
+		$result = g4t_algolia_ad_server_clear_all_cache();
+		if ( ! is_array( $result ) || empty( $result['success'] ) ) {
+			$message = is_array( $result ) && ! empty( $result['error'] ) ? (string) $result['error'] : 'Cache clear failed.';
+			wp_send_json_error( array( 'message' => $message ), 500 );
+		}
+
+		wp_send_json_success(
+			array(
+				'message'      => __( 'Soft cache cleared successfully.', 'go4taste-ads' ),
+				'deleted_rows' => isset( $result['deleted_rows'] ) ? (int) $result['deleted_rows'] : 0,
+				'executed_at'  => isset( $result['executed_at'] ) ? (string) $result['executed_at'] : '',
+			)
+		);
+	}
+
+	/**
+	 * AJAX: clear Algolia soft cache for products used on the current page.
+	 *
+	 * @since 1.3.0
+	 * @return void
+	 */
+	public function ajax_clear_current_page_algolia_soft_cache() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
+		}
+
+		check_ajax_referer( 'g4t_clear_current_page_soft_cache_ajax', 'nonce' );
+
+		$product_ids = isset( $_POST['product_ids'] ) ? wp_unslash( $_POST['product_ids'] ) : array();
+		if ( ! is_array( $product_ids ) ) {
+			$product_ids = array();
+		}
+
+		$normalized_product_ids = array();
+		foreach ( $product_ids as $product_id ) {
+			$product_id = trim( sanitize_text_field( (string) $product_id ) );
+			if ( '' !== $product_id ) {
+				$normalized_product_ids[ $product_id ] = $product_id;
+			}
+		}
+
+		if ( empty( $normalized_product_ids ) ) {
+			wp_send_json_error( array( 'message' => __( 'No banner products were detected for this page.', 'go4taste-ads' ) ), 400 );
+		}
+
+		require_once dirname( __DIR__ ) . '/algolia-ad-server/soft-cache.php';
+		if ( ! function_exists( 'g4t_algolia_ad_server_clear_product_cache' ) ) {
+			wp_send_json_error( array( 'message' => 'Selective cache clear function is not available.' ), 500 );
+		}
+
+		$result = g4t_algolia_ad_server_clear_product_cache( array_values( $normalized_product_ids ) );
+		if ( ! is_array( $result ) || empty( $result['success'] ) ) {
+			$message = is_array( $result ) && ! empty( $result['error'] ) ? (string) $result['error'] : 'Selective cache clear failed.';
+			wp_send_json_error( array( 'message' => $message ), 500 );
+		}
+
+		wp_send_json_success(
+			array(
+				'message'             => __( 'Current page soft cache cleared successfully.', 'go4taste-ads' ),
+				'deleted_rows'        => isset( $result['deleted_rows'] ) ? (int) $result['deleted_rows'] : 0,
+				'executed_at'         => isset( $result['executed_at'] ) ? (string) $result['executed_at'] : '',
+				'cleared_product_ids' => isset( $result['cleared_product_ids'] ) && is_array( $result['cleared_product_ids'] ) ? array_values( $result['cleared_product_ids'] ) : array(),
+			)
+		);
+	}
+
+	/**
+	 * Resolve product IDs used by banners on the current page.
+	 *
+	 * @since 1.3.0
+	 * @return array<int,string>
+	 */
+	public function get_current_page_product_ids() {
+		$product_ids = apply_filters( 'g4t_ads_current_page_product_ids', array() );
+
+		if ( ! is_array( $product_ids ) ) {
+			return array();
+		}
+
+		$normalized_product_ids = array();
+		foreach ( $product_ids as $product_id ) {
+			$product_id = trim( (string) $product_id );
+			if ( '' !== $product_id ) {
+				$normalized_product_ids[ $product_id ] = $product_id;
+			}
+		}
+
+		return array_values( $normalized_product_ids );
+	}
+
+	/**
+	 * Register G4TAds actions in the admin bar.
+	 *
+	 * @since 1.3.0
+	 * @param WP_Admin_Bar $admin_bar Admin bar instance.
+	 * @return void
+	 */
+	public function add_admin_bar_menu( $admin_bar ) {
+		if ( ! $admin_bar instanceof WP_Admin_Bar || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$current_page_product_ids = $this->get_current_page_product_ids();
+		$current_page_count       = count( $current_page_product_ids );
+
+		$admin_bar->add_node(
+			array(
+				'id'    => 'g4t-ads-admin-bar',
+				'title' => __( 'G4TAds', 'go4taste-ads' ),
+				'href'  => false,
+			)
+		);
+
+		$admin_bar->add_node(
+			array(
+				'id'     => 'g4t-ads-admin-bar-clear-all',
+				'parent' => 'g4t-ads-admin-bar',
+				'title'  => __( 'Clear All Soft Cache', 'go4taste-ads' ),
+				'href'   => '#',
+				'meta'   => array(
+					'class'      => 'g4t-ads-admin-bar-action',
+					'data-action' => 'clear-all-soft-cache',
+				),
+			)
+		);
+
+		$admin_bar->add_node(
+			array(
+				'id'     => 'g4t-ads-admin-bar-clear-page',
+				'parent' => 'g4t-ads-admin-bar',
+				'title'  => sprintf(
+					/* translators: %d: number of detected banner products on the current page. */
+					__( 'Clear Soft Cache from this page (%d)', 'go4taste-ads' ),
+					(int) $current_page_count
+				),
+				'href'   => '#',
+				'meta'   => array(
+					'class'       => 'g4t-ads-admin-bar-action',
+					'data-action' => 'clear-current-page-soft-cache',
+				),
+			)
+		);
+	}
+
+	/**
 	 * Registers the admin menu for the plugin settings.
 	 *
 	 * @since    1.0.0
@@ -136,6 +298,15 @@ class Go4Taste_Ads_Admin_Settings {
 				submit_button();
 				?>
 			</form>
+
+			<hr>
+
+			<h2><?php _e( 'Cache Maintenance', 'go4taste-ads' ); ?></h2>
+			<p><?php _e( 'Use this action to clear all Algolia banner product soft cache transients immediately.', 'go4taste-ads' ); ?></p>
+			<p>
+				<button type="button" class="button button-secondary" id="g4t-clear-soft-cache"><?php _e( 'Clear All Soft Cache', 'go4taste-ads' ); ?></button>
+			</p>
+			<div id="g4t-clear-soft-cache-result" class="notice inline" style="display:none;"></div>
 
 			<hr>
 
@@ -198,6 +369,8 @@ class Go4Taste_Ads_Admin_Settings {
 		add_settings_field( 'algolia_app_id', 'Algolia App ID', array( $this, 'algolia_app_id_callback' ), 'algolia_settings', 'algolia_settings' );
 		add_settings_field( 'algolia_api_key', 'Algolia Search-Only API Key', array( $this, 'algolia_api_key_callback' ), 'algolia_settings', 'algolia_settings' );
 		add_settings_field( 'algolia_admin_api_key', 'Algolia Admin API Key', array( $this, 'algolia_admin_api_key_callback' ), 'algolia_settings', 'algolia_settings' );
+		add_settings_field( 'algolia_soft_cache_ttl_hours', 'Algolia Soft Cache TTL (hours)', array( $this, 'algolia_soft_cache_ttl_hours_callback' ), 'algolia_settings', 'algolia_settings' );
+		add_settings_field( 'algolia_hard_cache_ttl_days', 'Algolia Hard Cache TTL (days)', array( $this, 'algolia_hard_cache_ttl_days_callback' ), 'algolia_settings', 'algolia_settings' );
 		add_settings_field( 'cache_duration', 'Transient Cache Duration (hours)', array( $this, 'cache_duration_callback' ), 'go4taste-ads', 'go4taste_ads_setting_section' );
 		add_settings_field( 'ga4_view_promotion_datalayer', 'GA4 view_promotion (dataLayer)', array( $this, 'ga4_view_promotion_datalayer_callback' ), 'go4taste-ads', 'go4taste_ads_setting_section' );
 	}
@@ -250,6 +423,12 @@ class Go4Taste_Ads_Admin_Settings {
 		}
 		if ( isset( $input['cache_duration'] ) ) {
 			$sanitized_input['cache_duration'] = intval( $input['cache_duration'] );
+		}
+		if ( isset( $input['algolia_soft_cache_ttl_hours'] ) ) {
+			$sanitized_input['algolia_soft_cache_ttl_hours'] = max( 1, intval( $input['algolia_soft_cache_ttl_hours'] ) );
+		}
+		if ( isset( $input['algolia_hard_cache_ttl_days'] ) ) {
+			$sanitized_input['algolia_hard_cache_ttl_days'] = max( 1, intval( $input['algolia_hard_cache_ttl_days'] ) );
 		}
 
 		$sanitized_input['ga4_view_promotion_datalayer'] = isset( $input['ga4_view_promotion_datalayer'] ) ? 1 : 0;
@@ -379,6 +558,32 @@ class Go4Taste_Ads_Admin_Settings {
 		$cache_duration = isset( $options['cache_duration'] ) ? esc_attr( $options['cache_duration'] ) : '0';
 		echo '<input type="number" id="cache_duration" name="go4taste_ads_options[cache_duration]" value="' . $cache_duration . '" min="0" />';
 		echo '<p class="description">Set to 0 to disable caching, or specify the number of hours for cache duration.</p>';
+	}
+
+	/**
+	 * Callback function for Algolia soft cache TTL field.
+	 *
+	 * @since 1.3.0
+	 * @return void
+	 */
+	public function algolia_soft_cache_ttl_hours_callback() {
+		$options   = get_option( 'go4taste_ads_options' );
+		$ttl_hours = isset( $options['algolia_soft_cache_ttl_hours'] ) ? esc_attr( $options['algolia_soft_cache_ttl_hours'] ) : '24';
+		echo '<input type="number" id="algolia_soft_cache_ttl_hours" name="go4taste_ads_options[algolia_soft_cache_ttl_hours]" value="' . $ttl_hours . '" min="1" />';
+		echo '<p class="description">Soft TTL for Algolia banner payload cache in hours (minimum 1).</p>';
+	}
+
+	/**
+	 * Callback function for Algolia hard cache TTL field.
+	 *
+	 * @since 1.3.0
+	 * @return void
+	 */
+	public function algolia_hard_cache_ttl_days_callback() {
+		$options  = get_option( 'go4taste_ads_options' );
+		$ttl_days = isset( $options['algolia_hard_cache_ttl_days'] ) ? esc_attr( $options['algolia_hard_cache_ttl_days'] ) : '7';
+		echo '<input type="number" id="algolia_hard_cache_ttl_days" name="go4taste_ads_options[algolia_hard_cache_ttl_days]" value="' . $ttl_days . '" min="1" />';
+		echo '<p class="description">Hard TTL for Algolia banner payload transient in days (minimum 1).</p>';
 	}
 
 	/**

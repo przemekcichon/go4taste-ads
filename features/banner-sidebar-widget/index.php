@@ -42,6 +42,33 @@ if ( ! function_exists( 'g4t_banner_sidebar_widget_enqueue_assets' ) ) {
 		);
 	}
 }
+
+if ( ! function_exists( 'g4t_banner_sidebar_widget_collect_current_page_product_ids' ) ) {
+	/**
+	 * Append sidebar widget product ID used by the current singular page.
+	 *
+	 * @param array<int,string> $product_ids Product IDs collected so far.
+	 * @return array<int,string>
+	 */
+	function g4t_banner_sidebar_widget_collect_current_page_product_ids( $product_ids ) {
+		if ( ! is_array( $product_ids ) ) {
+			$product_ids = array();
+		}
+
+		if ( ! is_singular() ) {
+			return array_values( array_unique( $product_ids ) );
+		}
+
+		$product_id = g4t_core_get_sidebar_widget_product_id();
+		$product_id = trim( (string) $product_id );
+		if ( '' !== $product_id ) {
+			$product_ids[] = $product_id;
+		}
+
+		return array_values( array_unique( array_filter( array_map( 'strval', $product_ids ) ) ) );
+	}
+}
 add_action( 'widgets_init', 'g4t_banner_sidebar_widget_register' );
 add_action( 'plugins_loaded', 'g4t_banner_sidebar_widget_signal_loaded' );
 add_action( 'wp_enqueue_scripts', 'g4t_banner_sidebar_widget_enqueue_assets' );
+add_filter( 'g4t_ads_current_page_product_ids', 'g4t_banner_sidebar_widget_collect_current_page_product_ids' );

@@ -55,7 +55,11 @@ function g4t_algolia_ad_server_normalize_product_record($record) {
  */
 function g4t_algolia_ad_server_fetch_product_data($product_id) {
     $cache_key = 'g4t_ads_product_' . intval($product_id);
-    $cached = g4t_algolia_ad_server_soft_cache_get($cache_key);
+    $force_refresh = is_user_logged_in()
+        && current_user_can('manage_options')
+        && isset($_GET['g4t_ads_nocache']);
+
+    $cached = $force_refresh ? null : g4t_algolia_ad_server_soft_cache_get($cache_key);
 
     // If cache exists and not expired, return it
     if ($cached && $cached['soft_expires_at'] > time()) {
@@ -87,6 +91,10 @@ function g4t_algolia_ad_server_fetch_product_data($product_id) {
         // If Algolia returns nothing, fall through to stale
     } catch (Throwable $e) {
         // Algolia fetch failed, will return stale if available
+    }
+
+    if ($force_refresh) {
+        $cached = g4t_algolia_ad_server_soft_cache_get($cache_key);
     }
 
     // If we have stale cache, return it

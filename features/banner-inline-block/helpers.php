@@ -53,3 +53,78 @@ if ( ! function_exists( 'g4t_inline_banner_get_option' ) ) {
 
 	}
 }
+
+if ( ! function_exists( 'g4t_inline_banner_extract_product_ids_from_blocks' ) ) {
+	/**
+	 * Extract inline banner product IDs from parsed block tree.
+	 *
+	 * @param array<int,array<string,mixed>> $blocks Parsed block tree.
+	 * @return array<int,string>
+	 */
+	function g4t_inline_banner_extract_product_ids_from_blocks( $blocks ) {
+		$product_ids = array();
+
+		if ( ! is_array( $blocks ) ) {
+			return $product_ids;
+		}
+
+		foreach ( $blocks as $block ) {
+			if ( ! is_array( $block ) ) {
+				continue;
+			}
+
+			$block_name = isset( $block['blockName'] ) ? (string) $block['blockName'] : '';
+			if ( 'go4taste-ads/inline-banner' === $block_name ) {
+				$products = isset( $block['attrs']['products'] ) && is_array( $block['attrs']['products'] ) ? $block['attrs']['products'] : array();
+				foreach ( $products as $product_entry ) {
+					$product_id = isset( $product_entry['id'] ) ? trim( (string) $product_entry['id'] ) : '';
+					if ( '' !== $product_id ) {
+						$product_ids[ $product_id ] = $product_id;
+					}
+				}
+			}
+
+			if ( ! empty( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] ) ) {
+				foreach ( g4t_inline_banner_extract_product_ids_from_blocks( $block['innerBlocks'] ) as $nested_product_id ) {
+					$product_ids[ $nested_product_id ] = $nested_product_id;
+				}
+			}
+		}
+
+		return array_values( $product_ids );
+	}
+}
+
+if ( ! function_exists( 'g4t_inline_banner_collect_current_page_product_ids' ) ) {
+	/**
+	 * Append inline-banner product IDs used by the current singular page.
+	 *
+	 * @param array<int,string> $product_ids Product IDs collected so far.
+	 * @return array<int,string>
+	 */
+	function g4t_inline_banner_collect_current_page_product_ids( $product_ids ) {
+		if ( ! is_array( $product_ids ) ) {
+			$product_ids = array();
+		}
+
+		if ( ! is_singular() ) {
+			return array_values( array_unique( $product_ids ) );
+		}
+
+		$queried_object = get_queried_object();
+		if ( ! $queried_object instanceof WP_Post ) {
+			return array_values( array_unique( $product_ids ) );
+		}
+
+		$post_content = isset( $queried_object->post_content ) ? (string) $queried_object->post_content : '';
+		if ( '' === $post_content || ! function_exists( 'parse_blocks' ) ) {
+			return array_values( array_unique( $product_ids ) );
+		}
+
+		foreach ( g4t_inline_banner_extract_product_ids_from_blocks( parse_blocks( $post_content ) ) as $product_id ) {
+			$product_ids[] = $product_id;
+		}
+
+		return array_values( array_unique( array_filter( array_map( 'strval', $product_ids ) ) ) );
+	}
+}

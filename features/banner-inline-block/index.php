@@ -37,6 +37,8 @@ if ( ! function_exists( 'g4t_inline_banner_register_block_hooks' ) ) {
 			add_filter( 'wp_theme_json_data_theme', 'g4t_inline_banner_enable_border_settings' );
 		}
 
+		add_filter( 'g4t_ads_current_page_product_ids', 'g4t_inline_banner_collect_current_page_product_ids' );
+
 	}
 }
 
