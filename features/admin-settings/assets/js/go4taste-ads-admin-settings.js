@@ -3,6 +3,164 @@
 
 	// Wait for the DOM to be ready
 	$(function() {
+		function getAdminAjaxUrl() {
+			return ( 'undefined' !== typeof g4tAdsAdmin && g4tAdsAdmin.ajaxUrl ) ? g4tAdsAdmin.ajaxUrl : window.ajaxurl;
+		}
+
+		function runSoftCacheClearRequest( requestData, options ) {
+			const ajaxUrl = getAdminAjaxUrl();
+			const settings = options || {};
+			const successMessage = settings.successMessage || 'Soft cache cleared.';
+			const emptyPageMessage = settings.emptyPageMessage || 'No banner products were detected for this page.';
+
+			if ( ! ajaxUrl ) {
+				window.alert( 'Brak konfiguracji AJAX URL.' );
+				return;
+			}
+
+			if ( settings.requireProductIds ) {
+				const currentPageProductIds = Array.isArray( g4tAdsAdmin.currentPageProductIds ) ? g4tAdsAdmin.currentPageProductIds : [];
+				if ( ! currentPageProductIds.length ) {
+					window.alert( emptyPageMessage );
+					return;
+				}
+			}
+
+			$.post( ajaxUrl, requestData )
+				.done( function ( response ) {
+					if ( response && response.success && response.data ) {
+						const deletedRows = Number( response.data.deleted_rows || 0 );
+						const executedAt = response.data.executed_at ? String( response.data.executed_at ) : '';
+						window.alert( `${successMessage} Removed rows: ${deletedRows}${ executedAt ? ` (${executedAt})` : '' }` );
+						if ( settings.reloadOnSuccess ) {
+							window.location.reload();
+						}
+						return;
+					}
+
+					window.alert( 'Cache clear request failed.' );
+				} )
+				.fail( function ( xhr ) {
+					let message = 'Nie udalo sie wyczyscic cache.';
+					if ( xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message ) {
+						message = String( xhr.responseJSON.data.message );
+					}
+
+					window.alert( message );
+				} );
+		}
+
+		$( document ).on( 'click', '#wp-admin-bar-g4t-ads-admin-bar-clear-all a', function ( event ) {
+			event.preventDefault();
+
+			if ( ! window.confirm( 'Are you sure you want to clear all soft cache transients for Algolia banner products?' ) ) {
+				return;
+			}
+
+			runSoftCacheClearRequest(
+				{
+					action: ( 'undefined' !== typeof g4tAdsAdmin && g4tAdsAdmin.clearCacheAction ) ? g4tAdsAdmin.clearCacheAction : 'g4t_clear_algolia_soft_cache',
+					nonce: ( 'undefined' !== typeof g4tAdsAdmin && g4tAdsAdmin.clearCacheNonce ) ? g4tAdsAdmin.clearCacheNonce : '',
+				},
+				{
+					successMessage: 'All soft cache cleared.',
+					reloadOnSuccess: true,
+				}
+			);
+		} );
+
+		$( document ).on( 'click', '#wp-admin-bar-g4t-ads-admin-bar-clear-page a', function ( event ) {
+			event.preventDefault();
+
+			if ( ! window.confirm( 'Are you sure you want to clear soft cache only for banner products detected on this page?' ) ) {
+				return;
+			}
+
+			runSoftCacheClearRequest(
+				{
+					action: ( 'undefined' !== typeof g4tAdsAdmin && g4tAdsAdmin.clearCurrentPageCacheAction ) ? g4tAdsAdmin.clearCurrentPageCacheAction : 'g4t_clear_current_page_algolia_soft_cache',
+					nonce: ( 'undefined' !== typeof g4tAdsAdmin && g4tAdsAdmin.clearCurrentPageCacheNonce ) ? g4tAdsAdmin.clearCurrentPageCacheNonce : '',
+					product_ids: ( 'undefined' !== typeof g4tAdsAdmin && Array.isArray( g4tAdsAdmin.currentPageProductIds ) ) ? g4tAdsAdmin.currentPageProductIds : [],
+				},
+				{
+					successMessage: 'Current page soft cache cleared.',
+					emptyPageMessage: 'No banner products were detected for this page.',
+					requireProductIds: true,
+					reloadOnSuccess: true,
+				}
+			);
+		} );
+
+		$( document ).on( 'click', '#g4t-clear-soft-cache', function () {
+			const button = $( this );
+			const resultWrap = $( '#g4t-clear-soft-cache-result' );
+			const ajaxUrl = getAdminAjaxUrl();
+			const clearCacheAction = ( 'undefined' !== typeof g4tAdsAdmin && g4tAdsAdmin.clearCacheAction ) ? g4tAdsAdmin.clearCacheAction : 'g4t_clear_algolia_soft_cache';
+			const clearCacheNonce = ( 'undefined' !== typeof g4tAdsAdmin && g4tAdsAdmin.clearCacheNonce ) ? g4tAdsAdmin.clearCacheNonce : '';
+
+			if ( ! resultWrap.length ) {
+				return;
+			}
+
+			if ( ! ajaxUrl ) {
+				resultWrap
+					.removeClass( 'notice-success notice-error' )
+					.addClass( 'notice-error' )
+					.text( 'Brak konfiguracji AJAX URL.' )
+					.show();
+				return;
+			}
+
+			if ( ! window.confirm( 'Are you sure you want to clear all soft cache transients for Algolia banner products?' ) ) {
+				return;
+			}
+
+			button.prop( 'disabled', true ).text( 'Clearing...' );
+			resultWrap
+				.removeClass( 'notice-success notice-error' )
+				.text( '' )
+				.hide();
+
+			$.post( ajaxUrl, {
+				action: clearCacheAction,
+				nonce: clearCacheNonce,
+			} )
+				.done( function ( response ) {
+					if ( response && response.success && response.data ) {
+						const deletedRows = Number( response.data.deleted_rows || 0 );
+						const executedAt = response.data.executed_at ? String( response.data.executed_at ) : '';
+						const successMessage = `Soft cache cleared. Removed rows: ${deletedRows}${ executedAt ? ` (${executedAt})` : '' }`;
+
+						resultWrap
+							.removeClass( 'notice-error' )
+							.addClass( 'notice-success' )
+							.text( successMessage )
+							.show();
+						return;
+					}
+
+					resultWrap
+						.removeClass( 'notice-success' )
+						.addClass( 'notice-error' )
+						.text( 'Cache clear request failed.' )
+						.show();
+				} )
+				.fail( function ( xhr ) {
+					let message = 'Nie udalo sie wyczyscic cache.';
+					if ( xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message ) {
+						message = String( xhr.responseJSON.data.message );
+					}
+
+					resultWrap
+						.removeClass( 'notice-success' )
+						.addClass( 'notice-error' )
+						.text( message )
+						.show();
+				} )
+				.always( function () {
+					button.prop( 'disabled', false ).text( 'Clear All Soft Cache' );
+				} );
+		} );
 
 		$( document ).on( 'click', '#g4t-test-api-permissions', function () {
 			const button = $( this );
