@@ -78,6 +78,17 @@ if ( ! function_exists( 'g4ta_admin_settings_ajax_clear_current_page_soft_cache'
 	}
 }
 
+if ( ! function_exists( 'g4ta_admin_settings_ajax_get_cache_counts' ) ) {
+	/**
+	 * AJAX handler for on-demand Algolia cache counts.
+	 *
+	 * @return void
+	 */
+	function g4ta_admin_settings_ajax_get_cache_counts() {
+		g4ta_admin_settings_feature_instance()->ajax_get_algolia_cache_counts();
+	}
+}
+
 if ( ! function_exists( 'g4ta_admin_settings_register_admin_bar' ) ) {
 	/**
 	 * Register admin bar menu items owned by the admin-settings slice.
@@ -145,6 +156,8 @@ if ( ! function_exists( 'g4ta_admin_settings_enqueue_assets' ) ) {
 				'permissionsTestAction' => 'g4t_test_prestashop_permissions',
 				'clearCacheNonce'       => wp_create_nonce( 'g4t_clear_soft_cache_ajax' ),
 				'clearCacheAction'      => 'g4t_clear_algolia_soft_cache',
+				'getCacheCountsNonce'   => wp_create_nonce( 'g4t_get_cache_counts_ajax' ),
+				'getCacheCountsAction'  => 'g4t_get_algolia_cache_counts',
 				'clearCurrentPageCacheNonce'  => wp_create_nonce( 'g4t_clear_current_page_soft_cache_ajax' ),
 				'clearCurrentPageCacheAction' => 'g4t_clear_current_page_algolia_soft_cache',
 				'currentPageProductIds'       => g4ta_admin_settings_feature_instance()->get_current_page_product_ids(),
@@ -173,6 +186,7 @@ add_action( 'admin_init', 'g4ta_admin_settings_register_fields' );
 add_action( 'wp_ajax_g4t_test_prestashop_permissions', 'g4ta_admin_settings_ajax_test_permissions' );
 add_action( 'wp_ajax_g4t_clear_algolia_soft_cache', 'g4ta_admin_settings_ajax_clear_soft_cache' );
 add_action( 'wp_ajax_g4t_clear_current_page_algolia_soft_cache', 'g4ta_admin_settings_ajax_clear_current_page_soft_cache' );
+add_action( 'wp_ajax_g4t_get_algolia_cache_counts', 'g4ta_admin_settings_ajax_get_cache_counts' );
 add_action( 'admin_enqueue_scripts', 'g4ta_admin_settings_enqueue_assets' );
 add_action( 'wp_enqueue_scripts', 'g4ta_admin_settings_enqueue_frontend_assets' );
 add_action( 'admin_bar_menu', 'g4ta_admin_settings_register_admin_bar', 100 );

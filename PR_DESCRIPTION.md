@@ -1,135 +1,119 @@
-# PR: Admin Bar Soft Cache Actions + Granular Algolia Cache Controls
+# PR: On-Demand Soft/Hard Cache Product Counts in Options Page
 
-**Branch:** feature/admin-bar-soft-cache-actions -> main
+**Branch:** feature/cache-counts-ui -> main
 
 ## Motivation
 
-We needed production-safe cache operations directly from the admin bar, without opening plugin settings each time.
+We needed visibility into how many products are currently stored in Algolia banner cache, but without adding runtime overhead.
 
-This PR introduces:
-
-1. A top-level `G4TAds` admin bar menu with two dropdown actions:
-   - `Clear All Soft Cache`
-   - `Clear Soft Cache from this page`
-2. Secure AJAX handlers for both global and page-scoped cache clear operations.
-3. Granular cache TTL controls for Algolia soft/hard cache in admin settings.
-4. A force-refresh flow for banner data (`g4t_ads_nocache`) that bypasses read and persists fresh data back to transient cache.
+Key requirement for performance:
+- cache counting must run only on demand (button click in options page),
+- no automatic counting on page load,
+- no counting in frontend/admin runtime flows,
+- no `get_transient()` loop for large datasets.
 
 ## TL;DR for reviewer
 
-- Added global and page-specific soft-cache clear actions in admin bar.
-- Implemented selective transient deletion per product ID.
-- Kept VSA boundaries: admin UI/actions in `admin-settings`, cache mechanics in `algolia-ad-server`, page product detection in owning banner features.
-- Added configurable Algolia soft/hard TTL settings.
-- Added force-refresh behavior for admin debug use-case.
+- Added on-demand cache counting (`soft` and `hard`) in plugin options page.
+- Implemented efficient counting with a single `$wpdb->get_col()` query over transient values.
+- `hard_count` = number of transient value rows found.
+- `soft_count` = rows where unserialized payload has `soft_expires_at > time()`.
+- Added dedicated AJAX endpoint for counting and wired UI button + result panel.
+- Existing clear endpoints now also return fresh counts after clear (optional UX enhancement).
 
 ## Scope of changes
 
-### 1) Algolia cache layer enhancements
+### 1) Cache counting logic (efficient, OOM-safe)
 
-Files:
+File:
 - `features/algolia-ad-server/soft-cache.php`
-- `features/algolia-ad-server/product-data.php`
 
-Changes:
-- `g4t_algolia_ad_server_soft_cache_set()` now reads cache TTL options via `g4t_core_get_ads_options()`.
-- Added `g4t_algolia_ad_server_clear_all_cache()` (global transient cleanup).
-- Added `g4t_algolia_ad_server_clear_product_cache( $product_ids )` (targeted cleanup).
-- Added force-refresh path in `product-data.php` for logged-in admins with `?g4t_ads_nocache=1`:
-  - bypasses read cache,
-  - fetches fresh data from Algolia,
-  - writes fresh data back to transient.
+Added:
+- `g4t_algolia_ad_server_get_cache_counts()`
 
-### 2) Admin settings + admin bar actions
+Implementation details:
+- Single query: `SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE '_transient_g4t_ads_product_%'`
+- Uses `$wpdb->esc_like()` + `$wpdb->prepare()`
+- `hard_count` = `count( $rows )`
+- Iterates over row values with `maybe_unserialize()`
+- Increments `soft_count` when payload contains `soft_expires_at` greater than current time
+- Returns structured result: `success`, `soft_count`, `hard_count`, `executed_at`, optional `error`
+
+### 2) New AJAX endpoint for on-demand counts
 
 Files:
 - `features/admin-settings/settings-page.php`
 - `features/admin-settings/index.php`
-- `features/admin-settings/assets/js/go4taste-ads-admin-settings.js`
 
-Changes:
-- Added secure AJAX handler for global clear:
-  - `wp_ajax_g4t_clear_algolia_soft_cache`
-- Added secure AJAX handler for page-scoped clear:
-  - `wp_ajax_g4t_clear_current_page_algolia_soft_cache`
-- Added top-level admin bar menu node `G4TAds` and dropdown actions:
-  - `Clear All Soft Cache`
-  - `Clear Soft Cache from this page (N)`
-- Added frontend/admin script wiring for admin-bar action clicks, confirmation dialogs, AJAX calls, and success feedback.
-- Existing settings-page button (`Clear All Soft Cache`) remains available.
+Added:
+- method `ajax_get_algolia_cache_counts()` in admin settings class
+- action registration: `wp_ajax_g4t_get_algolia_cache_counts`
+- localized JS config:
+  - `getCacheCountsAction`
+  - `getCacheCountsNonce`
 
-### 3) Current page product detection (feature-owned)
+Security:
+- capability check: `manage_options`
+- nonce validation: `check_ajax_referer( 'g4t_get_cache_counts_ajax', 'nonce' )`
 
-Files:
-- `features/banner-inline-block/helpers.php`
-- `features/banner-inline-block/index.php`
-- `features/banner-sidebar-widget/index.php`
-
-Changes:
-- Added filter contract usage: `g4t_ads_current_page_product_ids`
-- Inline banner feature now contributes product IDs parsed from `go4taste-ads/inline-banner` blocks on singular pages.
-- Sidebar widget feature contributes its resolved current-post product ID.
-
-This preserves VSA ownership: each feature reports its own product IDs.
-
-### 4) TTL controls in settings
+### 3) Options page UI (only there, only on click)
 
 File:
 - `features/admin-settings/settings-page.php`
 
-Changes:
-- Added settings fields:
-  - `algolia_soft_cache_ttl_hours`
-  - `algolia_hard_cache_ttl_days`
-- Added sanitization and defaults.
+Added in Cache Maintenance section:
+- button: `Count Cached Products`
+- result container: `#g4t-cache-count-result`
 
-### 5) Copilot/VSA guardrail documentation
+Behavior:
+- no automatic render of counts on load
+- results appear only after click-triggered AJAX response
+
+### 4) JS handling for count button + post-clear refresh
 
 File:
-- `.github/copilot-instructions.md`
+- `features/admin-settings/assets/js/go4taste-ads-admin-settings.js`
 
-Changes:
-- Added an explicit repository rule: whenever a new banner/ads placement is introduced, that feature must provide feature-local integration with `g4t_ads_current_page_product_ids` so `Clear Soft Cache from this page` includes product IDs from the new placement.
+Added:
+- click handler for `#g4t-count-soft-hard-cache`
+- request to `g4t_get_algolia_cache_counts`
+- result rendering with `Soft cache products` and `Hard cache products`
 
-## Security and safety
+Also improved:
+- after clear actions, if response includes counts, count panel is refreshed in-place
 
-- Both cache-clear AJAX endpoints require:
-  - `current_user_can( 'manage_options' )`
-  - valid nonce (`check_ajax_referer`)
-- SQL cleanup uses `$wpdb->prepare()` and strict transient prefix patterns.
-- Page-scoped cleanup rejects empty product-id payloads.
+## Performance considerations
 
-## Root cause addressed
-
-Operationally, cache clear required manual/transient-level intervention.
-This PR adds controlled, audited UI actions for admins and avoids broad custom SQL outside cache prefix scope.
+- No runtime counting in frontend.
+- No periodic/autoloaded counting in admin page render.
+- One SQL query over matching rows + lightweight PHP pass over `option_value`.
+- Avoids `get_transient()` in loops, minimizing object-cache churn and memory spikes.
 
 ## Validation
 
-Static checks:
-- no editor-reported syntax errors in modified PHP/JS files.
+Static validation:
+- no editor-reported syntax errors in modified files
 
-Manual checks performed/planned:
-1. Admin bar shows `G4TAds` with both dropdown actions for admin users.
-2. Global clear removes product transient rows and reports deleted count.
-3. Page-scoped clear only acts on product IDs detected on current page.
-4. `?g4t_ads_nocache=1` fetches fresh Algolia data and overwrites cache.
+Manual test plan:
+1. Open options page, ensure no counts are shown initially.
+2. Click `Count Cached Products`.
+3. Verify both values are returned:
+   - `Soft cache products: X`
+   - `Hard cache products: Y`
+4. Click `Clear All Soft Cache`, verify counts update in response.
+5. Click `Count Cached Products` again to confirm zero or expected state.
 
 ## Risk / compatibility
 
-- Risk: low to medium (touches cache control and admin UX paths).
+- Risk: low (read-only counting endpoint + UI update).
 - Backward compatibility: preserved.
-- Architecture: VSA-compliant slice ownership maintained.
+- Architecture: VSA-compliant; logic remains in cache slice, admin UI in admin-settings slice.
 
 ## Checklist
 
-- [x] Added global soft-cache clear function in Algolia cache slice
-- [x] Added selective per-product soft-cache clear function
-- [x] Added secure global clear AJAX endpoint
-- [x] Added secure current-page clear AJAX endpoint
-- [x] Added `G4TAds` admin bar menu with two dropdown actions
-- [x] Added frontend/admin JS action handlers for admin bar
-- [x] Added page product-ID collection via feature-owned filter contributions
-- [x] Added configurable Algolia soft/hard TTL settings
-- [x] Added force-refresh cache bypass/save behavior for admin debug
-- [x] Added documentation guardrail for new placements and page-scoped cache clear integration
+- [x] Added efficient on-demand cache counting function in `soft-cache.php`
+- [x] Used `$wpdb->get_col()` + `maybe_unserialize()` approach (no `get_transient` loop)
+- [x] Added secure AJAX endpoint for cache counts
+- [x] Added options-page button and result area for counts
+- [x] Added JS click handler and count rendering
+- [x] Updated clear responses to optionally include refreshed counts
