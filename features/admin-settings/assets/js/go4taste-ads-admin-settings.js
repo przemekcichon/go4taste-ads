@@ -240,6 +240,77 @@
 				} );
 		} );
 
+		$( document ).on( 'click', '#g4t-clean-legacy-presta-cache', function () {
+			const button = $( this );
+			const resultWrap = $( '#g4t-clean-legacy-presta-cache-result' );
+			const ajaxUrl = getAdminAjaxUrl();
+			const legacyAction = ( 'undefined' !== typeof g4tAdsAdmin && g4tAdsAdmin.clearLegacyPrestaCacheAction ) ? g4tAdsAdmin.clearLegacyPrestaCacheAction : 'g4t_clear_legacy_presta_cache';
+			const legacyNonce = ( 'undefined' !== typeof g4tAdsAdmin && g4tAdsAdmin.clearLegacyPrestaCacheNonce ) ? g4tAdsAdmin.clearLegacyPrestaCacheNonce : '';
+
+			if ( ! resultWrap.length ) {
+				return;
+			}
+
+			if ( ! ajaxUrl ) {
+				resultWrap
+					.removeClass( 'notice-success notice-error' )
+					.addClass( 'notice-error' )
+					.text( 'Brak konfiguracji AJAX URL.' )
+					.show();
+				return;
+			}
+
+			if ( ! window.confirm( 'Are you sure you want to clean legacy PrestaShop transient leftovers?' ) ) {
+				return;
+			}
+
+			button.prop( 'disabled', true ).text( 'Cleaning...' );
+			resultWrap
+				.removeClass( 'notice-success notice-error' )
+				.text( '' )
+				.hide();
+
+			$.post( ajaxUrl, {
+				action: legacyAction,
+				nonce: legacyNonce,
+			} )
+				.done( function ( response ) {
+					if ( response && response.success && response.data ) {
+						const deletedRows = Number( response.data.deleted_rows || 0 );
+						const executedAt = response.data.executed_at ? String( response.data.executed_at ) : '';
+						const successMessage = `Legacy PrestaShop cache cleaned. Removed rows: ${deletedRows}${ executedAt ? ` (${executedAt})` : '' }`;
+
+						resultWrap
+							.removeClass( 'notice-error' )
+							.addClass( 'notice-success' )
+							.text( successMessage )
+							.show();
+						return;
+					}
+
+					resultWrap
+						.removeClass( 'notice-success' )
+						.addClass( 'notice-error' )
+						.text( 'Legacy cache cleanup request failed.' )
+						.show();
+				} )
+				.fail( function ( xhr ) {
+					let message = 'Nie udalo sie wyczyscic legacy cache.';
+					if ( xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message ) {
+						message = String( xhr.responseJSON.data.message );
+					}
+
+					resultWrap
+						.removeClass( 'notice-success' )
+						.addClass( 'notice-error' )
+						.text( message )
+						.show();
+				} )
+				.always( function () {
+					button.prop( 'disabled', false ).text( 'Clean Legacy PrestaShop Cache' );
+				} );
+		} );
+
 		$( document ).on( 'click', '#g4t-test-api-permissions', function () {
 			const button = $( this );
 			const permissionsResultWrap = $( '#g4t-api-permissions-result' );
@@ -302,6 +373,8 @@
 		let syncRunning = false;
 		let lastKnownSyncOffset = 0;
 		let consecutiveStalledSyncFailures = 0;
+		let syncBatchInFlight = false;
+		let syncResumeInFlight = false;
 
 		function getSyncOffset( job ) {
 			if ( ! job ) {
@@ -358,7 +431,13 @@
 				} );
 		}
 
-		function resumeExistingSyncJob( contextMessage ) {
+		function resumeExistingSyncJob( contextMessage, silentResume ) {
+			if ( syncResumeInFlight ) {
+				return;
+			}
+
+			syncResumeInFlight = true;
+
 			if ( contextMessage ) {
 				appendSyncLog( contextMessage );
 			}
@@ -392,7 +471,9 @@
 
 						syncRunning = true;
 						syncStartButton.prop( 'disabled', true ).text( 'Sync Running...' );
-						appendSyncLog( 'Wznowiono aktywny sync.' );
+						if ( ! silentResume ) {
+							appendSyncLog( 'Wznowiono aktywny sync.' );
+						}
 						setTimeout( runSyncBatch, 500 );
 						return;
 					}
@@ -405,19 +486,30 @@
 					syncRunning = false;
 					syncStartButton.prop( 'disabled', false ).text( 'Sync Products' );
 					appendSyncLog( 'Nie udalo sie wznowic sync po bledzie.', true );
+				} )
+				.always( function () {
+					syncResumeInFlight = false;
 				} );
 		}
 
+		function isRecoverableBatchFailureStatus( statusCode ) {
+			return 0 === statusCode || 502 === statusCode || 503 === statusCode || 504 === statusCode;
+		}
+
 		function runSyncBatch() {
-			if ( ! syncRunning ) {
+			if ( ! syncRunning || syncBatchInFlight ) {
 				return;
 			}
+
+			syncBatchInFlight = true;
 
 			$.post( g4tAdsAdmin.ajaxUrl, {
 				action: g4tAdsAdmin.syncBatchAction,
 				nonce: g4tAdsAdmin.syncNonce,
 			} )
 				.done( function ( response ) {
+					consecutiveStalledSyncFailures = 0;
+
 					if ( ! response || ! response.success || ! response.data || ! response.data.job ) {
 						syncRunning = false;
 						syncStartButton.prop( 'disabled', false ).text( 'Sync Products' );
@@ -443,6 +535,11 @@
 						return;
 					}
 
+					if ( isRecoverableBatchFailureStatus( statusCode ) ) {
+						resumeExistingSyncJob( '', true );
+						return;
+					}
+
 					syncRunning = false;
 					syncStartButton.prop( 'disabled', false ).text( 'Sync Products' );
 					const message = xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message
@@ -450,6 +547,9 @@
 						: 'Sync batch request failed.';
 					appendSyncLog( message, true );
 					resumeExistingSyncJob( 'Po bledzie batch probuje wznowic sync...' );
+				} )
+				.always( function () {
+					syncBatchInFlight = false;
 				} );
 		}
 

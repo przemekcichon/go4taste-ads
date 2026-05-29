@@ -55,29 +55,18 @@ if ( ! function_exists( 'g4t_core_get_api_fetcher' ) ) {
 
 if ( ! function_exists( 'g4t_core_fetch_product_data' ) ) {
 	/**
-	 * Fetch product data using shared API fetcher.
+	 * Fetch product data through the Algolia product bridge.
 	 *
 	 * @param string               $product_id Product ID.
 	 * @param array<string,mixed>  $options Plugin options.
-	 * @return object|false
+	 * @return object|null
 	 */
 	function g4t_core_fetch_product_data( $product_id, $options ) {
 		$product_id = trim( (string) $product_id );
 		if ( '' === $product_id ) {
-			return false;
+			return null;
 		}
 
-		$api_fetcher = g4t_core_get_api_fetcher();
-		if ( ! $api_fetcher ) {
-			return false;
-		}
-		$lang       = isset( $options['prestashop_lang'] ) ? (string) $options['prestashop_lang'] : 'pl';
-		$api_url    = isset( $options['api_url'] ) ? (string) $options['api_url'] : '';
-
-		if ( '' === trim( $api_url ) ) {
-			return false;
-		}
-
-		return $api_fetcher->fetch_product_data( $product_id, $lang, $api_url );
+		return apply_filters( 'go4taste_ads_get_product_data', null, $product_id );
 	}
 }
