@@ -4,6 +4,7 @@ This WordPress plugin uses a strict **True Vertical Slices Architecture (VSA)**.
 - **ALWAYS** co-locate PHP, JS, and CSS in the specific feature folder within `features/`.
 - Features cannot depend on other features. 
 - For heavy refactoring tasks, use the dedicated `@go4taste-plugin-developer` agent (or whatever your VSA agent is named).
+- For any new banner/ads placement feature, always add feature-local integration with `g4t_ads_current_page_product_ids` so "Clear Soft Cache from this page" includes that placement's product IDs.
 
 ---
 
