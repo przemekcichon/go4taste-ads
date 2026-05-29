@@ -123,11 +123,58 @@ class Go4Taste_Ads_Admin_Settings {
 			wp_send_json_error( array( 'message' => $message ), 500 );
 		}
 
+		$counts = array(
+			'soft_count' => 0,
+			'hard_count' => 0,
+		);
+		if ( function_exists( 'g4t_algolia_ad_server_get_cache_counts' ) ) {
+			$count_result = g4t_algolia_ad_server_get_cache_counts();
+			if ( is_array( $count_result ) && ! empty( $count_result['success'] ) ) {
+				$counts['soft_count'] = isset( $count_result['soft_count'] ) ? (int) $count_result['soft_count'] : 0;
+				$counts['hard_count'] = isset( $count_result['hard_count'] ) ? (int) $count_result['hard_count'] : 0;
+			}
+		}
+
 		wp_send_json_success(
 			array(
 				'message'      => __( 'Soft cache cleared successfully.', 'go4taste-ads' ),
 				'deleted_rows' => isset( $result['deleted_rows'] ) ? (int) $result['deleted_rows'] : 0,
 				'executed_at'  => isset( $result['executed_at'] ) ? (string) $result['executed_at'] : '',
+				'soft_count'   => $counts['soft_count'],
+				'hard_count'   => $counts['hard_count'],
+			)
+		);
+	}
+
+	/**
+	 * AJAX: get Algolia soft/hard cache counts on demand.
+	 *
+	 * @since 1.3.0
+	 * @return void
+	 */
+	public function ajax_get_algolia_cache_counts() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
+		}
+
+		check_ajax_referer( 'g4t_get_cache_counts_ajax', 'nonce' );
+
+		require_once dirname( __DIR__ ) . '/algolia-ad-server/soft-cache.php';
+		if ( ! function_exists( 'g4t_algolia_ad_server_get_cache_counts' ) ) {
+			wp_send_json_error( array( 'message' => 'Cache count function is not available.' ), 500 );
+		}
+
+		$count_result = g4t_algolia_ad_server_get_cache_counts();
+		if ( ! is_array( $count_result ) || empty( $count_result['success'] ) ) {
+			$message = is_array( $count_result ) && ! empty( $count_result['error'] ) ? (string) $count_result['error'] : 'Cache count failed.';
+			wp_send_json_error( array( 'message' => $message ), 500 );
+		}
+
+		wp_send_json_success(
+			array(
+				'soft_count'  => isset( $count_result['soft_count'] ) ? (int) $count_result['soft_count'] : 0,
+				'hard_count'  => isset( $count_result['hard_count'] ) ? (int) $count_result['hard_count'] : 0,
+				'executed_at' => isset( $count_result['executed_at'] ) ? (string) $count_result['executed_at'] : '',
 			)
 		);
 	}
@@ -173,12 +220,26 @@ class Go4Taste_Ads_Admin_Settings {
 			wp_send_json_error( array( 'message' => $message ), 500 );
 		}
 
+		$counts = array(
+			'soft_count' => 0,
+			'hard_count' => 0,
+		);
+		if ( function_exists( 'g4t_algolia_ad_server_get_cache_counts' ) ) {
+			$count_result = g4t_algolia_ad_server_get_cache_counts();
+			if ( is_array( $count_result ) && ! empty( $count_result['success'] ) ) {
+				$counts['soft_count'] = isset( $count_result['soft_count'] ) ? (int) $count_result['soft_count'] : 0;
+				$counts['hard_count'] = isset( $count_result['hard_count'] ) ? (int) $count_result['hard_count'] : 0;
+			}
+		}
+
 		wp_send_json_success(
 			array(
 				'message'             => __( 'Current page soft cache cleared successfully.', 'go4taste-ads' ),
 				'deleted_rows'        => isset( $result['deleted_rows'] ) ? (int) $result['deleted_rows'] : 0,
 				'executed_at'         => isset( $result['executed_at'] ) ? (string) $result['executed_at'] : '',
 				'cleared_product_ids' => isset( $result['cleared_product_ids'] ) && is_array( $result['cleared_product_ids'] ) ? array_values( $result['cleared_product_ids'] ) : array(),
+				'soft_count'          => $counts['soft_count'],
+				'hard_count'          => $counts['hard_count'],
 			)
 		);
 	}
@@ -305,8 +366,10 @@ class Go4Taste_Ads_Admin_Settings {
 			<p><?php _e( 'Use this action to clear all Algolia banner product soft cache transients immediately.', 'go4taste-ads' ); ?></p>
 			<p>
 				<button type="button" class="button button-secondary" id="g4t-clear-soft-cache"><?php _e( 'Clear All Soft Cache', 'go4taste-ads' ); ?></button>
+				<button type="button" class="button" id="g4t-count-soft-hard-cache" style="margin-left:8px;"><?php _e( 'Count Cached Products', 'go4taste-ads' ); ?></button>
 			</p>
 			<div id="g4t-clear-soft-cache-result" class="notice inline" style="display:none;"></div>
+			<div id="g4t-cache-count-result" class="notice inline" style="display:none;"></div>
 
 			<hr>
 

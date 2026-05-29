@@ -3,6 +3,81 @@
 
 	// Wait for the DOM to be ready
 	$(function() {
+		function renderCacheCounts( softCount, hardCount, executedAt ) {
+			const resultWrap = $( '#g4t-cache-count-result' );
+			if ( ! resultWrap.length ) {
+				return;
+			}
+
+			const timestamp = executedAt ? String( executedAt ) : '';
+			const message = `Soft cache products: ${Number( softCount || 0)} | Hard cache products: ${Number( hardCount || 0)}${ timestamp ? ` (${timestamp})` : '' }`;
+
+			resultWrap
+				.removeClass( 'notice-error' )
+				.addClass( 'notice-success' )
+				.text( message )
+				.show();
+		}
+
+		$( document ).on( 'click', '#g4t-count-soft-hard-cache', function () {
+			const button = $( this );
+			const resultWrap = $( '#g4t-cache-count-result' );
+			const ajaxUrl = getAdminAjaxUrl();
+			const actionName = ( 'undefined' !== typeof g4tAdsAdmin && g4tAdsAdmin.getCacheCountsAction ) ? g4tAdsAdmin.getCacheCountsAction : 'g4t_get_algolia_cache_counts';
+			const nonceValue = ( 'undefined' !== typeof g4tAdsAdmin && g4tAdsAdmin.getCacheCountsNonce ) ? g4tAdsAdmin.getCacheCountsNonce : '';
+
+			if ( ! resultWrap.length ) {
+				return;
+			}
+
+			if ( ! ajaxUrl ) {
+				resultWrap
+					.removeClass( 'notice-success' )
+					.addClass( 'notice-error' )
+					.text( 'Brak konfiguracji AJAX URL.' )
+					.show();
+				return;
+			}
+
+			button.prop( 'disabled', true ).text( 'Counting...' );
+			resultWrap
+				.removeClass( 'notice-success notice-error' )
+				.text( '' )
+				.hide();
+
+			$.post( ajaxUrl, {
+				action: actionName,
+				nonce: nonceValue,
+			} )
+				.done( function ( response ) {
+					if ( response && response.success && response.data ) {
+						renderCacheCounts( response.data.soft_count, response.data.hard_count, response.data.executed_at );
+						return;
+					}
+
+					resultWrap
+						.removeClass( 'notice-success' )
+						.addClass( 'notice-error' )
+						.text( 'Cache count request failed.' )
+						.show();
+				} )
+				.fail( function ( xhr ) {
+					let message = 'Nie udalo sie policzyc cache.';
+					if ( xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message ) {
+						message = String( xhr.responseJSON.data.message );
+					}
+
+					resultWrap
+						.removeClass( 'notice-success' )
+						.addClass( 'notice-error' )
+						.text( message )
+						.show();
+				} )
+				.always( function () {
+					button.prop( 'disabled', false ).text( 'Count Cached Products' );
+				} );
+		} );
+
 		function getAdminAjaxUrl() {
 			return ( 'undefined' !== typeof g4tAdsAdmin && g4tAdsAdmin.ajaxUrl ) ? g4tAdsAdmin.ajaxUrl : window.ajaxurl;
 		}
@@ -31,6 +106,9 @@
 					if ( response && response.success && response.data ) {
 						const deletedRows = Number( response.data.deleted_rows || 0 );
 						const executedAt = response.data.executed_at ? String( response.data.executed_at ) : '';
+						if ( Object.prototype.hasOwnProperty.call( response.data, 'soft_count' ) || Object.prototype.hasOwnProperty.call( response.data, 'hard_count' ) ) {
+							renderCacheCounts( response.data.soft_count, response.data.hard_count, response.data.executed_at );
+						}
 						window.alert( `${successMessage} Removed rows: ${deletedRows}${ executedAt ? ` (${executedAt})` : '' }` );
 						if ( settings.reloadOnSuccess ) {
 							window.location.reload();

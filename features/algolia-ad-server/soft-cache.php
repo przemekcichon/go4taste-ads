@@ -180,3 +180,74 @@ function g4t_algolia_ad_server_clear_product_cache($product_ids) {
         'cleared_product_ids' => array_values($normalized_product_ids),
     ];
 }
+
+/**
+ * Count Algolia product cache entries (hard + soft) on demand.
+ *
+ * Hard count is based on transient value rows existing in wp_options.
+ * Soft count is based on payload['soft_expires_at'] > current time.
+ *
+ * @return array<string,mixed>
+ */
+function g4t_algolia_ad_server_get_cache_counts() {
+    global $wpdb;
+
+    if (!isset($wpdb) || !is_object($wpdb) || !isset($wpdb->options)) {
+        return [
+            'success' => false,
+            'soft_count' => 0,
+            'hard_count' => 0,
+            'executed_at' => current_time('mysql'),
+            'error' => 'Database connection is not available.',
+        ];
+    }
+
+    $value_prefix = $wpdb->esc_like('_transient_g4t_ads_product_') . '%';
+    $query = $wpdb->prepare(
+        "SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE %s",
+        $value_prefix
+    );
+
+    if (!is_string($query) || '' === $query) {
+        return [
+            'success' => false,
+            'soft_count' => 0,
+            'hard_count' => 0,
+            'executed_at' => current_time('mysql'),
+            'error' => 'Failed to prepare cache count query.',
+        ];
+    }
+
+    $rows = $wpdb->get_col($query);
+    if (!is_array($rows)) {
+        return [
+            'success' => false,
+            'soft_count' => 0,
+            'hard_count' => 0,
+            'executed_at' => current_time('mysql'),
+            'error' => 'Failed to fetch cache count rows.',
+        ];
+    }
+
+    $hard_count = count($rows);
+    $soft_count = 0;
+    $now = time();
+
+    foreach ($rows as $row_value) {
+        $payload = maybe_unserialize($row_value);
+        if (!is_array($payload) || !isset($payload['soft_expires_at'])) {
+            continue;
+        }
+
+        if ((int) $payload['soft_expires_at'] > $now) {
+            $soft_count++;
+        }
+    }
+
+    return [
+        'success' => true,
+        'soft_count' => (int) $soft_count,
+        'hard_count' => (int) $hard_count,
+        'executed_at' => current_time('mysql'),
+    ];
+}
