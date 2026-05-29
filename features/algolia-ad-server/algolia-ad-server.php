@@ -9,7 +9,7 @@ add_filter('go4taste_ads_get_product_data', 'g4t_algolia_ad_server_get_product_d
  *
  * @param mixed $null Always null (for filter signature).
  * @param int   $product_id Product ID to fetch.
- * @return array|null Product data array or null if not found.
+ * @return stdClass|null Product data object or null if not found.
  */
 function g4t_algolia_ad_server_get_product_data($null, $product_id) {
     require_once __DIR__ . '/product-data.php';
