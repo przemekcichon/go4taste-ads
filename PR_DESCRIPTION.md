@@ -83,6 +83,14 @@ Changes:
   - `algolia_hard_cache_ttl_days`
 - Added sanitization and defaults.
 
+### 5) Copilot/VSA guardrail documentation
+
+File:
+- `.github/copilot-instructions.md`
+
+Changes:
+- Added an explicit repository rule: whenever a new banner/ads placement is introduced, that feature must provide feature-local integration with `g4t_ads_current_page_product_ids` so `Clear Soft Cache from this page` includes product IDs from the new placement.
+
 ## Security and safety
 
 - Both cache-clear AJAX endpoints require:
@@ -124,3 +132,4 @@ Manual checks performed/planned:
 - [x] Added page product-ID collection via feature-owned filter contributions
 - [x] Added configurable Algolia soft/hard TTL settings
 - [x] Added force-refresh cache bypass/save behavior for admin debug
+- [x] Added documentation guardrail for new placements and page-scoped cache clear integration
