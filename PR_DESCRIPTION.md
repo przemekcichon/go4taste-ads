@@ -63,6 +63,19 @@ Changes:
 	- is_singular(): postmeta JSON key + legacy fallback,
 	- is_archive()/is_home()/is_search(): wp_options JSON key.
 
+### 4) Picker UI CSS cleanup (remove inline styles)
+
+Files:
+- features/banner-sidebar-widget/assets/css/picker-ui.css
+- features/banner-sidebar-widget/metabox-registration.php
+- features/banner-sidebar-widget/archive-settings-page.php
+
+Changes:
+- Removed inline `<style>` block from metabox renderer.
+- Added shared picker stylesheet in slice scope: `assets/css/picker-ui.css`.
+- Enqueued the same CSS on both metabox and archive settings screen.
+- Kept picker look-and-feel aligned with WordPress admin UI.
+
 ---
 
 ## Data contract
@@ -81,6 +94,7 @@ Backward compatibility:
 Static validation:
 - No editor errors in modified/new files:
 	- features/banner-sidebar-widget/assets/js/picker-ui.js
+	- features/banner-sidebar-widget/assets/css/picker-ui.css
 	- features/banner-sidebar-widget/metabox-registration.php
 	- features/banner-sidebar-widget/archive-settings-page.php
 	- features/banner-sidebar-widget/index.php
@@ -110,5 +124,6 @@ Manual test plan:
 - [x] JSON array contract implemented for singular placement
 - [x] Archive/global option path added with JSON array contract
 - [x] Reusable picker-ui.js extracted and reused by metabox + archive settings page
+- [x] Shared picker-ui.css extracted and enqueued for metabox + archive settings page
 - [x] Secure admin save flow for archive settings (nonce + capability)
 - [x] Context-aware resolver for singular vs archive/home/search
