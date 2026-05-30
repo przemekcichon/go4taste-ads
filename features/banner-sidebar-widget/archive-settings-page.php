@@ -45,6 +45,14 @@ if ( ! function_exists( 'g4t_banner_sidebar_widget_enqueue_archive_settings_asse
 			'all'
 		);
 
+		wp_enqueue_style(
+			'go4taste-ads-picker-ui',
+			plugins_url( 'features/banner-sidebar-widget/assets/css/picker-ui.css', $plugin_entry ),
+			array(),
+			$version,
+			'all'
+		);
+
 		wp_enqueue_script(
 			'algolia-instantsearch',
 			'https://cdn.jsdelivr.net/npm/instantsearch.js@4',

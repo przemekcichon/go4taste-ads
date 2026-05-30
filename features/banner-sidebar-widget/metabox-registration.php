@@ -31,6 +31,14 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_enqueue_preview_styles' ) 
 			'all'
 		);
 
+		wp_enqueue_style(
+			'go4taste-ads-picker-ui',
+			plugins_url( 'features/banner-sidebar-widget/assets/css/picker-ui.css', $plugin_entry ),
+			array(),
+			$version,
+			'all'
+		);
+
 		wp_enqueue_script(
 			'algolia-instantsearch',
 			'https://cdn.jsdelivr.net/npm/instantsearch.js@4',
@@ -142,37 +150,6 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_render_meta_box' ) ) {
 			});
 		});
 		</script>
-		<style>
-			.algolia-suggestion {
-				padding: 5px;
-				border-bottom: 1px solid #ddd;
-				cursor: pointer;
-			}
-			.selected-product {
-				display: inline-block;
-				background-color: #f3f3f3;
-				padding: 5px 10px;
-				margin-top: 10px;
-				border-radius: 4px;
-				width: 282px;
-			}
-			.selected-product button {
-				background: none;
-				border: none;
-				font-size: 16px;
-				cursor: pointer;
-				color: red;
-			}
-			.ais-SearchBox-input {
-				padding: 0px 8px !important;
-				min-height: 34px !important;
-				font-size: 1em !important;
-				box-shadow: rgba(0, 0, 0, 0.07) 0px 1px 2px inset !important;
-				border: 1px solid rgb(221, 221, 221) !important;
-				border-radius: 0px !important;
-				width: 300px;
-			}
-		</style>
 		<?php
 	}
 }
