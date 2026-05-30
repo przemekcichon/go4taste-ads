@@ -1,71 +1,48 @@
-# Global Repository Context & Architecture
-This WordPress plugin uses a strict **True Vertical Slices Architecture (VSA)**.
-- **NEVER** suggest code that adds to global orchestrators (e.g., central loader classes).
-- **ALWAYS** co-locate PHP, JS, and CSS in the specific feature folder within `features/`.
-- Features cannot depend on other features. 
-- For heavy refactoring tasks, use the dedicated `@go4taste-plugin-developer` agent (or whatever your VSA agent is named).
-- For any new banner/ads placement feature, always add feature-local integration with `g4t_ads_current_page_product_ids` so "Clear Soft Cache from this page" includes that placement's product IDs.
-
+---
+description: Core architectural guidelines, coding standards, and data contracts for the Go4Taste Ads WordPress plugin.
+project: Go4Taste Ads
+frameworks: [WordPress, React, PHP]
+architecture: Vertical Slices Architecture (VSA)
+data_format: JSON
 ---
 
-# Copilot Extensions & AI Config Review Rules
-The following instructions are only to be applied when performing a code review on AI configuration files.
+# Go4Taste Ads - Copilot Instructions
 
-## README updates
-- [ ] The new file should be added to the `docs/README.<type>.md`.
+You are assisting with the development of the "Go4Taste Ads" WordPress plugin. You MUST strictly follow the architectural boundaries and data persistence rules outlined below when writing, reviewing, or refactoring code.
 
-## Prompt file guide
-**Only apply to files that end in `.prompt.md`**
-- [ ] The prompt has markdown front matter.
-- [ ] The prompt has an `agent` field specified of either `agent`, `ask`, or `Plan`.
-- [ ] The prompt has a `description` field.
-- [ ] The `description` field is not empty.
-- [ ] The file name is lower case, with words separated by hyphens.
-- [ ] Encourage the use of `tools`, but it's not required.
-- [ ] Strongly encourage the use of `model` to specify the model that the prompt is optimised for.
-- [ ] Strongly encourage the use of `name` to set the name for the prompt.
+## 1. Architectural Pattern: Vertical Slices Architecture (VSA)
+- **Concept:** The plugin follows VSA. Features are grouped by business capability (slices), not by technical horizontal layers (MVC).
+- **Rule:** Do not create shared `common`, `helpers`, or `utils` directories unless absolutely necessary for the core API boundary (`core/`).
+- **Rule:** A slice (e.g., `features/banner-sidebar-widget`) MUST contain all its dependencies: UI registration (Metabox), data processing (`save_post`), frontend rendering (Widget/Block), and assets.
+- **Rule:** NEVER use `require` or `include` statements across different feature slices.
+- **Naming Convention:** Use `kebab-case` for all folder and file names (e.g., `banner-sidebar-widget`, `widget-class.php`).
 
-## Instruction file guide
-**Only apply to files that end in `.instructions.md`**
-- [ ] The instruction has markdown front matter.
-- [ ] The instruction has a `description` field.
-- [ ] The `description` field is not empty.
-- [ ] The file name is lower case, with words separated by hyphens.
-- [ ] The instruction has an `applyTo` field that specifies the file or files to which the instructions apply. If they wish to specify multiple file paths they should be formatted like `'**.js, **.ts'`.
+## 2. Universal Data Contract
+To ensure compatibility across different input methods (Gutenberg, ACF Frontend Forms, Metaboxes, GraphQL), all placements MUST persist selected products using the same standardized format.
 
-## Agent file guide
-**Only apply to files that end in `.agent.md`**
-- [ ] The agent has markdown front matter.
-- [ ] The agent has a `description` field.
-- [ ] The `description` field is not empty.
-- [ ] The file name is lower case, with words separated by hyphens.
-- [ ] Encourage the use of `tools`, but it's not required.
-- [ ] Strongly encourage the use of `model` to specify the model that the agent is optimised for.
-- [ ] Strongly encourage the use of `name` to set the name for the agent.
+### Storage Format: JSON Array of Strings
+- **Type:** JSON Encoded Array
+- **Value:** Array of Product IDs (Strings, representing Algolia/PrestaShop Object IDs).
+- **Example:** `["154", "89"]` or `["12"]`.
+- **Empty State:** Empty string `""` or `[]` (if explicitly deleted/empty).
 
-## Agent Skills guide
-**Only apply to folders in the `skills/` directory**
-- [ ] The skill folder contains a `SKILL.md` file.
-- [ ] The SKILL.md has markdown front matter.
-- [ ] The SKILL.md has a `name` field.
-- [ ] The `name` field value is lowercase with words separated by hyphens.
-- [ ] The `name` field matches the folder name.
-- [ ] The SKILL.md has a `description` field.
-- [ ] The `description` field is not empty, at least 10 characters, and maximum 1024 characters.
-- [ ] The `description` field value is wrapped in single quotes.
-- [ ] The folder name is lower case, with words separated by hyphens.
-- [ ] Any bundled assets (scripts, templates, data files) are referenced in the SKILL.md instructions.
-- [ ] Bundled assets are reasonably sized (under 5MB per file).
+### Data Locations
+1. **Posts/Pages/CPTs (e.g., Recipes, Articles):**
+   - Stored in `wp_postmeta`.
+   - **Key Naming Convention:** `_g4t_a_[placement_name]_product_ids` (e.g., `_g4t_a_sidebar_product_ids`).
+2. **Gutenberg Blocks:**
+   - Saved as Block Attributes (serialized in `wp_posts.post_content`).
+   - **Attribute Name:** `product_ids` (Array of strings). *Note: The legacy `products` attribute containing full objects is deprecated and pending migration.*
+3. **Global/Archives (e.g., Global Sidebar, Term Archives):**
+   - Stored in `wp_options`.
+   - **Option Name Convention:** `g4t_a_[placement_name]_product_ids` (e.g., `g4t_a_archive_sidebar_product_ids`).
 
-## Plugin guide
-**Only apply to directories in the `plugins/` directory**
-- [ ] The plugin directory contains a `.github/plugin/plugin.json` file.
-- [ ] The plugin directory contains a `README.md` file.
-- [ ] The plugin.json has a `name` field matching the directory name.
-- [ ] The plugin.json has a `description` field.
-- [ ] The `description` field is not empty.
-- [ ] The directory name is lower case, with words separated by hyphens.
-- [ ] If `tags` is present, it is an array of lowercase hyphenated strings.
-- [ ] If `items` is present, each item has `path` and `kind` fields.
-- [ ] The `kind` field value is one of: `prompt`, `agent`, `instruction`, `skill`, or `hook`.
-- [ ] The plugin does not reference non-existent files.
+## 3. Backward Compatibility & Fallbacks
+- When fetching data (e.g., via `get_post_meta`), ALWAYS read the new JSON array key first.
+- If the new key is empty or invalid, seamlessly fallback to reading the legacy single-string key (e.g., `_g4t_a_sidebar_regular_widget_ps_product_id`).
+- Always validate the decoded JSON (ensure it's an array) before returning the value.
+- Prevent PHP warnings by explicitly casting and checking variable types (e.g., `is_string()`, `is_array()`).
+
+## 4. Development Environment Constraints
+- The project runs on LocalWP.
+- When making HTTP requests via `wp_remote_get` or similar WordPress HTTP API functions, you MUST use `'sslverify' => false` and force IPv4 via hooks (`CURLOPT_IPRESOLVE_V4`) to prevent local network timeouts.

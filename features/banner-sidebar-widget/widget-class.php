@@ -36,10 +36,13 @@ class Go4Taste_Ads_Sidebar_Regular_Widget extends WP_Widget {
 	public function widget( $args, $instance ) {
 		extract( $args );
 
-		$fallback_product_id = $this->get_fallback_product_id();
+		$fallback_product_id = isset( $instance['fallback_product_id'] ) ? trim( (string) $instance['fallback_product_id'] ) : '';
+		if ( '' === $fallback_product_id ) {
+			$fallback_product_id = trim( (string) $this->get_fallback_product_id() );
+		}
 		$options             = g4t_core_get_ads_options();
 
-		$product_id = g4t_core_get_sidebar_widget_product_id();
+		$product_id = trim( (string) g4t_core_get_sidebar_widget_product_id() );
 
 		if ( empty( $product_id ) ) {
 			$product_id = $fallback_product_id;

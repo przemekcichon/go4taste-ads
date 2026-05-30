@@ -19,7 +19,7 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_enqueue_preview_styles' ) 
 
 		$plugin_root      = dirname( __DIR__, 2 );
 		$plugin_entry     = $plugin_root . '/go4taste-ads.php';
-		$preview_relative = 'features/metabox-banner-sidebar-widget/assets/css/go4taste-ads-metabox-preview.css';
+		$preview_relative = 'features/banner-sidebar-widget/assets/css/go4taste-ads-metabox-preview.css';
 		$preview_url      = plugins_url( $preview_relative, $plugin_entry );
 		$version          = defined( 'GO4TASTE_ADS_VERSION' ) ? GO4TASTE_ADS_VERSION : null;
 
@@ -45,6 +45,30 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_enqueue_preview_styles' ) 
 			array(),
 			null,
 			true
+		);
+
+		wp_enqueue_script(
+			'g4t-ads-picker-ui',
+			plugins_url( 'features/banner-sidebar-widget/assets/js/picker-ui.js', $plugin_entry ),
+			array( 'jquery', 'algolia-instantsearch', 'algolia-search-client' ),
+			$version,
+			true
+		);
+
+		$options         = g4t_core_get_ads_options();
+		$algolia_app_id  = isset( $options['algolia_app_id'] ) ? sanitize_text_field( (string) $options['algolia_app_id'] ) : '';
+		$algolia_api_key = isset( $options['algolia_api_key'] ) ? sanitize_text_field( (string) $options['algolia_api_key'] ) : '';
+
+		wp_localize_script(
+			'g4t-ads-picker-ui',
+			'g4tAdsSidebarMetaboxPickerConfig',
+			array(
+				'algoliaAppId'  => $algolia_app_id,
+				'algoliaApiKey' => $algolia_api_key,
+				'indexName'     => 'go4taste_product_list',
+				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
+				'nonce'         => wp_create_nonce( 'g4t_ad_preview_nonce' ),
+			)
 		);
 	}
 }
@@ -77,12 +101,20 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_render_meta_box' ) ) {
 	function g4t_promoted_product_metabox_render_meta_box( $post ) {
 		wp_nonce_field( 'go4taste_ads_sidebar_regular_widget_nonce_action', 'go4taste_ads_sidebar_regular_widget_nonce' );
 
-		$product_id = get_post_meta( $post->ID, '_g4t_a_sidebar_regular_widget_ps_product_id', true );
-		$product_id = is_string( $product_id ) ? $product_id : (string) $product_id;
+		$product_id      = '';
+		$raw_product_ids = get_post_meta( $post->ID, '_g4t_a_sidebar_product_ids', true );
 
-		$options        = g4t_core_get_ads_options();
-		$algolia_app_id = isset( $options['algolia_app_id'] ) ? sanitize_text_field( (string) $options['algolia_app_id'] ) : '';
-		$algolia_api_key = isset( $options['algolia_api_key'] ) ? sanitize_text_field( (string) $options['algolia_api_key'] ) : '';
+		if ( is_string( $raw_product_ids ) && '' !== trim( $raw_product_ids ) ) {
+			$decoded_product_ids = json_decode( $raw_product_ids, true );
+			if ( is_array( $decoded_product_ids ) && ! empty( $decoded_product_ids ) ) {
+				$product_id = trim( (string) $decoded_product_ids[0] );
+			}
+		}
+
+		if ( '' === $product_id ) {
+			$legacy_product_id = get_post_meta( $post->ID, '_g4t_a_sidebar_regular_widget_ps_product_id', true );
+			$product_id        = trim( is_string( $legacy_product_id ) ? $legacy_product_id : (string) $legacy_product_id );
+		}
 
 		echo '<input type="hidden" id="g4t_a_sidebar_regular_widget_ps_product_id" name="g4t_a_sidebar_regular_widget_ps_product_id" value="' . esc_attr( $product_id ) . '" size="25" />';
 		echo '<div id="algolia-searchbox"></div>';
@@ -90,109 +122,24 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_render_meta_box' ) ) {
 		echo '<div id="g4t-ad-preview" class="g4t-ad-preview"></div>';
 		?>
 		<script type="text/javascript">
-		jQuery(document).ready(function($) {
-			const searchClient = algoliasearch('<?php echo esc_js( $algolia_app_id ); ?>', '<?php echo esc_js( $algolia_api_key ); ?>');
-
-			const search = instantsearch({
-				indexName: 'go4taste_product_list',
-				searchClient,
-				searchFunction(helper) {
-					if (helper.state.query === '') {
-						return;
-					}
-					helper.search();
-				}
-			});
-
-			const index = searchClient.initIndex('go4taste_product_list');
-
-			search.addWidget(
-				instantsearch.widgets.searchBox({
-					container: '#algolia-searchbox',
-					placeholder: 'Szukaj po nazwie lub identyfikatorze produktu ...',
-					showReset: false,
-					showSubmit: false,
-				})
-			);
-
-			search.addWidget(
-				instantsearch.widgets.hits({
-					container: '#selected-product-container',
-					templates: {
-						item(hit) {
-							return `
-								<div class="algolia-suggestion" data-id="${hit.objectID}">
-									<strong>${hit.name}</strong><br>
-									<em>Kategoria: ${hit.category}</em><br>
-									<em>Identyfikator: ${hit.objectID}</em>
-								</div>
-							`;
-						},
-					}
-				})
-			);
-
-			$(document).on('click', '.algolia-suggestion', function() {
-				const productId = $(this).data('id');
-				$('#g4t_a_sidebar_regular_widget_ps_product_id').val(productId);
-				displaySelectedProduct(productId);
-				$('#algolia-searchbox input').val('');
-				fetchProductPreview(productId);
-			});
-
-			$(document).on('click', '.remove-selected-product', function() {
-				$('#g4t_a_sidebar_regular_widget_ps_product_id').val('');
-				$('#selected-product-container').html('');
-				$('#g4t-ad-preview').html('');
-			});
-
-			function displaySelectedProduct(productId) {
-				index.getObject(productId)
-					.then(function(product) {
-						$('#selected-product-container').html(`
-							<div class="selected-product">
-								<span>${product.name}</span><br>
-								<span>ID: ${productId}</span>
-								<button type="button" class="remove-selected-product">&times;</button>
-							</div>
-						`);
-					})
-					.catch(function(err) {
-						console.error('Error retrieving product:', err);
-						$('#selected-product-container').html('<p>Product not found.</p>');
-					});
+		jQuery(function() {
+			if (typeof window.G4TAdsPicker !== 'function') {
+				return;
 			}
 
-			function fetchProductPreview(productID) {
-				$.ajax({
-					url: ajaxurl,
-					method: 'POST',
-					data: {
-						action: 'g4t_fetch_product_preview',
-						product_id: productID,
-						post_id: $('#post_ID').val() || '<?php echo esc_js( (string) $post->ID ); ?>',
-						nonce: '<?php echo esc_js( wp_create_nonce( 'g4t_ad_preview_nonce' ) ); ?>'
-					},
-					success: function(response) {
-						if (response && response.success) {
-							$('#g4t-ad-preview').html(response.data);
-							return;
-						}
-						$('#g4t-ad-preview').html('<p>Error fetching product data.</p>');
-					},
-					error: function() {
-						$('#g4t-ad-preview').html('<p>Error fetching product data.</p>');
-					}
-				});
-			}
-
-			var savedProductID = $('#g4t_a_sidebar_regular_widget_ps_product_id').val();
-			if (savedProductID) {
-				fetchProductPreview(savedProductID);
-				displaySelectedProduct(savedProductID);
-			}
-
-			search.start();
+			var config = window.g4tAdsSidebarMetaboxPickerConfig || {};
+			window.G4TAdsPicker({
+				hiddenFieldSelector: '#g4t_a_sidebar_regular_widget_ps_product_id',
+				searchBoxSelector: '#algolia-searchbox',
+				selectedContainerSelector: '#selected-product-container',
+				previewContainerSelector: '#g4t-ad-preview',
+				algoliaAppId: config.algoliaAppId || '',
+				algoliaApiKey: config.algoliaApiKey || '',
+				indexName: config.indexName || 'go4taste_product_list',
+				ajaxUrl: config.ajaxUrl || '',
+				nonce: config.nonce || '',
+				postId: jQuery('#post_ID').val() || '<?php echo esc_js( (string) $post->ID ); ?>'
+			});
 		});
 		</script>
 		<style>
@@ -266,7 +213,7 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_fetch_product_preview' ) )
 
 if ( ! function_exists( 'g4t_promoted_product_metabox_save_meta_box' ) ) {
 	/**
-	 * Persist selected product ID in legacy post meta key.
+	 * Persist selected product ID as JSON array in post meta.
 	 *
 	 * @param int $post_id Current post ID.
 	 * @return int|void
@@ -290,7 +237,17 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_save_meta_box' ) ) {
 		}
 
 		$product_id = isset( $_POST['g4t_a_sidebar_regular_widget_ps_product_id'] ) ? sanitize_text_field( wp_unslash( $_POST['g4t_a_sidebar_regular_widget_ps_product_id'] ) ) : '';
-		update_post_meta( $post_id, '_g4t_a_sidebar_regular_widget_ps_product_id', $product_id );
+		$product_id = trim( (string) $product_id );
+
+		$product_ids_json = '';
+		if ( '' !== $product_id ) {
+			$product_ids_json = wp_json_encode( array( $product_id ) );
+			if ( ! is_string( $product_ids_json ) ) {
+				$product_ids_json = '';
+			}
+		}
+
+		update_post_meta( $post_id, '_g4t_a_sidebar_product_ids', $product_ids_json );
 
 		return $post_id;
 	}

@@ -1,121 +1,114 @@
-﻿# PR: Refactor product data pipeline — remove legacy cache, optimize sync, fix reliability
+﻿# PR: Sidebar Widget Refactor to VSA + JSON Contract + Archive Settings
 
-**Branch:** feature/sync-pipeline-refactor -> main
+**Branch:** feature/vsa-sidebar-widget-refactor -> main
 
 ## Motivation
 
-The plugin maintained a dual-cache architecture: product data was first cached in PrestaShop Webservice transients (`product_data_prestashop_webservice_api_*`) on the frontend fetch path, and then separately stored in the Algolia Ad Server soft-cache layer. This caused stale data risks, redundant DB writes, and a complex sync path that fetched full product payloads for all 537 products just to obtain their IDs.
+Sidebar widget feature was split across two slices and used mixed persistence rules. This PR finalizes the migration to a single Vertical Slice and aligns storage to the JSON Array contract required by plugin architecture guidelines.
 
-This PR eliminates the legacy transient layer, optimizes the sync query, and delivers five reliability fixes discovered during testing.
-
-## TL;DR for reviewer
-
-- Frontend product data now routes exclusively through the Algolia Ad Server filter bridge — no live Presta fetches from frontend.
-- Sync ID fetch reduced from full payload (~537 × full XML) to `display=[id]` only (~95% payload reduction).
-- Fixed: IPv6 hang (9+ min timeout), XML dual-mode parser, zombie job lock, and BOM-caused jQuery `parsererror`.
-- Added one-time admin utility to clean up residual legacy transients from the database.
+Main goals delivered:
+- unification of widget runtime and metabox input into one slice,
+- migration from legacy single-string meta to JSON array contract,
+- fix for archive/home/search context by reading global option instead of current post meta,
+- picker refactor to reusable JS module shared between metabox and archive settings screen.
 
 ---
 
 ## Scope of changes
 
-### 1. Remove legacy PrestaShop transient cache (double-cache elimination)
+### 1) VSA consolidation into one slice
 
 Files:
-- `core/api-client/product-data.php`
-- `core/api-client/class-go4taste-ads-api-fetcher.php`
-- `features/admin-settings/settings-page.php`
-- `features/admin-settings/index.php`
-- `features/admin-settings/assets/js/go4taste-ads-admin-settings.js`
+- features/banner-sidebar-widget/index.php
+- features/banner-sidebar-widget/metabox-registration.php
+- features/banner-sidebar-widget/preview-template.php
+- features/banner-sidebar-widget/assets/css/go4taste-ads-metabox-preview.css
+- core/bootstrap.php
 
 Changes:
-- `g4t_core_fetch_product_data()` no longer fetches live data from PrestaShop or reads/writes `product_data_prestashop_webservice_api_*` transients. Delegates exclusively to `apply_filters('go4taste_ads_get_product_data', null, $product_id)`.
-- Removed all `set_transient` / `get_transient` calls for product data in the frontend fetch path of `class-go4taste-ads-api-fetcher.php`.
-- Removed `cache_duration` field, sanitization method, and related admin UI.
-- Added **"Clean Legacy PrestaShop Cache"** one-time cleanup button in Cache Maintenance section. On click: deletes all `_transient_product_data_prestashop_webservice_api_*` and `_transient_timeout_product_data_prestashop_webservice_api_*` rows directly via `$wpdb`.
-- Registered new AJAX action `g4t_clear_legacy_presta_cache` with `manage_options` capability check and nonce validation.
+- Moved metabox files from removed slice to features/banner-sidebar-widget.
+- Unified hook registration in one entrypoint: widgets_init, wp_enqueue_scripts, add_meta_boxes, save_post, wp_ajax_g4t_fetch_product_preview, admin_enqueue_scripts, g4t_ads_current_page_product_ids.
+- Removed old bootstrap require to deleted metabox slice.
 
-### 2. Optimize PrestaShop API sync query — fetch IDs only
+### 2) Data contract migration to JSON Array
 
-File:
-- `core/api-client/class-go4taste-ads-api-fetcher.php`
-
-Changes:
-- `fetch_prestashop_webservice_product_ids()` now appends `display=[id]` to the `/products` endpoint using `http_build_query()` with safe `?`/`&` separator.
-- `fetch_product_ids_for_sync()` calls `fetch_prestashop_webservice_product_ids()` directly instead of routing through `fetch_all_products()`.
-- XML parser updated to **dual-mode**: checks both `$attrs['id']` (attribute form) and `$product_node->id` (child node form) — PrestaShop changes the XML structure depending on `display` param.
-
-### 3. Fix network reliability — force IPv4, disable SSL verification
-
-File:
-- `core/api-client/class-go4taste-ads-api-fetcher.php`
+Files:
+- core/api-client/product-data.php
+- features/banner-sidebar-widget/metabox-registration.php
+- features/banner-sidebar-widget/widget-class.php
 
 Changes:
-- `wp_remote_get()` in sync path uses: `sslverify => false`, `timeout => 15`.
-- `http_api_curl` action temporarily forces `CURLOPT_IPRESOLVE_V4` for the sync request to prevent IPv6 resolution hang (reproduced as 9+ minute timeout on localhost).
-- Action is removed immediately after the request completes to avoid side effects on other HTTP calls.
+- Singular source now reads new key _g4t_a_sidebar_product_ids (JSON array), returns first ID.
+- Legacy fallback kept: _g4t_a_sidebar_regular_widget_ps_product_id.
+- Metabox save now stores JSON array string under _g4t_a_sidebar_product_ids.
+- Metabox render reads JSON first, then legacy fallback, and still feeds hidden input with one ID for compatibility.
+- Widget fallback path hardened: instance fallback_product_id first, then global fallback option.
 
-### 4. Remove zombie job lock on sync start
+### 3) Archive fix + reusable picker module
 
-File:
-- `features/algolia-product-sync/sync-ajax-handlers.php`
-
-Changes:
-- Removed blocking `409 Already Running` guard from `g4t_product_catalog_sync_ajax_start()`.
-- Replaced with **hard reset**: if a stale job transient exists at start, it is unconditionally deleted before creating a new job. Eliminates stuck sync state after page reload or interrupted browser sessions.
-
-### 5. Fix AJAX response BOM / output buffer contamination
-
-File:
-- `features/algolia-product-sync/sync-ajax-handlers.php`
+Files:
+- features/banner-sidebar-widget/assets/js/picker-ui.js
+- features/banner-sidebar-widget/archive-settings-page.php
+- features/banner-sidebar-widget/index.php
+- features/banner-sidebar-widget/metabox-registration.php
+- core/api-client/product-data.php
 
 Changes:
-- Added `if ( ob_get_length() ) { ob_clean(); }` before every `wp_send_json_success()` / `wp_send_json_error()` call in `ajax_sync_start` and `ajax_sync_batch` handlers (10 call sites).
-- Eliminates BOM or whitespace characters emitted by the PHP include chain before JSON output, which caused jQuery `$.ajax` `parsererror` despite HTTP 200 and a valid JSON body.
+- Added reusable picker module: window.G4TAdsPicker(config).
+- Metabox inline JS replaced with module initialization and localized config.
+- Added new settings subpage: Settings -> Go4Taste Archiwa.
+- New archive option persistence key: g4t_a_archive_sidebar_product_ids (JSON array).
+- Added secure save endpoint via admin_post with nonce + manage_options.
+- Product resolver now supports contexts:
+	- is_singular(): postmeta JSON key + legacy fallback,
+	- is_archive()/is_home()/is_search(): wp_options JSON key.
 
 ---
 
-## Performance considerations
+## Data contract
 
-- Frontend path: zero live Presta fetches, zero transient writes for product data.
-- Sync ID fetch: single lightweight XML with `<id>` nodes only instead of full product payloads.
-- Legacy cleanup: one-time SQL DELETE, on-demand only (admin button click).
+- Singular postmeta key: _g4t_a_sidebar_product_ids
+- Archive option key: g4t_a_archive_sidebar_product_ids
+- Storage format: JSON encoded array of strings, example: ["154"]
+
+Backward compatibility:
+- Singular resolver falls back to legacy _g4t_a_sidebar_regular_widget_ps_product_id.
 
 ---
 
 ## Validation
 
 Static validation:
-- No editor-reported syntax errors in any modified file.
-- Audit: zero remaining references to `product_data_prestashop_webservice_api_*` in fetch/sync logic.
+- No editor errors in modified/new files:
+	- features/banner-sidebar-widget/assets/js/picker-ui.js
+	- features/banner-sidebar-widget/metabox-registration.php
+	- features/banner-sidebar-widget/archive-settings-page.php
+	- features/banner-sidebar-widget/index.php
+	- core/api-client/product-data.php
 
 Manual test plan:
-1. Trigger sync from admin — verify start returns correct total count (537).
-2. Let sync complete — verify all batches finish without `parsererror`.
-3. Confirm no `product_data_prestashop_webservice_api_*` transients written to DB during sync.
-4. Click "Clean Legacy PrestaShop Cache" — verify `deleted_rows` returned.
-5. Interrupt sync mid-run, reload page, start again — verify no zombie job block.
+1. Edit single post metabox, save, verify _g4t_a_sidebar_product_ids contains JSON array.
+2. Open Settings -> Go4Taste Archiwa, select product, save, verify g4t_a_archive_sidebar_product_ids contains JSON array.
+3. Verify widget on singular uses postmeta value.
+4. Verify widget on archive/home/search uses option value.
+5. Verify legacy singular posts still render through legacy fallback key.
 
 ---
 
 ## Risk / compatibility
 
-- Risk: low — frontend data path behavior unchanged for consumers (same filter bridge, same Algolia data).
-- `sslverify => false` is intentional for localhost; production keys are managed via plugin settings.
-- `remove_all_actions('http_api_curl')` is broad — acceptable for now (sync runs in isolation), but a named callback + `remove_action` would be safer in future.
-- Backward compatibility: preserved — Algolia Ad Server filter bridge, soft-cache keys, and view model shape unchanged.
-- Architecture: VSA-compliant.
+- Risk: low-to-medium (touches resolver paths and admin UI wiring).
+- Backward compatibility for singular preserved through legacy fallback.
+- VSA compliance improved by keeping all sidebar widget capabilities inside one slice.
 
 ---
 
 ## Checklist
 
-- [x] Legacy transient cache removed from frontend product data path
-- [x] `cache_duration` setting removed from admin UI
-- [x] One-time legacy cleanup utility added (button + AJAX + JS)
-- [x] Sync ID fetch uses `display=[id]` — payload ~95% smaller
-- [x] XML dual-mode parser handles both attribute and node forms
-- [x] IPv4 forcing + `sslverify=false` + timeout=15 in sync HTTP call
-- [x] Zombie job hard reset on sync start
-- [x] `ob_clean()` before all `wp_send_json_*` calls in sync handlers
-- [x] No remaining live references to `product_data_prestashop_webservice_api_*` in fetch/sync logic (audit passed)
+- [x] Metabox + widget unified under features/banner-sidebar-widget
+- [x] Old metabox slice removed
+- [x] JSON array contract implemented for singular placement
+- [x] Archive/global option path added with JSON array contract
+- [x] Reusable picker-ui.js extracted and reused by metabox + archive settings page
+- [x] Secure admin save flow for archive settings (nonce + capability)
+- [x] Context-aware resolver for singular vs archive/home/search

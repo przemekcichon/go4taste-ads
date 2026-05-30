@@ -18,19 +18,53 @@ if ( ! function_exists( 'g4t_core_get_ads_options' ) ) {
 
 if ( ! function_exists( 'g4t_core_get_sidebar_widget_product_id' ) ) {
 	/**
-	 * Get current post widget product ID from legacy meta key.
+	 * Get current post widget product ID.
+	 *
+	 * Reads the new JSON array contract first and falls back to the legacy
+	 * single-string meta key for backward compatibility.
 	 *
 	 * @return string
 	 */
 	function g4t_core_get_sidebar_widget_product_id() {
 		global $post;
 
+		$resolve_first_product_id_from_json = static function( $raw_json ) {
+			if ( ! is_string( $raw_json ) || '' === trim( $raw_json ) ) {
+				return '';
+			}
+
+			$decoded_product_ids = json_decode( $raw_json, true );
+			if ( ! is_array( $decoded_product_ids ) || ! isset( $decoded_product_ids[0] ) ) {
+				return '';
+			}
+
+			return trim( (string) $decoded_product_ids[0] );
+		};
+
+		if ( is_archive() || is_home() || is_search() ) {
+			$archive_product_id = $resolve_first_product_id_from_json( get_option( 'g4t_a_archive_sidebar_product_ids', '' ) );
+			return '' !== $archive_product_id ? $archive_product_id : '';
+		}
+
+		if ( ! is_singular() ) {
+			return '';
+		}
+
 		if ( ! is_object( $post ) || empty( $post->ID ) ) {
 			return '';
 		}
 
-		$product_id = get_post_meta( (int) $post->ID, '_g4t_a_sidebar_regular_widget_ps_product_id', true );
-		return is_string( $product_id ) ? $product_id : (string) $product_id;
+		$post_id = (int) $post->ID;
+
+		$product_id = $resolve_first_product_id_from_json( get_post_meta( $post_id, '_g4t_a_sidebar_product_ids', true ) );
+		if ( '' !== $product_id ) {
+			return $product_id;
+		}
+
+		$legacy_product_id = get_post_meta( $post_id, '_g4t_a_sidebar_regular_widget_ps_product_id', true );
+		$legacy_product_id = is_string( $legacy_product_id ) ? $legacy_product_id : (string) $legacy_product_id;
+
+		return trim( $legacy_product_id );
 	}
 }
 
