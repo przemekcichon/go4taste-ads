@@ -18,16 +18,11 @@ if ( ! function_exists( 'g4t_core_get_ads_options' ) ) {
 
 if ( ! function_exists( 'g4t_core_get_sidebar_widget_product_id' ) ) {
 	/**
-	 * Get current post widget product ID.
-	 *
-	 * Reads the new JSON array contract first and falls back to the legacy
-	 * single-string meta key for backward compatibility.
+	 * Resolve sidebar widget product ID with strict cascade fallback.
 	 *
 	 * @return string
 	 */
 	function g4t_core_get_sidebar_widget_product_id() {
-		global $post;
-
 		$resolve_first_product_id_from_json = static function( $raw_json ) {
 			if ( ! is_string( $raw_json ) || '' === trim( $raw_json ) ) {
 				return '';
@@ -41,30 +36,42 @@ if ( ! function_exists( 'g4t_core_get_sidebar_widget_product_id' ) ) {
 			return trim( (string) $decoded_product_ids[0] );
 		};
 
-		if ( is_archive() || is_home() || is_search() ) {
+		if ( is_singular() ) {
+			$post_id = get_queried_object_id();
+			if ( $post_id > 0 ) {
+				$product_id = $resolve_first_product_id_from_json( get_post_meta( $post_id, '_g4t_a_sidebar_product_ids', true ) );
+				if ( '' !== $product_id ) {
+					return $product_id;
+				}
+
+				$legacy_product_id = get_post_meta( $post_id, '_g4t_a_sidebar_regular_widget_ps_product_id', true );
+				$legacy_product_id = is_string( $legacy_product_id ) ? $legacy_product_id : (string) $legacy_product_id;
+				$legacy_product_id = trim( $legacy_product_id );
+
+				if ( '' !== $legacy_product_id ) {
+					return $legacy_product_id;
+				}
+			}
+		}
+
+		if ( is_category() || is_tag() || is_tax() ) {
+			$queried_object = get_queried_object();
+			if ( $queried_object instanceof WP_Term ) {
+				$term_product_id = $resolve_first_product_id_from_json( get_term_meta( $queried_object->term_id, '_g4t_a_sidebar_product_ids', true ) );
+				if ( '' !== $term_product_id ) {
+					return $term_product_id;
+				}
+			}
+		}
+
+		if ( is_home() || is_search() || is_category() || is_tag() || is_tax() ) {
 			$archive_product_id = $resolve_first_product_id_from_json( get_option( 'g4t_a_archive_sidebar_product_ids', '' ) );
-			return '' !== $archive_product_id ? $archive_product_id : '';
+			if ( '' !== $archive_product_id ) {
+				return $archive_product_id;
+			}
 		}
 
-		if ( ! is_singular() ) {
-			return '';
-		}
-
-		if ( ! is_object( $post ) || empty( $post->ID ) ) {
-			return '';
-		}
-
-		$post_id = (int) $post->ID;
-
-		$product_id = $resolve_first_product_id_from_json( get_post_meta( $post_id, '_g4t_a_sidebar_product_ids', true ) );
-		if ( '' !== $product_id ) {
-			return $product_id;
-		}
-
-		$legacy_product_id = get_post_meta( $post_id, '_g4t_a_sidebar_regular_widget_ps_product_id', true );
-		$legacy_product_id = is_string( $legacy_product_id ) ? $legacy_product_id : (string) $legacy_product_id;
-
-		return trim( $legacy_product_id );
+		return '';
 	}
 }
 

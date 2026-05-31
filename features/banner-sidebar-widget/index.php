@@ -5,7 +5,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require_once __DIR__ . '/metabox-registration.php';
-require_once __DIR__ . '/archive-settings-page.php';
+require_once __DIR__ . '/global-settings-integration.php';
+require_once __DIR__ . '/term-meta-integration.php';
 
 /**
  * Register sidebar banner widget from feature-local slice.
@@ -78,7 +79,10 @@ add_action( 'add_meta_boxes', 'g4t_promoted_product_metabox_add_meta_box' );
 add_action( 'save_post', 'g4t_promoted_product_metabox_save_meta_box' );
 add_action( 'wp_ajax_g4t_fetch_product_preview', 'g4t_promoted_product_metabox_fetch_product_preview' );
 add_action( 'admin_enqueue_scripts', 'g4t_promoted_product_metabox_enqueue_preview_styles' );
-add_action( 'admin_menu', 'g4t_banner_sidebar_widget_register_archive_settings_page' );
-add_action( 'admin_enqueue_scripts', 'g4t_banner_sidebar_widget_enqueue_archive_settings_assets' );
-add_action( 'admin_post_g4t_archive_sidebar_settings_save', 'g4t_banner_sidebar_widget_handle_archive_settings_save' );
+add_action( 'admin_init', 'g4t_banner_sidebar_widget_register_global_setting' );
+add_action( 'admin_init', 'g4t_banner_sidebar_widget_register_global_settings_field' );
+add_action( 'admin_init', 'g4t_banner_sidebar_widget_register_term_meta_hooks' );
+add_action( 'admin_enqueue_scripts', 'g4t_banner_sidebar_widget_enqueue_global_settings_assets' );
+add_action( 'admin_enqueue_scripts', 'g4t_banner_sidebar_widget_enqueue_term_meta_assets' );
+add_action( 'edited_term', 'g4t_banner_sidebar_widget_save_term_meta', 10, 3 );
 add_filter( 'g4t_ads_current_page_product_ids', 'g4t_banner_sidebar_widget_collect_current_page_product_ids' );
