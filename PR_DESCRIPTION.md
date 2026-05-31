@@ -76,13 +76,47 @@ Changes:
 - Enqueued the same CSS on both metabox and archive settings screen.
 - Kept picker look-and-feel aligned with WordPress admin UI.
 
+### 5) Pivot: global option + term meta + cascade resolver
+
+Files:
+- features/banner-sidebar-widget/global-settings-integration.php (new)
+- features/banner-sidebar-widget/term-meta-integration.php (new)
+- features/banner-sidebar-widget/index.php
+- features/banner-sidebar-widget/archive-settings-page.php (deleted)
+- core/api-client/product-data.php
+
+Changes:
+- Removed standalone archive settings subpage (Settings -> Go4Taste Archiwa).
+- Added global-settings-integration.php: registers g4t_a_archive_sidebar_product_ids as a field
+  wired into existing main plugin settings page (go4taste_ads_setting_section).
+  Own sanitize callback validates JSON array contract.
+  Picker assets load only when $hook_suffix === 'toplevel_page_go4taste-ads'.
+- Added term-meta-integration.php: Algolia picker on category/post_tag edit forms.
+  Rendered via {taxonomy}_edit_form_fields hooks, registered in admin_init loop.
+  Saved via edited_term hook (10, 3) with dedicated nonce + dynamic capability check.
+  delete_term_meta called when picker is cleared (clean empty state).
+  Assets load only on edit-tags.php / term.php for supported taxonomies.
+  Supported taxonomies extensible via g4t_banner_sidebar_widget_supported_taxonomies filter.
+- Refactored g4t_core_get_sidebar_widget_product_id() to strict cascade:
+  1. is_singular(): postmeta JSON key -> legacy single-string fallback -> continue if both empty
+  2. is_category()/is_tag()/is_tax(): term_meta JSON key -> fall through if empty
+  3. is_home()/is_search()/category/tag/tax: global option JSON key
+  4. return '' if nothing matched at any stage
+  Switched from global $post to get_queried_object_id() for singular path.
+
 ---
 
 ## Data contract
 
 - Singular postmeta key: _g4t_a_sidebar_product_ids
+- Term meta key: _g4t_a_sidebar_product_ids (wp_termmeta)
 - Archive option key: g4t_a_archive_sidebar_product_ids
 - Storage format: JSON encoded array of strings, example: ["154"]
+
+Cascade resolution order (runtime):
+1. singular: postmeta JSON -> postmeta legacy string
+2. category/tag/tax: term_meta JSON -> fall through if empty
+3. home/search/category/tag/tax: wp_options JSON
 
 Backward compatibility:
 - Singular resolver falls back to legacy _g4t_a_sidebar_regular_widget_ps_product_id.
@@ -96,16 +130,22 @@ Static validation:
 	- features/banner-sidebar-widget/assets/js/picker-ui.js
 	- features/banner-sidebar-widget/assets/css/picker-ui.css
 	- features/banner-sidebar-widget/metabox-registration.php
-	- features/banner-sidebar-widget/archive-settings-page.php
+	- features/banner-sidebar-widget/global-settings-integration.php
+	- features/banner-sidebar-widget/term-meta-integration.php
 	- features/banner-sidebar-widget/index.php
 	- core/api-client/product-data.php
 
 Manual test plan:
 1. Edit single post metabox, save, verify _g4t_a_sidebar_product_ids contains JSON array.
-2. Open Settings -> Go4Taste Archiwa, select product, save, verify g4t_a_archive_sidebar_product_ids contains JSON array.
-3. Verify widget on singular uses postmeta value.
-4. Verify widget on archive/home/search uses option value.
-5. Verify legacy singular posts still render through legacy fallback key.
+2. Open Settings -> Go4Taste Ads, verify new "Archive Sidebar Product" picker field appears in section.
+   Select product, save, verify g4t_a_archive_sidebar_product_ids contains JSON array in wp_options.
+3. Open Categories or Tags admin, edit a term, verify "Sidebar Product" picker appears.
+   Select product, save, verify _g4t_a_sidebar_product_ids in wp_termmeta.
+4. Verify widget on singular uses postmeta value.
+5. Verify widget on category/tag archive uses term meta value (if set).
+6. Verify widget on category/tag archive falls through to global option when term meta is empty.
+7. Verify widget on home/search uses global option value.
+8. Verify legacy singular posts still render through legacy fallback key.
 
 ---
 
@@ -127,3 +167,7 @@ Manual test plan:
 - [x] Shared picker-ui.css extracted and enqueued for metabox + archive settings page
 - [x] Secure admin save flow for archive settings (nonce + capability)
 - [x] Context-aware resolver for singular vs archive/home/search
+- [x] Pivot: standalone archive settings subpage replaced by field in main plugin settings
+- [x] Term meta integration: Algolia picker on category/post_tag edit screens
+- [x] Cascade resolver: singular -> term meta -> global option -> empty string
+- [x] Assets load scoped to correct admin screens (metabox, main settings, term edit)
