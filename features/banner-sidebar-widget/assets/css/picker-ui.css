@@ -1,0 +1,43 @@
+.algolia-suggestion {
+    padding: 8px 10px;
+    border-bottom: 1px solid #ddd;
+    cursor: pointer;
+    background: #fff;
+}
+
+.algolia-suggestion:hover {
+    background: #f6f7f7;
+}
+
+.selected-product {
+    display: inline-block;
+    background-color: #f6f7f7;
+    border: 1px solid #dcdcde;
+    padding: 6px 10px;
+    margin-top: 10px;
+    border-radius: 4px;
+    min-width: 282px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.selected-product button {
+    background: none;
+    border: none;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    color: #b32d2e;
+    margin-left: 8px;
+}
+
+.ais-SearchBox-input {
+    padding: 0 8px !important;
+    min-height: 34px !important;
+    font-size: 14px !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.07) !important;
+    border: 1px solid #8c8f94 !important;
+    border-radius: 2px !important;
+    width: 300px;
+    max-width: 100%;
+}
