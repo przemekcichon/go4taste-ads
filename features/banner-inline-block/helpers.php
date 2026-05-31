@@ -95,9 +95,35 @@ if ( ! function_exists( 'g4t_inline_banner_extract_product_ids_from_blocks' ) ) 
 	}
 }
 
+if ( ! function_exists( 'g4t_inline_banner_get_current_page_product_ids_for_placement' ) ) {
+	/**
+	 * Resolve current-page product IDs for inline banner placement.
+	 *
+	 * @return array<int,string>
+	 */
+	function g4t_inline_banner_get_current_page_product_ids_for_placement() {
+		if ( ! is_singular() ) {
+			return array();
+		}
+
+		$queried_object = get_queried_object();
+		if ( ! $queried_object instanceof WP_Post ) {
+			return array();
+		}
+
+		$post_content = isset( $queried_object->post_content ) ? (string) $queried_object->post_content : '';
+		if ( '' === $post_content || ! function_exists( 'parse_blocks' ) ) {
+			return array();
+		}
+
+		return g4t_inline_banner_extract_product_ids_from_blocks( parse_blocks( $post_content ) );
+	}
+
+}
+
 if ( ! function_exists( 'g4t_inline_banner_collect_current_page_product_ids' ) ) {
 	/**
-	 * Append inline-banner product IDs used by the current singular page.
+	 * Backward-compatible collector for legacy filter consumers.
 	 *
 	 * @param array<int,string> $product_ids Product IDs collected so far.
 	 * @return array<int,string>
@@ -107,21 +133,7 @@ if ( ! function_exists( 'g4t_inline_banner_collect_current_page_product_ids' ) )
 			$product_ids = array();
 		}
 
-		if ( ! is_singular() ) {
-			return array_values( array_unique( $product_ids ) );
-		}
-
-		$queried_object = get_queried_object();
-		if ( ! $queried_object instanceof WP_Post ) {
-			return array_values( array_unique( $product_ids ) );
-		}
-
-		$post_content = isset( $queried_object->post_content ) ? (string) $queried_object->post_content : '';
-		if ( '' === $post_content || ! function_exists( 'parse_blocks' ) ) {
-			return array_values( array_unique( $product_ids ) );
-		}
-
-		foreach ( g4t_inline_banner_extract_product_ids_from_blocks( parse_blocks( $post_content ) ) as $product_id ) {
+		foreach ( g4t_inline_banner_get_current_page_product_ids_for_placement() as $product_id ) {
 			$product_ids[] = $product_id;
 		}
 

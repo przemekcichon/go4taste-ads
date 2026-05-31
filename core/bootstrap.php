@@ -14,6 +14,9 @@ if ( ! function_exists( 'g4t_bootstrap_features' ) ) {
 	 */
 	function g4t_bootstrap_features() {
 		// Core boundaries (shared by features)
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'core/placements/registry.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'core/placements/payload.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'core/placements/render.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'core/api-client/product-data.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'core/compat/legacy-go4taste-ads-class.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'core/i18n/index.php';
@@ -25,5 +28,7 @@ if ( ! function_exists( 'g4t_bootstrap_features' ) ) {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/admin-settings/index.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/banner-inline-block/index.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/ga4-tracking/index.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/recipe-bottom-strip/helpers.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/recipe-bottom-strip/index.php';
 	}
 }
