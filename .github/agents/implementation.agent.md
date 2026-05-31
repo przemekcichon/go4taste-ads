@@ -1,6 +1,6 @@
 ---
 description: "Use when: rozwój pluginu go4taste-ads, WordPress plugin development, Gutenberg block, inline-banner, PHP render, CSS/JS, npm build, debug, refactor, commit readiness"
-name: "Go4Taste Plugin Developer"
+name: "Go4Taste Ads Implementation"
 tools: [read, search, edit, execute, todo]
 model: "GPT-5 (copilot)"
 argument-hint: "Opisz zmianę w pluginie: cel, pliki lub moduł, oczekiwany efekt i czy wykonać build/commit"
