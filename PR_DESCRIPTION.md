@@ -10,8 +10,8 @@
 | Phase 2: Existing placements → registry | ✅ Done | Inline block + sidebar widget wired through registry |
 | Phase 2b: Shared payload resolver | ✅ Done | Normalized product payload, render dispatcher, theme template override |
 | Phase 2c: Recipe bottom strip slice | ✅ Done | New `recipe_bottom_strip` placement + helper for recipes plugin |
-| Phase 3: External extension points | 🔲 Next | Documented contract, ACF form adapter |
-| Phase 4: Recipes plugin integration | 🔲 Next | Replace `g4t_fetch_ads_products()` with shared resolver |
+| Phase 3: Recipes plugin integration | ✅ Done | Replace `g4t_fetch_ads_products()` with shared resolver + backward compat fallback |
+| Phase 4: ACF form adapter for recipe bottom strip | 🔲 Next | Picker UI in recipes plugin, saves `_g4t_a_recipe_bottom_product_ids` |
 | Phase 5: Cache invalidation | 🔲 Next | Per-placement cache keys + invalidation hooks |
 
 ---
@@ -194,15 +194,18 @@ The theme should not own product resolution or banner payload construction. Thos
 
 ---
 
-### 🔲 Phase 3: Recipes plugin integration — TODO
+### ✅ Phase 3: Recipes plugin integration — DONE
 
-**Scope:**
-- Replace `g4t_fetch_ads_products()` in `go4taste-recipes-plugin/features/recipe-display/view-model-builder.php` with a call to `g4t_recipe_bottom_strip_get_products_for_post()`.
-- This removes the duplicate API-fetcher logic from the recipes plugin.
-- The `ads.products` key in the recipe view model will be built by the shared payload resolver, not a local copy.
-- Requires a guard: only call if `function_exists('g4t_recipe_bottom_strip_get_products_for_post')` to preserve independence.
+**File changed:**
+- `go4taste-recipes-plugin/features/recipe-display/view-model-builder.php`
 
-**Risk:** low — the normalized product item shape from `g4t_ads_normalize_product_item()` matches the current `$product_data` object shape used by the Twig template.
+**What was delivered:**
+- `g4t_build_single_recipe_view_model()` now calls `g4t_recipe_bottom_strip_get_products_for_post($post_id)` when the function is available (guarded with `function_exists()`).
+- Double fallback preserved for backward compatibility:
+  1. If go4taste-ads is inactive — falls back to local `g4t_fetch_ads_products()`.
+  2. If new meta key `_g4t_a_recipe_bottom_product_ids` is empty but old ACF repeater data exists — also falls back to `g4t_fetch_ads_products()` so existing recipes render correctly without migration.
+- `ads.enabled` now reflects whether products were actually resolved, not just whether IDs exist in ACF meta.
+- `g4t_fetch_ads_products()` is NOT removed — retained as legacy fallback function.
 
 ---
 
@@ -293,7 +296,7 @@ This gives us a clean path for banners in the theme, in another plugin, or in a 
 
 5. Cache invalidation after editing placement data and after product sync — not yet implemented.
 6. ACF form picker saves `_g4t_a_recipe_bottom_product_ids` and the strip renders on the next page load.
-7. `go4taste-recipes-plugin` view model no longer calls its own product fetcher for recipe ads.
+7. ✅ `go4taste-recipes-plugin` view model delegates to shared resolver when go4taste-ads is active; falls back gracefully when it is not.
 
 ---
 
@@ -321,7 +324,9 @@ Legacy filter `g4t_ads_current_page_product_ids` remains functional via compatib
 
 The platform foundation is implemented. Phases 1 and 2 are complete.
 
-**Remaining decisions before Phase 3–4:**
+**Remaining decisions before Phase 4–5:**
 - Confirm whether the ACF form picker for recipe bottom strip lives in `go4taste-recipes-plugin` (preferred, keeps form logic co-located) or in the theme.
-- Confirm whether `go4taste-recipes-plugin` should guard the `g4t_recipe_bottom_strip_get_products_for_post()` call with `function_exists()` or declare a hard dependency on `go4taste-ads`.
 - Confirm Phase 5 cache scope: per post, per placement+ids hash, or both.
+
+**Resolved decisions:**
+- `go4taste-recipes-plugin` guards the call with `function_exists()` — soft dependency confirmed.
