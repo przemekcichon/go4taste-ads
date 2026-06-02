@@ -12,7 +12,7 @@
 | Phase 2c: Recipe bottom strip slice | ✅ Done | New `recipe_bottom_strip` placement + helper for recipes plugin |
 | Phase 3: Recipes plugin integration | ✅ Done | Replace `g4t_fetch_ads_products()` with shared resolver + backward compat fallback |
 | Phase 4: ACF form adapter for recipe bottom strip | ✅ Done | Implemented in `go4taste-recipes-plugin`: picker UI + save to `_g4t_a_recipe_bottom_product_ids` |
-| Phase 5: Cache invalidation | 🔲 Next | Per-placement cache keys + invalidation hooks |
+| Phase 5: Cache invalidation | ⏭️ Skipped in this PR | Deferred intentionally to next branch/PR |
 
 ---
 
@@ -226,7 +226,7 @@ The theme should not own product resolution or banner payload construction. Thos
 
 ---
 
-### 🔲 Phase 5: Cache and invalidation — TODO
+### ⏭️ Phase 5: Cache and invalidation — SKIPPED IN THIS PR
 
 **Scope:**
 - Add per-placement transient cache layer in `g4t_ads_build_placement_payload()`.
@@ -234,6 +234,10 @@ The theme should not own product resolution or banner payload construction. Thos
 - Soft TTL: configurable (default 24h), hard TTL (default 7d) matching existing banner cache settings.
 - Invalidation hook `go4taste/ads/invalidate_placement_cache` — fire on post save, term save, and product sync.
 - Invalidation scope: by placement key, by product ID, or site-wide.
+
+**Status detail:**
+- Explicitly out of scope for this PR to keep the change set focused and reviewable.
+- Planned as a follow-up implementation on a dedicated branch/PR.
 
 ---
 
@@ -300,7 +304,7 @@ This gives us a clean path for banners in the theme, in another plugin, or in a 
 
 ### Pending verification (Phase 3–5)
 
-5. Cache invalidation after editing placement data and after product sync — not yet implemented.
+5. Phase 5 cache invalidation is intentionally deferred to a dedicated follow-up PR.
 6. ✅ ACF form picker saves `_g4t_a_recipe_bottom_product_ids` and the strip renders on the next page load.
 7. ✅ `go4taste-recipes-plugin` view model delegates to shared resolver when go4taste-ads is active; falls back gracefully when it is not.
 
@@ -329,6 +333,11 @@ Legacy filter `g4t_ads_current_page_product_ids` remains functional via compatib
 ~~This document intentionally proposes the platform approach only.~~
 
 The platform foundation is implemented. Phases 1 and 2 are complete.
+
+## Merge readiness
+
+- This PR is merge-ready for Phases 1-4.
+- Phase 5 (cache/invalidation) is intentionally excluded and tracked as follow-up scope.
 
 **Remaining decisions before Phase 5:**
 - Confirm Phase 5 cache scope: per post, per placement+ids hash, or both.
