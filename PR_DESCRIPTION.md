@@ -1,4 +1,4 @@
-# PR: Picker UI Extensibility — Context, Variant, and Preview Customization
+# PR: Picker Data Extensibility — Provider Contract for Creator-Native UI
 
 **Branch:** feature/picker-ui-extensibility -> main
 
@@ -16,24 +16,24 @@
 
 ## Motivation
 
-Current picker UI visuals are shared and fixed across all entry surfaces.
-That blocks UX differentiation (for example: creator-specific visuals vs widget/admin visuals) without duplicating picker logic.
+Recipe creator needs to keep its own frontend layout (`product-list`, `.search-box`, `selected-strip`) while reusing Ads logic as data/provider layer.
+This PR scope in ads plugin should therefore focus on stable provider contract and hooks, not enforcing the standard picker UI on every surface.
 
 Main goals:
-- keep one shared picker runtime,
-- make preview visuals configurable by context and variant,
+- keep one shared provider/runtime contract,
+- allow external surfaces to consume data with their own UI,
 - preserve backward compatibility for existing sidebar/metabox/term settings flows,
-- avoid moving resolution logic into themes or companion plugins.
+- avoid duplicating product resolution and preview payload mapping across plugins.
 
 ---
 
 ## Desired outcome
 
 After this implementation:
-1. Picker surfaces can declare context and style variant.
-2. Preview payload can be customized through stable hooks.
-3. Preview template can be overridden without forking picker logic.
-4. Default appearance remains unchanged unless extension hooks are used.
+1. Surfaces can declare context/variant/metadata to the Ads provider contract.
+2. External adapters (like recipe creator) can consume data without mounting default picker UI widgets.
+3. Preview payload and template path remain overrideable via stable hooks.
+4. Existing admin/widget surfaces keep current behavior by default.
 
 ---
 
@@ -60,10 +60,11 @@ Default template remains current one.
 
 ### 4) Surface adapters
 
-Each picker surface maps only UI concerns:
-- init config,
-- context/variant declaration,
-- no duplicated product resolution.
+Each surface keeps ownership of UI rendering and user interactions.
+Ads contract provides:
+- context/variant declaration support,
+- product/preview data boundary,
+- no requirement to reuse default `.ais-*` UI controls on custom surfaces.
 
 ### 5) Backward compatibility
 
@@ -89,11 +90,11 @@ If no new filters are used:
 1. Existing sidebar widget picker flow still works without configuration changes.
 2. Existing term edit picker flow still works without configuration changes.
 3. Existing global settings picker flow still works without configuration changes.
-4. External adapter can change preview image/template via hooks.
+4. External adapter can consume provider contract without using default picker DOM controls.
 
 ### Follow-up verification
 
-5. Cross-surface visual QA for each style variant.
+5. Cross-surface QA confirms creator can keep native UI while consuming Ads data/provider contract.
 6. Documentation examples for hook usage in companion plugins/themes.
 
 ---
