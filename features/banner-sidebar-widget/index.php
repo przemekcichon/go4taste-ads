@@ -47,9 +47,27 @@ if ( ! function_exists( 'g4t_banner_sidebar_widget_enqueue_assets' ) ) {
 	}
 }
 
+if ( ! function_exists( 'g4t_banner_sidebar_widget_get_current_page_product_ids_for_placement' ) ) {
+	/**
+	 * Resolve current-page product IDs for sidebar widget placement.
+	 *
+	 * @return array<int,string>
+	 */
+	function g4t_banner_sidebar_widget_get_current_page_product_ids_for_placement() {
+		$product_id = trim( (string) g4t_core_get_sidebar_widget_product_id() );
+
+		if ( '' === $product_id ) {
+			return array();
+		}
+
+		return array( $product_id );
+	}
+}
+
+
 if ( ! function_exists( 'g4t_banner_sidebar_widget_collect_current_page_product_ids' ) ) {
 	/**
-	 * Append sidebar widget product ID used by the current singular page.
+	 * Backward-compatible collector for legacy filter consumers.
 	 *
 	 * @param array<int,string> $product_ids Product IDs collected so far.
 	 * @return array<int,string>
@@ -59,17 +77,34 @@ if ( ! function_exists( 'g4t_banner_sidebar_widget_collect_current_page_product_
 			$product_ids = array();
 		}
 
-		if ( ! is_singular() ) {
-			return array_values( array_unique( $product_ids ) );
-		}
-
-		$product_id = g4t_core_get_sidebar_widget_product_id();
-		$product_id = trim( (string) $product_id );
-		if ( '' !== $product_id ) {
+		foreach ( g4t_banner_sidebar_widget_get_current_page_product_ids_for_placement() as $product_id ) {
 			$product_ids[] = $product_id;
 		}
 
 		return array_values( array_unique( array_filter( array_map( 'strval', $product_ids ) ) ) );
+	}
+}
+
+if ( ! function_exists( 'g4t_banner_sidebar_widget_register_placement' ) ) {
+	/**
+	 * Register sidebar widget placement in shared ads placement registry.
+	 *
+	 * @param array<string,array<string,mixed>> $placements Existing placements.
+	 * @return array<string,array<string,mixed>>
+	 */
+	function g4t_banner_sidebar_widget_register_placement( $placements ) {
+		return g4t_ads_add_placement_definition(
+			$placements,
+			'sidebar_widget_banner',
+			array(
+				'label'                             => 'Sidebar Banner Widget',
+				'source'                            => 'sidebar_widget',
+				'storage_scope'                     => 'cascade',
+				'storage_key'                       => '_g4t_a_sidebar_product_ids|g4t_a_archive_sidebar_product_ids',
+				'supported_contexts'                => array( 'singular', 'archive', 'home', 'search' ),
+				'current_page_product_ids_callback' => 'g4t_banner_sidebar_widget_get_current_page_product_ids_for_placement',
+			)
+		);
 	}
 }
 add_action( 'widgets_init', 'g4t_banner_sidebar_widget_register' );
@@ -85,4 +120,4 @@ add_action( 'admin_init', 'g4t_banner_sidebar_widget_register_term_meta_hooks' )
 add_action( 'admin_enqueue_scripts', 'g4t_banner_sidebar_widget_enqueue_global_settings_assets' );
 add_action( 'admin_enqueue_scripts', 'g4t_banner_sidebar_widget_enqueue_term_meta_assets' );
 add_action( 'edited_term', 'g4t_banner_sidebar_widget_save_term_meta', 10, 3 );
-add_filter( 'g4t_ads_current_page_product_ids', 'g4t_banner_sidebar_widget_collect_current_page_product_ids' );
+add_filter( 'go4taste/ads/register_placement', 'g4t_banner_sidebar_widget_register_placement' );
