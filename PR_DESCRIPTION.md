@@ -1,6 +1,6 @@
 ﻿# PR: Ads Extensibility — Placement Registry + Shared Payload Resolver + Recipe Strip
 
-**Branch:** feature/ads-extensibility-plan -> main
+**Branch:** feature/banner-extensibility -> main
 
 ## Implementation status
 
