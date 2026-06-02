@@ -11,7 +11,7 @@
 | Phase 2b: Shared payload resolver | ✅ Done | Normalized product payload, render dispatcher, theme template override |
 | Phase 2c: Recipe bottom strip slice | ✅ Done | New `recipe_bottom_strip` placement + helper for recipes plugin |
 | Phase 3: Recipes plugin integration | ✅ Done | Replace `g4t_fetch_ads_products()` with shared resolver + backward compat fallback |
-| Phase 4: ACF form adapter for recipe bottom strip | 🔲 Next | Picker UI in recipes plugin, saves `_g4t_a_recipe_bottom_product_ids` |
+| Phase 4: ACF form adapter for recipe bottom strip | ✅ Done | Implemented in `go4taste-recipes-plugin`: picker UI + save to `_g4t_a_recipe_bottom_product_ids` |
 | Phase 5: Cache invalidation | 🔲 Next | Per-placement cache keys + invalidation hooks |
 
 ---
@@ -209,7 +209,7 @@ The theme should not own product resolution or banner payload construction. Thos
 
 ---
 
-### 🔲 Phase 4: ACF form adapter for recipe bottom strip — TODO
+### ✅ Phase 4: ACF form adapter for recipe bottom strip — DONE (recipes plugin)
 
 **Scope:**
 - Add a picker UI to the `go4taste-recipes-plugin` ACF front-end form (last step of recipe wizard).
@@ -217,6 +217,12 @@ The theme should not own product resolution or banner payload construction. Thos
 - Picker should reuse the existing `G4TAdsPicker` JS module from `banner-sidebar-widget/assets/js/picker-ui.js`.
 - The save path writes only to the meta key; no logic duplication with the resolver.
 - This lives in `go4taste-recipes-plugin` or in the theme — `go4taste-ads` core is not modified.
+
+**Status detail:**
+- Implemented in `go4taste-recipes-plugin` frontend creator (step 6 picker adapter).
+- Persisted `_g4t_a_recipe_bottom_product_ids` using the JSON array contract.
+- Added backward-compatible fallback to legacy `recipe_ads_products` source in creator edit mode.
+- Added post-save synchronization path for the new meta key.
 
 ---
 
@@ -295,7 +301,7 @@ This gives us a clean path for banners in the theme, in another plugin, or in a 
 ### Pending verification (Phase 3–5)
 
 5. Cache invalidation after editing placement data and after product sync — not yet implemented.
-6. ACF form picker saves `_g4t_a_recipe_bottom_product_ids` and the strip renders on the next page load.
+6. ✅ ACF form picker saves `_g4t_a_recipe_bottom_product_ids` and the strip renders on the next page load.
 7. ✅ `go4taste-recipes-plugin` view model delegates to shared resolver when go4taste-ads is active; falls back gracefully when it is not.
 
 ---
@@ -324,9 +330,9 @@ Legacy filter `g4t_ads_current_page_product_ids` remains functional via compatib
 
 The platform foundation is implemented. Phases 1 and 2 are complete.
 
-**Remaining decisions before Phase 4–5:**
-- Confirm whether the ACF form picker for recipe bottom strip lives in `go4taste-recipes-plugin` (preferred, keeps form logic co-located) or in the theme.
+**Remaining decisions before Phase 5:**
 - Confirm Phase 5 cache scope: per post, per placement+ids hash, or both.
 
 **Resolved decisions:**
 - `go4taste-recipes-plugin` guards the call with `function_exists()` — soft dependency confirmed.
+- ACF form picker for recipe bottom strip lives in `go4taste-recipes-plugin` (co-located with creator UI and save flow).
