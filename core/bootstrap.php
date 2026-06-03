@@ -20,6 +20,7 @@ if ( ! function_exists( 'g4t_bootstrap_features' ) ) {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'core/api-client/product-data.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'core/compat/legacy-go4taste-ads-class.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'core/i18n/index.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'core/provider/index.php';
 
 		// Feature slices
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'features/banner-sidebar-widget/index.php';

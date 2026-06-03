@@ -40,42 +40,19 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_enqueue_preview_styles' ) 
 		);
 
 		wp_enqueue_script(
-			'algolia-instantsearch',
-			'https://cdn.jsdelivr.net/npm/instantsearch.js@4',
-			array(),
-			null,
-			true
-		);
-
-		wp_enqueue_script(
-			'algolia-search-client',
-			'https://cdn.jsdelivr.net/npm/algoliasearch@4',
-			array(),
-			null,
-			true
-		);
-
-		wp_enqueue_script(
 			'g4t-ads-picker-ui',
 			plugins_url( 'features/banner-sidebar-widget/assets/js/picker-ui.js', $plugin_entry ),
-			array( 'jquery', 'algolia-instantsearch', 'algolia-search-client' ),
+			array( 'g4t-ads-provider' ),
 			$version,
 			true
 		);
-
-		$options         = g4t_core_get_ads_options();
-		$algolia_app_id  = isset( $options['algolia_app_id'] ) ? sanitize_text_field( (string) $options['algolia_app_id'] ) : '';
-		$algolia_api_key = isset( $options['algolia_api_key'] ) ? sanitize_text_field( (string) $options['algolia_api_key'] ) : '';
 
 		wp_localize_script(
 			'g4t-ads-picker-ui',
 			'g4tAdsSidebarMetaboxPickerConfig',
 			array(
-				'algoliaAppId'  => $algolia_app_id,
-				'algoliaApiKey' => $algolia_api_key,
-				'indexName'     => 'go4taste_product_list',
-				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
-				'nonce'         => wp_create_nonce( 'g4t_ad_preview_nonce' ),
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'g4t_ad_preview_nonce' ),
 			)
 		);
 	}
@@ -130,7 +107,7 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_render_meta_box' ) ) {
 		echo '<div id="g4t-ad-preview" class="g4t-ad-preview"></div>';
 		?>
 		<script type="text/javascript">
-		jQuery(function() {
+		document.addEventListener('DOMContentLoaded', function() {
 			if (typeof window.G4TAdsPicker !== 'function') {
 				return;
 			}
@@ -141,12 +118,9 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_render_meta_box' ) ) {
 				searchBoxSelector: '#algolia-searchbox',
 				selectedContainerSelector: '#selected-product-container',
 				previewContainerSelector: '#g4t-ad-preview',
-				algoliaAppId: config.algoliaAppId || '',
-				algoliaApiKey: config.algoliaApiKey || '',
-				indexName: config.indexName || 'go4taste_product_list',
 				ajaxUrl: config.ajaxUrl || '',
 				nonce: config.nonce || '',
-				postId: jQuery('#post_ID').val() || '<?php echo esc_js( (string) $post->ID ); ?>'
+				postId: (document.getElementById('post_ID') || {}).value || '<?php echo esc_js( (string) $post->ID ); ?>'
 			});
 		});
 		</script>

@@ -110,10 +110,6 @@ if ( ! function_exists( 'g4t_banner_sidebar_widget_render_global_settings_field'
 			$product_id = trim( $raw_product_ids );
 		}
 
-		$options         = g4t_core_get_ads_options();
-		$algolia_app_id  = isset( $options['algolia_app_id'] ) ? sanitize_text_field( (string) $options['algolia_app_id'] ) : '';
-		$algolia_api_key = isset( $options['algolia_api_key'] ) ? sanitize_text_field( (string) $options['algolia_api_key'] ) : '';
-		$index_name      = 'go4taste_product_list';
 		?>
 		<input
 			type="hidden"
@@ -125,7 +121,7 @@ if ( ! function_exists( 'g4t_banner_sidebar_widget_render_global_settings_field'
 		<div id="g4t-archive-sidebar-selected-product-container"></div>
 		<div id="g4t-archive-sidebar-ad-preview" class="g4t-ad-preview"></div>
 		<script type="text/javascript">
-		jQuery(function() {
+		document.addEventListener('DOMContentLoaded', function() {
 			if (typeof window.G4TAdsPicker !== 'function') {
 				return;
 			}
@@ -135,9 +131,6 @@ if ( ! function_exists( 'g4t_banner_sidebar_widget_render_global_settings_field'
 				searchBoxSelector: '#g4t-archive-sidebar-algolia-searchbox',
 				selectedContainerSelector: '#g4t-archive-sidebar-selected-product-container',
 				previewContainerSelector: '#g4t-archive-sidebar-ad-preview',
-				algoliaAppId: '<?php echo esc_js( $algolia_app_id ); ?>',
-				algoliaApiKey: '<?php echo esc_js( $algolia_api_key ); ?>',
-				indexName: '<?php echo esc_js( $index_name ); ?>',
 				ajaxUrl: '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
 				nonce: '<?php echo esc_js( wp_create_nonce( 'g4t_ad_preview_nonce' ) ); ?>',
 				postId: 0
@@ -181,25 +174,9 @@ if ( ! function_exists( 'g4t_banner_sidebar_widget_enqueue_global_settings_asset
 		);
 
 		wp_enqueue_script(
-			'algolia-instantsearch',
-			'https://cdn.jsdelivr.net/npm/instantsearch.js@4',
-			array(),
-			null,
-			true
-		);
-
-		wp_enqueue_script(
-			'algolia-search-client',
-			'https://cdn.jsdelivr.net/npm/algoliasearch@4',
-			array(),
-			null,
-			true
-		);
-
-		wp_enqueue_script(
 			'g4t-ads-picker-ui',
 			plugins_url( 'features/banner-sidebar-widget/assets/js/picker-ui.js', $plugin_entry ),
-			array( 'jquery', 'algolia-instantsearch', 'algolia-search-client' ),
+			array( 'g4t-ads-provider' ),
 			$version,
 			true
 		);
