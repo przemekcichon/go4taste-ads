@@ -1,347 +1,237 @@
-﻿# PR: Ads Extensibility — Placement Registry + Shared Payload Resolver + Recipe Strip
+# PR: Algolia Data Provider — Shared JS Layer for All Picker Surfaces
 
-**Branch:** feature/banner-extensibility -> main
+**Branch:** feature/use-ads-data-provider -> main
 
 ## Implementation status
 
-| Phase | Status | Description |
+| Stage | Status | Description |
 |---|---|---|
-| Phase 1: Core registry | ✅ Done | Placement registry, resolver API, compatibility bridge |
-| Phase 2: Existing placements → registry | ✅ Done | Inline block + sidebar widget wired through registry |
-| Phase 2b: Shared payload resolver | ✅ Done | Normalized product payload, render dispatcher, theme template override |
-| Phase 2c: Recipe bottom strip slice | ✅ Done | New `recipe_bottom_strip` placement + helper for recipes plugin |
-| Phase 3: Recipes plugin integration | ✅ Done | Replace `g4t_fetch_ads_products()` with shared resolver + backward compat fallback |
-| Phase 4: ACF form adapter for recipe bottom strip | ✅ Done | Implemented in `go4taste-recipes-plugin`: picker UI + save to `_g4t_a_recipe_bottom_product_ids` |
-| Phase 5: Cache invalidation | ⏭️ Skipped in this PR | Deferred intentionally to next branch/PR |
+| Stage 1: JS data provider | ✅ Done | `G4TAdsProvider` module — shared search/fetch/normalize over algoliasearch SDK |
+| Stage 2: Refactor picker-ui.js | ✅ Done | Replaced InstantSearch.js + jQuery with provider as data layer |
+| Stage 3: Surface adapters | ✅ Done | Metabox, term edit, global settings — all use provider, no own credentials |
+| Stage 4: Docs + QA matrix | ✅ Done | All surfaces QA-passed; two bugs found and fixed during QA |
+
+---
+
+## Context: what is already in place
+
+PR #15 (`feature/banner-extensibility`) merged the PHP foundation:
+
+- Placement registry (`core/placements/registry.php`) — `go4taste/ads/register_placement` filter
+- Shared payload resolver (`core/placements/payload.php`) — normalized product shape for PHP renderers
+- Render dispatcher (`core/placements/render.php`) — `g4t_ads_render_placement()` callable from theme/plugin
+- Recipe bottom strip slice (`features/recipe-bottom-strip/`) — `g4t_recipe_bottom_strip_get_products_for_post()` integration point
+
+The recipes plugin (`feature/picker-ui-extensibility` on that side) added:
+- Step 6 picker UI in the recipe creator (native frontend controls, not the ads widget)
+- Save path via flat `g4t_recipe_ads_product_ids_json` POST field
+- Read path via `g4t_recipe_bottom_strip_get_products_for_post()`
+- Credentials consumed from `go4taste_ads_options` passed as `G4T_RECIPE_CREATOR_DATA.adsPicker`
+
+The creator queries Algolia directly using `algoliasearch` SDK. `picker-ui.js` did the same via InstantSearch.js. Both initialized their own client, both normalized hits independently. This PR closes that duplication — both now delegate to `G4TAdsProvider`.
+
+---
+
+## Problem
+
+Two separate JS Algolia clients with duplicated logic:
+
+```
+creator.js (recipes plugin)            picker-ui.js (ads plugin)
+──────────────────────────────         ──────────────────────────────
+window.algoliasearch(appId, key)       window.algoliasearch(appId, key)
+searchClient.initIndex(name)           instantsearch({ searchClient })
+algoliaIndex.search(query, opts)       instantsearch.widgets.hits(...)
+normalizeProductRecord(hit)            inline hit template string
+algoliaIndex.getObject(id)             index.getObject(id)
+```
+
+`picker-ui.js` uses InstantSearch.js — Algolia's UI widget framework — which bundles data and DOM together. This makes extracting a reusable data layer impossible without refactoring. The creator went around it by using the low-level SDK directly, but duplicated the normalization and client init.
 
 ---
 
 ## Motivation
 
-The current ads plugin already supports two concrete banner entry paths: an inline Gutenberg block and a sidebar widget. That works for the present use case, but it does not yet provide a clean extension model for future ways of adding banners or rendering them in other contexts such as a theme-level ACF form flow.
-
-This plan defines how to turn the current implementation into a reusable banner platform where new placements can be added without duplicating data access, product resolution, or frontend rendering logic.
+One JS module should own: client init, search, per-ID fetch, normalization. Every surface — admin picker, creator, future adapters — consumes this module instead of reinventing it.
 
 Main goals:
-- keep existing block and widget behavior intact,
-- introduce a stable placement registry for new banner entry points,
-- separate banner data storage from banner rendering,
-- make theme-level or external-plugin extensions possible without touching core placement logic,
-- keep all runtime dependencies aligned with the VSA rules already used in the repository.
+- single Algolia client instance per page, shared across surfaces,
+- one canonical normalization of Algolia hits to a product shape,
+- picker-ui.js and creator.js both use the provider; neither owns data logic,
+- new surfaces (new admin screen, external plugin) get data layer for free.
 
 ---
 
 ## Desired outcome
 
-After the next implementation phase, the plugin should support these ideas:
-
-1. A placement is a declared capability, not a hardcoded branch in a single renderer.
-2. Different UI surfaces can register or edit banner product IDs, but all of them persist the same JSON array contract.
-3. Rendering uses a shared resolver and normalized payload, regardless of whether the source is Gutenberg, widget settings, term meta, theme settings, or an ACF front-end form.
-4. A theme or companion plugin can add a new placement by registering metadata, a save surface, and a render adapter, without forking existing logic.
-
----
-
-## Proposed architecture
-
-### 1) Core banner registry
-
-Create a lightweight registry in `go4taste-ads` that stores banner placements as structured definitions.
-
-Each placement definition should include:
-- placement key,
-- label and description for admin UI,
-- storage scope (`postmeta`, `termmeta`, `option`, or custom adapter),
-- data key or option key,
-- supported contexts where the placement may render,
-- resolver callback for reading raw IDs,
-- renderer callback or template hook for emitting markup.
-
-This registry becomes the single source of truth for what placements exist.
-
-### 2) Shared resolver layer
-
-Move all banner product retrieval behind one resolver that:
-- reads the JSON array contract first,
-- falls back to legacy single-string keys only where required,
-- normalizes all IDs into one format,
-- returns a render-ready payload for the frontend.
-
-This resolver should not know whether the data came from a metabox, a widget, a theme setting, or an ACF form. It only resolves a placement key into products.
-
-### 3) Shared render payload
-
-Standardize the render payload so every placement returns the same shape.
-
-The payload should at minimum contain:
-- placement key,
-- source type,
-- normalized product list,
-- display metadata,
-- optional CTA/label values,
-- optional template variant.
-
-The existing frontend, including the theme, should consume this payload and stay ignorant of how the data was entered.
-
-### 4) Adapter-based entry points
-
-New ways of adding banners should be implemented as adapters, not as separate parallel systems.
-
-Examples:
-- Gutenberg block adapter,
-- sidebar widget adapter,
-- term edit screen adapter,
-- main settings page adapter,
-- theme ACF front-end form adapter,
-- external plugin adapter.
-
-Each adapter should only handle its own UI and save flow, then write into the same placement contract.
-
-### 5) Theme integration boundary
-
-If banner entry lives in the theme, the theme should only provide:
-- form/template markup,
-- optional styling,
-- placement registration or filter configuration.
-
-The theme should not own product resolution or banner payload construction. Those remain in `go4taste-ads`.
+After this implementation:
+1. `window.G4TAdsProvider` is the single entry point for Algolia product data on any surface.
+2. `picker-ui.js` is a UI layer only — no data logic of its own.
+3. `creator.js` (recipes plugin) replaces direct `algoliaIndex.search()` calls with provider calls.
+4. Normalization lives in one place; both surfaces use the same product shape.
+5. A new surface needs only `G4TAdsProvider.getInstance().search(query)` to get results.
 
 ---
 
-## Implementation phases
+## Architecture
 
-### ✅ Phase 1: Core abstraction — DONE
+### Stage 1: `G4TAdsProvider` module
 
-**Files added:**
-- `core/placements/registry.php`
+New file: `core/provider/algolia-provider.js`
 
-**What was delivered:**
-- `g4t_ads_add_placement_definition()` — builder for a placement definition array with sanitized fields.
-- `g4t_ads_get_registered_placements()` — returns all placements collected through `go4taste/ads/register_placement` filter.
-- `g4t_ads_get_current_page_product_ids_by_placement()` — calls each placement's `current_page_product_ids_callback` and groups results by key.
-- `g4t_ads_get_current_page_product_ids()` — flat merged list across all placements for compatibility.
-- `g4t_ads_collect_registered_placements_current_page_product_ids()` — compatibility bridge wired into existing `g4t_ads_current_page_product_ids` filter at priority 5.
-- `core/bootstrap.php` updated to load `registry.php` before feature slices.
+```javascript
+// Singleton, initialized once per page from PHP-localized credentials.
+window.G4TAdsProvider = (function () {
+  let instance = null;
 
-**Public hook introduced:**
-- `go4taste/ads/register_placement` — filter where any slice, theme, or external plugin registers its placement definition.
+  function create(config) {
+    const client = window.algoliasearch(config.appId, config.apiKey);
+    const index  = client.initIndex(config.indexName);
 
----
+    function normalize(hit) {
+      return {
+        id:      String(hit.objectID || hit.id || ''),
+        name:    hit.name    || hit.title || '',
+        picture: hit.picture || hit.image || '',
+        link:    hit.link    || hit.url   || '',
+        price:   hit.price   || null,
+        category: hit.category || '',
+      };
+    }
 
-### ✅ Phase 2a: Existing placements onto registry — DONE
+    return {
+      search(query, opts) {
+        return index
+          .search(String(query || ''), { hitsPerPage: opts?.hitsPerPage ?? 12 })
+          .then(r => r.hits.map(normalize));
+      },
+      getById(id) {
+        return index.getObject(String(id)).then(normalize);
+      },
+      getByIds(ids) {
+        return Promise.all(ids.map(id => this.getById(id)));
+      },
+    };
+  }
 
-**Files changed:**
-- `features/banner-inline-block/index.php`
-- `features/banner-inline-block/helpers.php`
-- `features/banner-sidebar-widget/index.php`
+  return {
+    init(config) { if (!instance) instance = create(config); },
+    getInstance() { return instance; },
+  };
+})();
+```
 
-**What was delivered:**
-- Extracted `g4t_inline_banner_get_current_page_product_ids_for_placement()` — pure product ID resolver for inline block, no filter coupling.
-- `g4t_inline_banner_collect_current_page_product_ids()` kept as backward-compatible wrapper.
-- `g4t_inline_banner_register_placement()` registered via `go4taste/ads/register_placement`.
-- Old direct `add_filter('g4t_ads_current_page_product_ids', ...)` replaced in inline block.
-- Extracted `g4t_banner_sidebar_widget_get_current_page_product_ids_for_placement()` — delegates to cascade resolver.
-- `g4t_banner_sidebar_widget_collect_current_page_product_ids()` kept as backward-compatible wrapper.
-- `g4t_banner_sidebar_widget_register_placement()` registered via `go4taste/ads/register_placement`.
-- Old direct `add_filter('g4t_ads_current_page_product_ids', ...)` replaced in sidebar widget.
-
----
-
-### ✅ Phase 2b: Shared payload resolver — DONE
-
-**Files added:**
-- `core/placements/payload.php`
-- `core/placements/render.php`
-
-**What was delivered:**
-
-`payload.php`:
-- `g4t_ads_normalize_product_item()` — canonical flat array for one product, consumed by all renderers; shape: `id, name, price, price_tax_exc, price_without_reduction, picture, link, category, image_width, image_height`.
-- `g4t_ads_build_placement_payload()` — builds normalized payload for a placement key + product ID list. Calls API fetcher per ID, normalizes each item, returns `{ placement_key, source, products[], context }`.
-- `g4t_ads_build_current_page_payload()` — builds payloads for all current-page placements in one call.
-
-`render.php`:
-- `g4t_ads_get_placement_template_path()` — resolves template with theme override support. Theme lookup order: `go4taste-ads/{key}.php`, then `go4taste-ads/placement.php`. Plugin fallback: `core/placements/templates/{key}.php`.
-- `g4t_ads_render_placement()` — dispatcher: prefers `render_callback` from registry, falls back to template. Returns HTML string. Can be called from theme or any external code.
-
-**Public hooks introduced:**
-- `go4taste/ads/placement_product_item` — filter per product item before it enters payload.
-- `go4taste/ads/resolve_placement_payload` — filter on the complete payload after resolution.
-- `go4taste/ads/before_render_placement` — action before render starts.
-- `go4taste/ads/render_placement` — filter on final HTML output.
-- `go4taste/ads/placement_template_path` — filter on resolved template path.
+PHP side — ads plugin enqueues `algolia-provider.js` and localizes:
+```php
+wp_localize_script('g4t-ads-provider', 'G4T_ADS_PROVIDER_DATA', [
+    'appId'     => $options['algolia_app_id'],
+    'apiKey'    => $options['algolia_search_api_key'],
+    'indexName' => $options['algolia_index_name'] ?? 'go4taste_product_list',
+]);
+```
 
 ---
 
-### ✅ Phase 2c: Recipe bottom strip placement — DONE
+### Stage 2: Refactor `picker-ui.js`
 
-**Files added:**
-- `features/recipe-bottom-strip/index.php`
-- `features/recipe-bottom-strip/helpers.php`
+- Remove `window.instantsearch` dependency entirely.
+- Remove jQuery dependency from data path (keep only for DOM manipulation if needed, or drop jQuery completely).
+- Replace `search.addWidget(hits(...))` with `G4TAdsProvider.getInstance().search(query)` + own rendering.
+- Replace `index.getObject(id)` with `G4TAdsProvider.getInstance().getById(id)`.
+- `picker-ui.js` becomes UI-only: search input listener → provider → render hits → selection state.
 
-**What was delivered:**
-
-`index.php`:
-- Registers placement `recipe_bottom_strip` through `go4taste/ads/register_placement`.
-- Storage key: `_g4t_a_recipe_bottom_product_ids` (JSON array contract).
-- Legacy fallback: `_g4t_a_recipe_bottom_ps_product_ids`.
-- Resolver: `g4t_recipe_bottom_strip_get_current_page_product_ids()` — reads post meta on `is_singular()`.
-
-`helpers.php`:
-- `g4t_recipe_bottom_strip_get_products_for_post( int $post_id )` — integration point for `go4taste-recipes-plugin` view-model builder. Reads post meta directly (independent of `get_queried_object_id()`), calls shared `g4t_ads_build_placement_payload()`, returns normalized products array ready for Timber templates.
-
-`core/bootstrap.php` updated to load both `helpers.php` and `index.php` for this slice.
+InstantSearch.js script tag can be removed from the enqueue list once no widget uses it.
 
 ---
 
-### ✅ Phase 3: Recipes plugin integration — DONE
+### Stage 3: Surface adapters
 
-**File changed:**
-- `go4taste-recipes-plugin/features/recipe-display/view-model-builder.php`
-
-**What was delivered:**
-- `g4t_build_single_recipe_view_model()` now calls `g4t_recipe_bottom_strip_get_products_for_post($post_id)` when the function is available (guarded with `function_exists()`).
-- Double fallback preserved for backward compatibility:
-  1. If go4taste-ads is inactive — falls back to local `g4t_fetch_ads_products()`.
-  2. If new meta key `_g4t_a_recipe_bottom_product_ids` is empty but old ACF repeater data exists — also falls back to `g4t_fetch_ads_products()` so existing recipes render correctly without migration.
-- `ads.enabled` now reflects whether products were actually resolved, not just whether IDs exist in ACF meta.
-- `g4t_fetch_ads_products()` is NOT removed — retained as legacy fallback function.
+Each existing admin surface (metabox, term edit, global settings) that currently initializes its own Algolia client gets updated to call `G4TAdsProvider.getInstance()` instead. No logic changes to save/read paths — only the data fetch layer changes.
 
 ---
 
-### ✅ Phase 4: ACF form adapter for recipe bottom strip — DONE (recipes plugin)
+### Stage 4: Docs + QA
 
-**Scope:**
-- Add a picker UI to the `go4taste-recipes-plugin` ACF front-end form (last step of recipe wizard).
-- Save selected product IDs as `_g4t_a_recipe_bottom_product_ids` (JSON array) in post meta.
-- Picker should reuse the existing `G4TAdsPicker` JS module from `banner-sidebar-widget/assets/js/picker-ui.js`.
-- The save path writes only to the meta key; no logic duplication with the resolver.
-- This lives in `go4taste-recipes-plugin` or in the theme — `go4taste-ads` core is not modified.
-
-**Status detail:**
-- Implemented in `go4taste-recipes-plugin` frontend creator (step 6 picker adapter).
-- Persisted `_g4t_a_recipe_bottom_product_ids` using the JSON array contract.
-- Added backward-compatible fallback to legacy `recipe_ads_products` source in creator edit mode.
-- Added post-save synchronization path for the new meta key.
+- Document `G4TAdsProvider` public API (search, getById, getByIds).
+- QA matrix: metabox picker, term edit picker, global settings picker, recipe creator — all must search and select correctly after refactor.
+- Confirm single client instance: no duplicate Algolia calls on pages with multiple surfaces.
 
 ---
 
-### ⏭️ Phase 5: Cache and invalidation — SKIPPED IN THIS PR
+## Suggested public JS API
 
-**Scope:**
-- Add per-placement transient cache layer in `g4t_ads_build_placement_payload()`.
-- Cache key: `g4t_ads_payload_{placement_key}_{md5(sorted_ids)}`.
-- Soft TTL: configurable (default 24h), hard TTL (default 7d) matching existing banner cache settings.
-- Invalidation hook `go4taste/ads/invalidate_placement_cache` — fire on post save, term save, and product sync.
-- Invalidation scope: by placement key, by product ID, or site-wide.
+```javascript
+G4TAdsProvider.init({ appId, apiKey, indexName })   // called synchronously when algolia-provider.js executes (dependency order guarantees algoliasearch is ready)
+G4TAdsProvider.getInstance()                         // returns provider or null if not initialized
+  .search(query, { hitsPerPage })   // → Promise<NormalizedProduct[]>
+  .getById(id)                      // → Promise<NormalizedProduct>
+  .getByIds(ids[])                  // → Promise<NormalizedProduct[]>
+```
 
-**Status detail:**
-- Explicitly out of scope for this PR to keep the change set focused and reviewable.
-- Planned as a follow-up implementation on a dedicated branch/PR.
-
----
-
-## Suggested hook surface
-
-The implementation should expose a small, stable public surface. Suggested hooks:
-
-- `go4taste/ads/register_placement`
-- `go4taste/ads/resolve_placement_payload`
-- `go4taste/ads/render_placement`
-- `go4taste/ads/invalidate_placement_cache`
-- `go4taste/ads/placement_supported_contexts`
-- `go4taste/ads/placement_storage_key`
-
-These hooks allow external code to add new banner entry points while keeping the core resolver in charge of data shape and rendering rules.
+`NormalizedProduct` shape: `{ id, name, picture, link, price, category }` — same as current `normalizeProductRecord()` in creator.js.
 
 ---
 
-## Data contract
+## Bugs found during QA
 
-The universal storage contract should remain the same across all placements:
+### Bug 1: "Algolia is not configured" on all admin picker surfaces
 
-- storage format: JSON encoded array of strings,
-- example: `["154", "89"]`,
-- empty state: `""` or `[]` when explicitly cleared,
-- legacy fallback: allowed only where already required for compatibility.
+**Symptom:** After switching to `G4TAdsProvider`, metabox, term edit, and global settings pickers showed "Algolia is not configured" instead of the search field.
 
-The important rule is that the placement type changes, but the contract does not.
+**Cause:** `algolia-provider.js` originally used `document.addEventListener('DOMContentLoaded', ...)` to init the provider. Inline scripts in admin templates (body HTML) register their `DOMContentLoaded` listeners *before* footer scripts execute — so the picker's listener fired before the provider had initialized. `getInstance()` returned `null`.
 
----
+**Fix:** Removed `DOMContentLoaded` wrapper from provider auto-init. Since `algolia-search-client` is a declared dependency of `g4t-ads-provider`, WordPress guarantees `window.algoliasearch` is available when `algolia-provider.js` executes. Init is now synchronous — `getInstance()` returns an instance for any listener registered later.
 
-## Placement model
+### Bug 2: Search input missing in admin picker containers
 
-Each placement should be able to define:
+**Symptom:** After the `DOMContentLoaded` fix, provider initialized correctly but the picker area remained non-interactive — no search field visible.
 
-- where it can be edited,
-- how the saved data is stored,
-- how it is rendered on the frontend,
-- which contexts can consume it,
-- whether it uses a template part or direct markup,
-- whether it is site-wide, taxonomy-scoped, or post-scoped.
+**Cause:** The old `picker-ui.js` used InstantSearch's `searchBox` widget which rendered an `<input>` inside the container div. The new `picker-ui.js` queried for an existing input inside the div — but none existed; the div was empty.
 
-This gives us a clean path for banners in the theme, in another plugin, or in a future admin surface.
-
----
-
-## Risks and compatibility
-
-- Risk: duplicated logic if each adapter starts resolving products on its own. Mitigation: require adapters to call the shared resolver only.
-- Risk: breaking current Gutenberg/widget behavior during refactor. Mitigation: keep existing placement keys and only move them behind the registry.
-- Risk: theme-level code becoming a second source of truth. Mitigation: theme code may register UI, but it should never own the canonical data contract.
-- Risk: cache invalidation gaps after product updates. Mitigation: tie invalidation to save hooks and product change hooks from day one.
+**Fix:** `picker-ui.js` now creates and appends an `<input type="search">` element inside the search container div before attaching event listeners.
 
 ---
 
 ## Validation plan
 
-### Already verifiable now
+### Passed ✅
 
-1. Existing inline block and sidebar widget banner flows render exactly as before — both are now backed by registry placement definitions, compatibility collector bridges keep `g4t_ads_current_page_product_ids` filter working for any existing consumer.
-2. A new placement (`recipe_bottom_strip`) was registered without editing the existing widget or block code.
-3. All placement resolvers accept the same JSON array contract via `_g4t_a_*_product_ids` meta keys.
-4. `g4t_ads_render_placement('recipe_bottom_strip')` can be called from the theme and will produce output if the meta key is populated — no custom resolver logic needed in the theme.
+1. ✅ Metabox picker searches and selects a product — saves correctly.
+2. ✅ Term edit picker searches and selects — saves correctly.
+3. ✅ Global settings picker searches and selects — saves correctly.
+4. ✅ Recipe creator step 6 searches Algolia and selects products — saves to `_g4t_a_recipe_bottom_product_ids`.
+5. ✅ Single Algolia client instance per page — `algoliasearch@4` CDN loaded once, `instantsearch.js` no longer requested.
+6. ✅ Recipe creator edit mode — previously saved product IDs load back into selected-strip.
+7. ✅ New recipe publish — redirects to correct `post_id`.
 
-### Pending verification (Phase 3–5)
+### Follow-up
 
-5. Phase 5 cache invalidation is intentionally deferred to a dedicated follow-up PR.
-6. ✅ ACF form picker saves `_g4t_a_recipe_bottom_product_ids` and the strip renders on the next page load.
-7. ✅ `go4taste-recipes-plugin` view model delegates to shared resolver when go4taste-ads is active; falls back gracefully when it is not.
-
----
-
-## Public hook surface (current state)
-
-All hooks are live and stable:
-
-| Hook | Type | Description |
-|---|---|---|
-| `go4taste/ads/register_placement` | filter | Register a placement definition |
-| `go4taste/ads/placement_product_item` | filter | Modify one product item before it enters payload |
-| `go4taste/ads/resolve_placement_payload` | filter | Modify complete placement payload after resolution |
-| `go4taste/ads/before_render_placement` | action | Fires before render starts |
-| `go4taste/ads/render_placement` | filter | Modify or replace final HTML output |
-| `go4taste/ads/placement_template_path` | filter | Override resolved template path |
-| `go4taste/ads/current_page_product_ids_by_placement` | filter | Modify grouped product ID map |
-
-Legacy filter `g4t_ads_current_page_product_ids` remains functional via compatibility bridge.
+8. Visual QA of admin picker inputs (inline style vs theme-native input styling).
+9. Recipes plugin follow-up PR (`feature/use-ads-data-provider`) — merge after this PR.
 
 ---
 
-## Decision point
+## Risks and mitigations
 
-~~This document intentionally proposes the platform approach only.~~
+- Risk: InstantSearch.js removal breaks existing search UX in admin pickers.
+  Mitigation: Stage 2 replaces widgets one-to-one; input debounce, loading state, and empty state are preserved in custom rendering.
 
-The platform foundation is implemented. Phases 1 and 2 are complete.
+- Risk: duplicate client init if provider `init()` is called more than once.
+  Mitigation: singleton guard — second `init()` call is a no-op.
+
+- Risk: recipes plugin relies on `normalizeProductRecord()` which will not be removed — it stays as internal state normalizer; provider hits pass through it since it handles both provider and legacy field names.
+  Mitigation: no action needed — both shapes are handled by existing `normalizeProductRecord()` logic.
+
+---
+
+## Dependencies
+
+- **go4taste-recipes-plugin** `feature/use-ads-data-provider` — companion PR; removes direct `algoliaIndex.search()` and `window.algoliasearch()` from `creator.js`, uses `G4TAdsProvider` instead. Already implemented and QA-passed alongside this PR.
+- PHP foundation (registry, payload, render, recipe-bottom-strip) already on main from PR #15 — no changes needed there.
+
+---
 
 ## Merge readiness
 
-- This PR is merge-ready for Phases 1-4.
-- Phase 5 (cache/invalidation) is intentionally excluded and tracked as follow-up scope.
-
-**Remaining decisions before Phase 5:**
-- Confirm Phase 5 cache scope: per post, per placement+ids hash, or both.
-
-**Resolved decisions:**
-- `go4taste-recipes-plugin` guards the call with `function_exists()` — soft dependency confirmed.
-- ACF form picker for recipe bottom strip lives in `go4taste-recipes-plugin` (co-located with creator UI and save flow).
+All stages implemented and QA-passed. Both bugs found during QA diagnosed and fixed. Follow-up item 8 (input styling) is cosmetic and does not block merge.
+- Unblocks: recipes plugin follow-up PR `feature/use-ads-data-provider`.

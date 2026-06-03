@@ -122,10 +122,6 @@ if ( ! function_exists( 'g4t_banner_sidebar_widget_render_term_picker_field' ) )
 			$product_id = trim( $raw_product_ids );
 		}
 
-		$options         = g4t_core_get_ads_options();
-		$algolia_app_id  = isset( $options['algolia_app_id'] ) ? sanitize_text_field( (string) $options['algolia_app_id'] ) : '';
-		$algolia_api_key = isset( $options['algolia_api_key'] ) ? sanitize_text_field( (string) $options['algolia_api_key'] ) : '';
-		$index_name      = 'go4taste_product_list';
 		$field_id_suffix = (string) $term->term_id;
 		?>
 		<tr class="form-field g4t-sidebar-product-picker-wrap">
@@ -143,7 +139,7 @@ if ( ! function_exists( 'g4t_banner_sidebar_widget_render_term_picker_field' ) )
 				<div id="g4t-term-sidebar-ad-preview-<?php echo esc_attr( $field_id_suffix ); ?>" class="g4t-ad-preview"></div>
 				<p class="description"><?php esc_html_e( 'Produkt widzetu sidebar dla tego archiwum termu.', 'go4taste-ads' ); ?></p>
 				<script type="text/javascript">
-				jQuery(function() {
+				document.addEventListener('DOMContentLoaded', function() {
 					if (typeof window.G4TAdsPicker !== 'function') {
 						return;
 					}
@@ -153,9 +149,6 @@ if ( ! function_exists( 'g4t_banner_sidebar_widget_render_term_picker_field' ) )
 						searchBoxSelector: '#g4t-term-sidebar-algolia-searchbox-<?php echo esc_js( $field_id_suffix ); ?>',
 						selectedContainerSelector: '#g4t-term-sidebar-selected-product-container-<?php echo esc_js( $field_id_suffix ); ?>',
 						previewContainerSelector: '#g4t-term-sidebar-ad-preview-<?php echo esc_js( $field_id_suffix ); ?>',
-						algoliaAppId: '<?php echo esc_js( $algolia_app_id ); ?>',
-						algoliaApiKey: '<?php echo esc_js( $algolia_api_key ); ?>',
-						indexName: '<?php echo esc_js( $index_name ); ?>',
 						ajaxUrl: '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
 						nonce: '<?php echo esc_js( wp_create_nonce( 'g4t_ad_preview_nonce' ) ); ?>',
 						postId: 0
@@ -253,25 +246,9 @@ if ( ! function_exists( 'g4t_banner_sidebar_widget_enqueue_term_meta_assets' ) )
 		);
 
 		wp_enqueue_script(
-			'algolia-instantsearch',
-			'https://cdn.jsdelivr.net/npm/instantsearch.js@4',
-			array(),
-			null,
-			true
-		);
-
-		wp_enqueue_script(
-			'algolia-search-client',
-			'https://cdn.jsdelivr.net/npm/algoliasearch@4',
-			array(),
-			null,
-			true
-		);
-
-		wp_enqueue_script(
 			'g4t-ads-picker-ui',
 			plugins_url( 'features/banner-sidebar-widget/assets/js/picker-ui.js', $plugin_entry ),
-			array( 'jquery', 'algolia-instantsearch', 'algolia-search-client' ),
+			array( 'g4t-ads-provider' ),
 			$version,
 			true
 		);
