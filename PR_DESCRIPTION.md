@@ -9,7 +9,7 @@
 | Stage 1: JS data provider | ✅ Done | `G4TAdsProvider` module — shared search/fetch/normalize over algoliasearch SDK |
 | Stage 2: Refactor picker-ui.js | ✅ Done | Replaced InstantSearch.js + jQuery with provider as data layer |
 | Stage 3: Surface adapters | ✅ Done | Metabox, term edit, global settings — all use provider, no own credentials |
-| Stage 4: Docs + QA matrix | 🔲 Next | Validate backward compat on all surfaces |
+| Stage 4: Docs + QA matrix | ✅ Done | All surfaces QA-passed; two bugs found and fixed during QA |
 
 ---
 
@@ -28,7 +28,7 @@ The recipes plugin (`feature/picker-ui-extensibility` on that side) added:
 - Read path via `g4t_recipe_bottom_strip_get_products_for_post()`
 - Credentials consumed from `go4taste_ads_options` passed as `G4T_RECIPE_CREATOR_DATA.adsPicker`
 
-The creator queries Algolia directly using `algoliasearch` SDK. `picker-ui.js` does the same via InstantSearch.js. Both initialize their own client, both normalize hits independently. This PR closes that duplication.
+The creator queries Algolia directly using `algoliasearch` SDK. `picker-ui.js` did the same via InstantSearch.js. Both initialized their own client, both normalized hits independently. This PR closes that duplication — both now delegate to `G4TAdsProvider`.
 
 ---
 
@@ -161,7 +161,7 @@ Each existing admin surface (metabox, term edit, global settings) that currently
 ## Suggested public JS API
 
 ```javascript
-G4TAdsProvider.init({ appId, apiKey, indexName })   // called once by ads plugin on DOMContentLoaded
+G4TAdsProvider.init({ appId, apiKey, indexName })   // called synchronously when algolia-provider.js executes (dependency order guarantees algoliasearch is ready)
 G4TAdsProvider.getInstance()                         // returns provider or null if not initialized
   .search(query, { hitsPerPage })   // → Promise<NormalizedProduct[]>
   .getById(id)                      // → Promise<NormalizedProduct>
@@ -172,20 +172,42 @@ G4TAdsProvider.getInstance()                         // returns provider or null
 
 ---
 
+## Bugs found during QA
+
+### Bug 1: "Algolia is not configured" on all admin picker surfaces
+
+**Symptom:** After switching to `G4TAdsProvider`, metabox, term edit, and global settings pickers showed "Algolia is not configured" instead of the search field.
+
+**Cause:** `algolia-provider.js` originally used `document.addEventListener('DOMContentLoaded', ...)` to init the provider. Inline scripts in admin templates (body HTML) register their `DOMContentLoaded` listeners *before* footer scripts execute — so the picker's listener fired before the provider had initialized. `getInstance()` returned `null`.
+
+**Fix:** Removed `DOMContentLoaded` wrapper from provider auto-init. Since `algolia-search-client` is a declared dependency of `g4t-ads-provider`, WordPress guarantees `window.algoliasearch` is available when `algolia-provider.js` executes. Init is now synchronous — `getInstance()` returns an instance for any listener registered later.
+
+### Bug 2: Search input missing in admin picker containers
+
+**Symptom:** After the `DOMContentLoaded` fix, provider initialized correctly but the picker area remained non-interactive — no search field visible.
+
+**Cause:** The old `picker-ui.js` used InstantSearch's `searchBox` widget which rendered an `<input>` inside the container div. The new `picker-ui.js` queried for an existing input inside the div — but none existed; the div was empty.
+
+**Fix:** `picker-ui.js` now creates and appends an `<input type="search">` element inside the search container div before attaching event listeners.
+
+---
+
 ## Validation plan
 
-### Must pass
+### Passed ✅
 
-1. Metabox picker searches and selects a product — saves correctly.
-2. Term edit picker searches and selects — saves correctly.
-3. Global settings picker searches and selects — saves correctly.
-4. Recipe creator step 6 searches Algolia and selects products — saves to `_g4t_a_recipe_bottom_product_ids`.
-5. All four surfaces use the same `G4TAdsProvider` instance (confirm via DevTools — one Algolia client init per page).
+1. ✅ Metabox picker searches and selects a product — saves correctly.
+2. ✅ Term edit picker searches and selects — saves correctly.
+3. ✅ Global settings picker searches and selects — saves correctly.
+4. ✅ Recipe creator step 6 searches Algolia and selects products — saves to `_g4t_a_recipe_bottom_product_ids`.
+5. ✅ Single Algolia client instance per page — `algoliasearch@4` CDN loaded once, `instantsearch.js` no longer requested.
+6. ✅ Recipe creator edit mode — previously saved product IDs load back into selected-strip.
+7. ✅ New recipe publish — redirects to correct `post_id`.
 
 ### Follow-up
 
-6. No visual regressions in any admin surface after InstantSearch.js removal.
-7. Recipe creator follow-up PR merges without conflict.
+8. Visual QA of admin picker inputs (inline style vs theme-native input styling).
+9. Recipes plugin follow-up PR (`feature/use-ads-data-provider`) — merge after this PR.
 
 ---
 
@@ -197,19 +219,19 @@ G4TAdsProvider.getInstance()                         // returns provider or null
 - Risk: duplicate client init if provider `init()` is called more than once.
   Mitigation: singleton guard — second `init()` call is a no-op.
 
-- Risk: recipes plugin relies on `normalizeProductRecord()` which will be removed.
-  Mitigation: recipes plugin follow-up PR (separate branch) replaces it with provider call; both branches can coexist until follow-up is merged.
+- Risk: recipes plugin relies on `normalizeProductRecord()` which will not be removed — it stays as internal state normalizer; provider hits pass through it since it handles both provider and legacy field names.
+  Mitigation: no action needed — both shapes are handled by existing `normalizeProductRecord()` logic.
 
 ---
 
 ## Dependencies
 
-- **go4taste-recipes-plugin** has a follow-up PR (`feature/use-ads-data-provider`) that replaces direct `algoliaIndex.search()` and `normalizeProductRecord()` with `G4TAdsProvider`. That PR is blocked on Stage 1 of this PR being merged.
+- **go4taste-recipes-plugin** `feature/use-ads-data-provider` — companion PR; removes direct `algoliaIndex.search()` and `window.algoliasearch()` from `creator.js`, uses `G4TAdsProvider` instead. Already implemented and QA-passed alongside this PR.
 - PHP foundation (registry, payload, render, recipe-bottom-strip) already on main from PR #15 — no changes needed there.
 
 ---
 
 ## Merge readiness
 
-- Planning scope. Implementation starts at Stage 1.
+All stages implemented and QA-passed. Both bugs found during QA diagnosed and fixed. Follow-up item 8 (input styling) is cosmetic and does not block merge.
 - Unblocks: recipes plugin follow-up PR `feature/use-ads-data-provider`.

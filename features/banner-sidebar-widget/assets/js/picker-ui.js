@@ -34,18 +34,24 @@
 		var nonce                     = config.nonce   || '';
 		var postId                    = Number.isFinite( Number( config.postId ) ) ? Number( config.postId ) : 0;
 
-		var $hiddenField          = hiddenFieldSelector       ? document.querySelector( hiddenFieldSelector )       : null;
-		var $searchBox            = document.querySelector( searchBoxSelector );
-		var $selectedContainer    = document.querySelector( selectedContainerSelector );
-		var $previewContainer     = document.querySelector( previewContainerSelector );
+		var $hiddenField       = hiddenFieldSelector ? document.querySelector( hiddenFieldSelector ) : null;
+		var $searchBox         = document.querySelector( searchBoxSelector );
+		var $selectedContainer = document.querySelector( selectedContainerSelector );
+		var $previewContainer  = document.querySelector( previewContainerSelector );
 
 		if ( ! $hiddenField || ! $searchBox || ! $selectedContainer || ! $previewContainer ) {
 			return null;
 		}
 
-		var searchInput   = $searchBox.tagName === 'INPUT' ? $searchBox : $searchBox.querySelector( 'input' );
-		var searchTimer   = null;
-		var currentQuery  = '';
+		// Create search input inside the container div (InstantSearch used to do this).
+		var searchInput = document.createElement( 'input' );
+		searchInput.type = 'search';
+		searchInput.placeholder = 'Szukaj po nazwie lub identyfikatorze produktu...';
+		searchInput.style.cssText = 'width:100%; padding:6px 10px; box-sizing:border-box; margin-bottom:6px;';
+		$searchBox.appendChild( searchInput );
+
+		var searchTimer  = null;
+		var currentQuery = '';
 
 		// ── Rendering helpers ──────────────────────────────────────────
 

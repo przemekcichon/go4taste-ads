@@ -75,13 +75,16 @@ window.G4TAdsProvider = ( function () {
 		},
 	};
 
-	// Auto-init from PHP-localized data when algoliasearch is already loaded.
-	document.addEventListener( 'DOMContentLoaded', function () {
+	// Auto-init synchronously: algolia-search-client is a declared dependency so
+	// window.algoliasearch is guaranteed to be defined before this script executes.
+	// Synchronous init ensures getInstance() returns a value for any DOMContentLoaded
+	// listener registered before this script loaded (e.g. inline scripts in <body>).
+	( function () {
 		var data = window.G4T_ADS_PROVIDER_DATA;
-		if ( data && data.appId && data.apiKey ) {
+		if ( data && data.appId && data.apiKey && typeof window.algoliasearch === 'function' ) {
 			provider.init( data );
 		}
-	} );
+	} )();
 
 	return provider;
 } )();
