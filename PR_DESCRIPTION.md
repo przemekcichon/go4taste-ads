@@ -14,6 +14,25 @@
 
 ---
 
+## Context update: creator persistence resolved in recipes plugin
+
+The product persistence issue that was blocking QA of this integration has been diagnosed and fixed on the recipes plugin side. The root cause was ACF's security field filtering — see [go4taste-recipes-plugin PR_DESCRIPTION.md](../go4taste-recipes-plugin/PR_DESCRIPTION.md) for full details.
+
+In short: ACF strips any `$_POST['acf']` keys that don't belong to a field group declared in `acf_form()`. Because `group_recipe_ads` was not in the creator's `field_groups` config, ACF removed `field_recipe_ads_products` from the POST data before the save hook fired. The fix submits product IDs as a flat top-level POST field (`g4t_recipe_ads_product_ids_json`) outside `acf[...]`, which ACF does not touch.
+
+As a result of that fix, the creator now:
+- saves selected Algolia product IDs reliably to `_g4t_a_recipe_bottom_product_ids`,
+- loads them back correctly on edit,
+- queries Algolia directly via credentials passed from PHP (`G4T_RECIPE_CREATOR_DATA.adsPicker`).
+
+The ads plugin is not involved in the save path. Its current role in the integration is:
+- providing Algolia credentials via `go4taste_ads_options`,
+- providing `picker-ui.js` and picker CSS assets (enqueued but not actively driving creator UI).
+
+The provider contract work described below remains relevant for future surfaces (metabox, term edit, global settings) and for making the data layer formally extensible — but it is no longer a blocker for the creator persistence fix.
+
+---
+
 ## Motivation
 
 Recipe creator needs to keep its own frontend layout (`product-list`, `.search-box`, `selected-strip`) while reusing Ads logic as data/provider layer.
@@ -122,4 +141,5 @@ If no new filters are used:
 ## Merge readiness
 
 - This branch is planning scope only at this moment.
-- Merge readiness will be reassessed after Stage 1-4 implementation and QA.
+- Creator persistence is unblocked (fixed in recipes plugin).
+- Merge readiness will be reassessed after Stage 1–4 implementation and QA.
