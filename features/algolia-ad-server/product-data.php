@@ -25,7 +25,10 @@ function g4t_algolia_ad_server_normalize_product_record($record) {
     }
     $normalized->name = isset($record['name']) ? (string) $record['name'] : '';
     $normalized->price = isset($record['price']) ? (string) $record['price'] : '';
-    $normalized->price_without_reduction = isset($record['price_without_reduction']) ? (string) $record['price_without_reduction'] : $normalized->price;
+    $normalized->price_without_reduction = isset($record['price_without_reduction']) ? trim((string) $record['price_without_reduction']) : '';
+    if ('' === $normalized->price_without_reduction) {
+        $normalized->price_without_reduction = $normalized->price;
+    }
     $normalized->link = isset($record['link']) ? (string) $record['link'] : '';
     $normalized->picture = isset($record['picture']) ? (string) $record['picture'] : '';
     $normalized->category = isset($record['category']) ? (string) $record['category'] : '';

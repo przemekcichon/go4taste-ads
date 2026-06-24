@@ -38,6 +38,345 @@ class Go4Taste_Ads_API_Fetcher {
     private $prestashop_tax_id_by_group_cache = array();
 
     /**
+     * In-request cache for PrestaShop specific prices by store and product id.
+     *
+     * @since 1.2.0
+     * @var array<string,array<int,array<string,mixed>>>
+     */
+    private $prestashop_specific_prices_cache = array();
+
+    /**
+     * Force IPv4 for PrestaShop HTTP API calls in LocalWP.
+     *
+     * @since 1.2.0
+     * @param mixed $handle cURL handle.
+     * @return void
+     */
+    public function force_prestashop_ipv4_curl($handle) {
+        if ($handle instanceof \CurlHandle) {
+            curl_setopt($handle, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+        }
+    }
+
+    /**
+     * Format numeric price to Polish currency decimal format.
+     *
+     * @since 1.2.0
+     * @param float $price Price value.
+     * @return string
+     */
+    private function format_prestashop_price_standard($price) {
+        return number_format(max(0.0, (float) $price), 2, ',', '');
+    }
+
+    /**
+     * Perform authenticated PrestaShop Webservice GET request.
+     *
+     * @since 1.2.0
+     * @param string $endpoint Full endpoint URL.
+     * @param string $api_key Webservice API key.
+     * @param int    $timeout Request timeout.
+     * @return array|WP_Error
+     */
+    private function prestashop_webservice_get($endpoint, $api_key, $timeout = 15) {
+        add_filter('http_api_curl', array($this, 'force_prestashop_ipv4_curl'));
+
+        $response = wp_remote_get(
+            $endpoint,
+            array(
+                'timeout'   => (int) $timeout,
+                'sslverify' => false,
+                'headers'   => array(
+                    'Authorization' => 'Basic ' . base64_encode((string) $api_key . ':'),
+                    'Accept'        => 'application/xml',
+                ),
+            )
+        );
+
+        remove_filter('http_api_curl', array($this, 'force_prestashop_ipv4_curl'));
+
+        return $response;
+    }
+
+    /**
+     * Parse decimal value from PrestaShop XML fields.
+     *
+     * @since 1.2.0
+     * @param mixed $value Raw input value.
+     * @return float|null
+     */
+    private function parse_prestashop_decimal($value) {
+        $normalized = str_replace(',', '.', trim((string) $value));
+        if ('' === $normalized || !is_numeric($normalized)) {
+            return null;
+        }
+
+        return (float) $normalized;
+    }
+
+    /**
+     * Parse integer value from PrestaShop XML fields.
+     *
+     * @since 1.2.0
+     * @param mixed $value Raw input value.
+     * @return int
+     */
+    private function parse_prestashop_int($value) {
+        return (int) trim((string) $value);
+    }
+
+    /**
+     * Check whether specific price date range is active now.
+     *
+     * @since 1.2.0
+     * @param array<string,mixed> $specific_price Specific price row.
+     * @return bool
+     */
+    private function is_prestashop_specific_price_active_now($specific_price) {
+        $now_utc = time();
+
+        $from = isset($specific_price['from']) ? trim((string) $specific_price['from']) : '';
+        if ('' !== $from && '0000-00-00 00:00:00' !== $from) {
+            $from_ts = strtotime($from . ' UTC');
+            if (false === $from_ts || $from_ts > $now_utc) {
+                return false;
+            }
+        }
+
+        $to = isset($specific_price['to']) ? trim((string) $specific_price['to']) : '';
+        if ('' !== $to && '0000-00-00 00:00:00' !== $to) {
+            $to_ts = strtotime($to . ' UTC');
+            if (false === $to_ts || $to_ts < $now_utc) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Accept global/default scope only when runtime context is unavailable.
+     *
+     * @since 1.2.0
+     * @param array<string,mixed> $specific_price Specific price row.
+     * @return bool
+     */
+    private function is_prestashop_specific_price_scope_supported($specific_price) {
+        $scope_keys = array('id_shop', 'id_currency', 'id_country', 'id_group', 'id_customer');
+
+        foreach ($scope_keys as $scope_key) {
+            $scope_value = isset($specific_price[$scope_key]) ? trim((string) $specific_price[$scope_key]) : '0';
+            if ('' !== $scope_value && '0' !== $scope_value) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Fetch specific_prices rows for one product from PrestaShop Webservice API.
+     *
+     * @since 1.2.0
+     * @param string $product_id Product ID.
+     * @param string $api_url Base API URL.
+     * @param string $api_key Webservice API key.
+     * @return array<int,array<string,mixed>>
+     */
+    private function fetch_prestashop_specific_prices($product_id, $api_url, $api_key) {
+        $product_id = trim((string) $product_id);
+        if ('' === $product_id || '' === trim((string) $api_key) || '' === trim((string) $api_url)) {
+            return array();
+        }
+
+        $cache_key = $this->normalize_prestashop_store_url($api_url) . '|specific_prices|' . $product_id;
+        if (isset($this->prestashop_specific_prices_cache[$cache_key])) {
+            return $this->prestashop_specific_prices_cache[$cache_key];
+        }
+
+        $query = http_build_query(
+            array(
+                'filter[id_product]' => '[' . $product_id . ']',
+                'display' => 'full',
+            ),
+            '',
+            '&',
+            PHP_QUERY_RFC3986
+        );
+
+        $endpoint = $this->build_prestashop_webservice_url($api_url, 'specific_prices?' . $query);
+        $response = $this->prestashop_webservice_get($endpoint, $api_key, 15);
+        if (is_wp_error($response)) {
+            $this->prestashop_specific_prices_cache[$cache_key] = array();
+            return array();
+        }
+
+        $http_code = (int) wp_remote_retrieve_response_code($response);
+        if ($http_code < 200 || $http_code >= 300) {
+            $this->prestashop_specific_prices_cache[$cache_key] = array();
+            return array();
+        }
+
+        $xml = $this->parse_prestashop_xml(wp_remote_retrieve_body($response));
+        if (false === $xml || !isset($xml->specific_prices->specific_price)) {
+            $this->prestashop_specific_prices_cache[$cache_key] = array();
+            return array();
+        }
+
+        $specific_prices = array();
+        foreach ($xml->specific_prices->specific_price as $specific_price_node) {
+            $specific_prices[] = array(
+                'id' => isset($specific_price_node->id) ? trim((string) $specific_price_node->id) : '',
+                'id_shop' => isset($specific_price_node->id_shop) ? trim((string) $specific_price_node->id_shop) : '0',
+                'id_currency' => isset($specific_price_node->id_currency) ? trim((string) $specific_price_node->id_currency) : '0',
+                'id_country' => isset($specific_price_node->id_country) ? trim((string) $specific_price_node->id_country) : '0',
+                'id_group' => isset($specific_price_node->id_group) ? trim((string) $specific_price_node->id_group) : '0',
+                'id_customer' => isset($specific_price_node->id_customer) ? trim((string) $specific_price_node->id_customer) : '0',
+                'from_quantity' => isset($specific_price_node->from_quantity) ? trim((string) $specific_price_node->from_quantity) : '1',
+                'price' => isset($specific_price_node->price) ? trim((string) $specific_price_node->price) : '-1',
+                'reduction' => isset($specific_price_node->reduction) ? trim((string) $specific_price_node->reduction) : '0',
+                'reduction_type' => isset($specific_price_node->reduction_type) ? trim((string) $specific_price_node->reduction_type) : '',
+                'reduction_tax' => isset($specific_price_node->reduction_tax) ? trim((string) $specific_price_node->reduction_tax) : '0',
+                'from' => isset($specific_price_node->from) ? trim((string) $specific_price_node->from) : '',
+                'to' => isset($specific_price_node->to) ? trim((string) $specific_price_node->to) : '',
+            );
+        }
+
+        $this->prestashop_specific_prices_cache[$cache_key] = $specific_prices;
+
+        return $specific_prices;
+    }
+
+    /**
+     * Select one active specific price candidate for default context.
+     *
+     * @since 1.2.0
+     * @param array<int,array<string,mixed>> $specific_prices Specific prices rows.
+     * @param string $product_id Product ID.
+     * @return array<string,mixed>|null
+     */
+    private function select_prestashop_specific_price_candidate($specific_prices, $product_id) {
+        if (!is_array($specific_prices) || empty($specific_prices)) {
+            return null;
+        }
+
+        $candidates = array();
+        foreach ($specific_prices as $specific_price) {
+            if (!is_array($specific_price)) {
+                continue;
+            }
+
+            if (!$this->is_prestashop_specific_price_scope_supported($specific_price)) {
+                continue;
+            }
+
+            if (!$this->is_prestashop_specific_price_active_now($specific_price)) {
+                continue;
+            }
+
+            $from_quantity = isset($specific_price['from_quantity']) ? $this->parse_prestashop_int($specific_price['from_quantity']) : 1;
+            if ($from_quantity > 1) {
+                continue;
+            }
+
+            $reduction = isset($specific_price['reduction']) ? $this->parse_prestashop_decimal($specific_price['reduction']) : null;
+            $has_reduction = null !== $reduction && $reduction > 0;
+
+            $override_price = isset($specific_price['price']) ? $this->parse_prestashop_decimal($specific_price['price']) : null;
+            $has_price_override = null !== $override_price && $override_price >= 0;
+
+            if (!$has_reduction && !$has_price_override) {
+                continue;
+            }
+
+            $candidate = apply_filters(
+                'go4taste/ads/prestashop_specific_price_candidate',
+                $specific_price,
+                (string) $product_id,
+                $specific_prices
+            );
+
+            if (!is_array($candidate)) {
+                continue;
+            }
+
+            $candidates[] = $candidate;
+        }
+
+        if (empty($candidates)) {
+            return null;
+        }
+
+        usort(
+            $candidates,
+            function($a, $b) {
+                $a_id = isset($a['id']) ? (int) $a['id'] : 0;
+                $b_id = isset($b['id']) ? (int) $b['id'] : 0;
+
+                return $b_id <=> $a_id;
+            }
+        );
+
+        return $candidates[0];
+    }
+
+    /**
+     * Calculate gross price after specific_prices discount rules.
+     *
+     * @since 1.2.0
+     * @param float $base_net_price Base net product price.
+     * @param float $base_gross_price Base gross product price.
+     * @param float $tax_rate Tax rate in percent.
+     * @param array<string,mixed> $specific_price Selected specific price.
+     * @return float
+     */
+    private function calculate_prestashop_discounted_gross_price($base_net_price, $base_gross_price, $tax_rate, $specific_price) {
+        $base_net_price = max(0.0, (float) $base_net_price);
+        $base_gross_price = max(0.0, (float) $base_gross_price);
+        $tax_rate = max(0.0, (float) $tax_rate);
+
+        $rule_base_net = $base_net_price;
+        $rule_base_gross = $base_gross_price;
+
+        $override_price = isset($specific_price['price']) ? $this->parse_prestashop_decimal($specific_price['price']) : null;
+        if (null !== $override_price && $override_price >= 0) {
+            $rule_base_net = $override_price;
+            $rule_base_gross = $rule_base_net * (1 + ($tax_rate / 100));
+        }
+
+        $final_gross = $rule_base_gross;
+        $reduction = isset($specific_price['reduction']) ? $this->parse_prestashop_decimal($specific_price['reduction']) : null;
+        $reduction = null === $reduction ? 0.0 : max(0.0, (float) $reduction);
+
+        $reduction_type = isset($specific_price['reduction_type']) ? strtolower(trim((string) $specific_price['reduction_type'])) : '';
+        $reduction_tax = isset($specific_price['reduction_tax']) ? $this->parse_prestashop_int($specific_price['reduction_tax']) : 0;
+
+        if ('percentage' === $reduction_type && $reduction > 0) {
+            $percentage = $reduction;
+            if ($percentage > 1) {
+                $percentage = $percentage / 100;
+            }
+            $percentage = min(1.0, max(0.0, $percentage));
+
+            if (1 === $reduction_tax) {
+                $final_gross = $rule_base_gross * (1 - $percentage);
+            } else {
+                $final_net = $rule_base_net * (1 - $percentage);
+                $final_gross = $final_net * (1 + ($tax_rate / 100));
+            }
+        } elseif ('amount' === $reduction_type && $reduction > 0) {
+            if (1 === $reduction_tax) {
+                $final_gross = $rule_base_gross - $reduction;
+            } else {
+                $final_net = $rule_base_net - $reduction;
+                $final_gross = $final_net * (1 + ($tax_rate / 100));
+            }
+        }
+
+        return max(0.0, (float) $final_gross);
+    }
+
+    /**
      * Resolve configured tax country ISO for PrestaShop mapping.
      *
      * @since 1.2.0
@@ -651,10 +990,47 @@ class Go4Taste_Ads_API_Fetcher {
             $gross_price = $net_price * (1 + ($tax_rate / 100));
         }
 
-        $rounded_price = $this->format_prestashop_price_with_threshold($gross_price);
+        $base_rounded_price = $this->format_prestashop_price_with_threshold($gross_price);
+
+        $specific_prices = $this->fetch_prestashop_specific_prices($product_id, $api_url, $api_key);
+        $selected_specific_price = $this->select_prestashop_specific_price_candidate($specific_prices, $product_id);
+
+        $discounted_gross_price = $gross_price;
+        if (is_array($selected_specific_price)) {
+            $discounted_gross_price = $this->calculate_prestashop_discounted_gross_price($net_price, $gross_price, $tax_rate, $selected_specific_price);
+            if ($discounted_gross_price >= $gross_price) {
+                $discounted_gross_price = $gross_price;
+            }
+        }
+
+        $discounted_rounded_price = $base_rounded_price;
+        if (is_array($selected_specific_price)) {
+            $discounted_rounded_price = $this->format_prestashop_price_standard($discounted_gross_price);
+        }
 
         $store_base_url = $this->normalize_prestashop_store_url($api_url);
-        $price_with_currency = $rounded_price . ' zł';
+        $price_with_currency = $discounted_rounded_price . ' zł';
+        $price_without_reduction_with_currency = $base_rounded_price . ' zł';
+
+        $mapped_prices = apply_filters(
+            'go4taste/ads/prestashop_mapped_prices',
+            array(
+                'price' => $price_with_currency,
+                'price_without_reduction' => $price_without_reduction_with_currency,
+                'specific_price' => $selected_specific_price,
+            ),
+            $product_id,
+            $product_node
+        );
+
+        if (is_array($mapped_prices)) {
+            if (isset($mapped_prices['price']) && is_string($mapped_prices['price']) && '' !== trim($mapped_prices['price'])) {
+                $price_with_currency = $mapped_prices['price'];
+            }
+            if (isset($mapped_prices['price_without_reduction']) && is_string($mapped_prices['price_without_reduction']) && '' !== trim($mapped_prices['price_without_reduction'])) {
+                $price_without_reduction_with_currency = $mapped_prices['price_without_reduction'];
+            }
+        }
         $product_link = '';
         if ('' !== $link_rewrite) {
             $product_link = $store_base_url . '/' . $link_rewrite . '.html';
@@ -669,7 +1045,7 @@ class Go4Taste_Ads_API_Fetcher {
         $mapped->id = $product_id;
         $mapped->name = $name;
         $mapped->price = $price_with_currency;
-        $mapped->price_without_reduction = $price_with_currency;
+        $mapped->price_without_reduction = $price_without_reduction_with_currency;
         $mapped->link = $product_link;
         $mapped->picture = $product_picture;
         $mapped->category = '';
