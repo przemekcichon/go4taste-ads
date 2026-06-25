@@ -177,15 +177,20 @@ if ( ! function_exists( 'g4t_product_catalog_sync_ajax_batch' ) ) {
 			if ( $product_data ) {
 				$products[] = $product_data;
 			} else {
+				error_log('[G4T Sync] fetch_product_data returned false/null for product ' . $product_id);
 				$job_state['errors'] = isset( $job_state['errors'] ) ? (int) $job_state['errors'] + 1 : 1;
 			}
 		}
+
+		error_log('[G4T Sync] Batch ready: ' . count( $products ) . ' products fetched, ' . count( $ids_batch ) . ' total in batch.');
 
 		if ( ! empty( $products ) ) {
 			try {
 				$api_fetcher->store_products_to_algolia( $products );
 				$job_state['synced'] = isset( $job_state['synced'] ) ? (int) $job_state['synced'] + count( $products ) : count( $products );
+				error_log('[G4T Sync] store_products_to_algolia succeeded for ' . count( $products ) . ' products.');
 			} catch ( Throwable $e ) {
+				error_log('[G4T Sync] store_products_to_algolia Exception: ' . $e->getMessage());
 				$job_state['errors'] = isset( $job_state['errors'] ) ? (int) $job_state['errors'] + count( $products ) : count( $products );
 				$job_state['last_error'] = $e->getMessage();
 			}

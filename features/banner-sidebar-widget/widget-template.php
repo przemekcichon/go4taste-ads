@@ -29,6 +29,12 @@ $category_with_spaces = str_replace( '-', ' ', $category );
 $formatted_category   = ucfirst( strtolower( $category_with_spaces ) );
 
 $img_url = isset( $product_data->picture ) ? (string) $product_data->picture : '';
+$display_price = isset( $product_data->price ) ? (string) $product_data->price : '';
+$display_price_without_reduction = isset( $product_data->price_without_reduction ) ? trim( (string) $product_data->price_without_reduction ) : '';
+
+if ( '' === $display_price_without_reduction ) {
+	$display_price_without_reduction = $display_price;
+}
 
 if ( '' === trim( $img_url ) ) {
 	$img_dimensions = array(
@@ -66,11 +72,11 @@ if ( '' === trim( $img_url ) ) {
 				<a href="<?php echo esc_url( $product_data->link ); ?>" class="g4t-ads-name-link"><?php echo esc_html( $product_data->name ); ?></a>
 			</div>
 			<div class="g4t-ads-prices">
-				<?php if ( $product_data->price != $product_data->price_without_reduction ) : ?>
-					<span class="g4t-ads-old-price"><?php echo esc_html( $product_data->price_without_reduction ); ?></span>
-					<span class="g4t-ads-sale-price"><?php echo esc_html( $product_data->price ); ?></span>
+				<?php if ( $display_price != $display_price_without_reduction ) : ?>
+					<span class="g4t-ads-old-price"><?php echo esc_html( $display_price_without_reduction ); ?></span>
+					<span class="g4t-ads-sale-price"><?php echo esc_html( $display_price ); ?></span>
 				<?php else : ?>
-					<span class="g4t-ads-sale-price"><?php echo esc_html( $product_data->price ); ?></span>
+					<span class="g4t-ads-sale-price"><?php echo esc_html( $display_price ); ?></span>
 				<?php endif; ?>
 			</div>
 		</div>

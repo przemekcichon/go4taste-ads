@@ -16,9 +16,16 @@ class Go4Taste_Ads_Admin_Settings {
          * @return void
          */
         public function algolia_admin_api_key_callback() {
+            $constant_override = function_exists( 'g4t_ads_is_algolia_credential_constant_defined' )
+                && g4t_ads_is_algolia_credential_constant_defined( 'admin_key' );
+
             // For security, do not prefill the value.
-            echo '<input type="password" id="algolia_admin_api_key" name="go4taste_ads_options[algolia_admin_api_key]" value="" autocomplete="new-password" />';
-            echo '<p class="description">This key is required for backend sync (write access). For security, it is not displayed. Enter a new key only to update.</p>';
+            echo '<input type="password" id="algolia_admin_api_key" name="go4taste_ads_options[algolia_admin_api_key]" value="" autocomplete="new-password"' . ( $constant_override ? ' disabled' : '' ) . ' />';
+            if ( $constant_override ) {
+                echo '<p class="description" style="color:#188038;"><strong>Nadpisane przez stala w wp-config.php (GO4TASTE_ADS_ALGOLIA_ADMIN_API_KEY).</strong> Wartosc z bazy jest ignorowana.</p>';
+            } else {
+                echo '<p class="description">This key is required for backend sync (write access). For security, it is not displayed. Enter a new key only to update.</p>';
+            }
         }
     /**
      * Render permissions report HTML for admin settings panel.
@@ -529,7 +536,13 @@ class Go4Taste_Ads_Admin_Settings {
             $sanitized_input['algolia_api_key'] = sanitize_text_field( $input['algolia_api_key'] );
         }
         if ( isset( $input['algolia_admin_api_key'] ) ) {
-            $sanitized_input['algolia_admin_api_key'] = sanitize_text_field( $input['algolia_admin_api_key'] );
+            $submitted_admin_key = trim( (string) $input['algolia_admin_api_key'] );
+            if ( '' !== $submitted_admin_key ) {
+                $sanitized_input['algolia_admin_api_key'] = sanitize_text_field( $submitted_admin_key );
+            } elseif ( isset( $existing_options['algolia_admin_api_key'] ) ) {
+                // Field is write-only (rendered empty); preserve existing key when not re-entered.
+                $sanitized_input['algolia_admin_api_key'] = sanitize_text_field( $existing_options['algolia_admin_api_key'] );
+            }
         }
         if ( isset( $input['algolia_soft_cache_ttl_hours'] ) ) {
             $sanitized_input['algolia_soft_cache_ttl_hours'] = max( 1, intval( $input['algolia_soft_cache_ttl_hours'] ) );
@@ -639,7 +652,12 @@ class Go4Taste_Ads_Admin_Settings {
     public function algolia_app_id_callback() {
         $options         = get_option( 'go4taste_ads_options' );
         $algolia_app_id  = isset( $options['algolia_app_id'] ) ? esc_attr( $options['algolia_app_id'] ) : '';
-        echo '<input type="text" id="algolia_app_id" name="go4taste_ads_options[algolia_app_id]" value="' . $algolia_app_id . '" />';
+        $constant_override = function_exists( 'g4t_ads_is_algolia_credential_constant_defined' )
+            && g4t_ads_is_algolia_credential_constant_defined( 'app_id' );
+        echo '<input type="text" id="algolia_app_id" name="go4taste_ads_options[algolia_app_id]" value="' . $algolia_app_id . '"' . ( $constant_override ? ' readonly' : '' ) . ' />';
+        if ( $constant_override ) {
+            echo '<p class="description" style="color:#188038;"><strong>Nadpisane przez stala w wp-config.php (GO4TASTE_ADS_ALGOLIA_APP_ID).</strong> Wartosc z bazy jest ignorowana.</p>';
+        }
     }
 
     /**
@@ -651,7 +669,12 @@ class Go4Taste_Ads_Admin_Settings {
     public function algolia_api_key_callback() {
         $options         = get_option( 'go4taste_ads_options' );
         $algolia_api_key = isset( $options['algolia_api_key'] ) ? esc_attr( $options['algolia_api_key'] ) : '';
-        echo '<input type="text" id="algolia_api_key" name="go4taste_ads_options[algolia_api_key]" value="' . $algolia_api_key . '" />';
+        $constant_override = function_exists( 'g4t_ads_is_algolia_credential_constant_defined' )
+            && g4t_ads_is_algolia_credential_constant_defined( 'search_key' );
+        echo '<input type="text" id="algolia_api_key" name="go4taste_ads_options[algolia_api_key]" value="' . $algolia_api_key . '"' . ( $constant_override ? ' readonly' : '' ) . ' />';
+        if ( $constant_override ) {
+            echo '<p class="description" style="color:#188038;"><strong>Nadpisane przez stala w wp-config.php (GO4TASTE_ADS_ALGOLIA_API_KEY).</strong> Wartosc z bazy jest ignorowana.</p>';
+        }
     }
 
     /**
