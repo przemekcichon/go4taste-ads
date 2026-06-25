@@ -161,12 +161,16 @@ class Go4Taste_Ads_API_Fetcher {
     /**
      * Accept global/default scope only when runtime context is unavailable.
      *
+     * Note: id_shop is intentionally excluded. In single-shop PrestaShop the rule is
+     * bound to the default shop (id_shop=1); shop binding does not restrict the price
+     * from applying to anonymous global visitors, so it must not disqualify the rule.
+     *
      * @since 1.2.0
      * @param array<string,mixed> $specific_price Specific price row.
      * @return bool
      */
     private function is_prestashop_specific_price_scope_supported($specific_price) {
-        $scope_keys = array('id_shop', 'id_currency', 'id_country', 'id_group', 'id_customer');
+        $scope_keys = array('id_currency', 'id_country', 'id_group', 'id_customer');
 
         foreach ($scope_keys as $scope_key) {
             $scope_value = isset($specific_price[$scope_key]) ? trim((string) $specific_price[$scope_key]) : '0';
@@ -1075,7 +1079,8 @@ class Go4Taste_Ads_API_Fetcher {
 
             // Debug: log mapped product for specific product (e.g., 206 with promotion)
             if (in_array($product_id, array('206', '172'), true)) {
-                error_log('[G4T Sync Debug] Mapped product ' . $product_id . ': price=' . $mapped->price . ', price_without_reduction=' . $mapped->price_without_reduction);
+                $selected_rule_id = is_array($selected_specific_price) && isset($selected_specific_price['id']) ? $selected_specific_price['id'] : 'none';
+                error_log('[G4T Sync Debug] Mapped product ' . $product_id . ': price=' . $mapped->price . ', price_without_reduction=' . $mapped->price_without_reduction . ', specific_price_id=' . $selected_rule_id);
             }
 
             return $mapped;
