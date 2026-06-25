@@ -1367,22 +1367,28 @@ class Go4Taste_Ads_API_Fetcher {
     public function store_products_to_algolia($products) {
         error_log('[G4T Sync] store_products_to_algolia: processing ' . count($products) . ' products');
 
-        // Retrieve Algolia App ID and Admin API Key from settings
+        // Retrieve Algolia App ID and Admin API Key from settings.
+        // Do not use esc_attr() on credentials: it can HTML-encode characters and corrupt keys.
         $options = get_option('go4taste_ads_options');
-        $algolia_app_id = isset($options['algolia_app_id']) ? esc_attr($options['algolia_app_id']) : '';
-        $algolia_admin_api_key = isset($options['algolia_admin_api_key']) ? esc_attr($options['algolia_admin_api_key']) : '';
+        $algolia_app_id = isset($options['algolia_app_id']) ? trim((string) $options['algolia_app_id']) : '';
+        $algolia_admin_api_key = isset($options['algolia_admin_api_key']) ? trim((string) $options['algolia_admin_api_key']) : '';
 
         if (empty($algolia_app_id) || empty($algolia_admin_api_key)) {
             error_log('[G4T Sync] store_products_to_algolia: missing Algolia credentials');
             return;
         }
 
+        $index_name = 'go4taste_product_list';
+        $key_len = strlen($algolia_admin_api_key);
+        $key_hint = $key_len > 4 ? substr($algolia_admin_api_key, 0, 4) . '...' : '****';
+        error_log('[G4T Sync] store_products_to_algolia: using app_id=' . $algolia_app_id . ', admin_key_len=' . $key_len . ' (' . $key_hint . '), index=' . $index_name);
+
         try {
             // Create the Algolia client using your App ID and Admin API key
             $client = SearchClient::create( $algolia_app_id, $algolia_admin_api_key );
-            
+
             // Initialize the index
-            $index = $client->initIndex('go4taste_product_list');
+            $index = $client->initIndex($index_name);
 
             // Prepare product data for indexing
             $records = [];
@@ -1405,7 +1411,17 @@ class Go4Taste_Ads_API_Fetcher {
 
             // Store the products in Algolia
             $response = $index->saveObjects($records)->wait();
-            error_log('[G4T Sync] store_products_to_algolia: Algolia response received, success');
+
+            // Log the actual Algolia response so we can confirm WHERE the write landed (taskID/objectIDs).
+            $response_summary = '';
+            if (is_object($response) && method_exists($response, 'jsonSerialize')) {
+                $response_summary = wp_json_encode($response->jsonSerialize());
+            } elseif (is_array($response) || is_object($response)) {
+                $response_summary = wp_json_encode($response);
+            } else {
+                $response_summary = (string) $response;
+            }
+            error_log('[G4T Sync] store_products_to_algolia: Algolia response: ' . substr((string) $response_summary, 0, 500));
         } catch (Throwable $e) {
             error_log('[G4T Sync] store_products_to_algolia Exception: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
             throw $e;

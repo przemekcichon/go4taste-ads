@@ -529,7 +529,13 @@ class Go4Taste_Ads_Admin_Settings {
             $sanitized_input['algolia_api_key'] = sanitize_text_field( $input['algolia_api_key'] );
         }
         if ( isset( $input['algolia_admin_api_key'] ) ) {
-            $sanitized_input['algolia_admin_api_key'] = sanitize_text_field( $input['algolia_admin_api_key'] );
+            $submitted_admin_key = trim( (string) $input['algolia_admin_api_key'] );
+            if ( '' !== $submitted_admin_key ) {
+                $sanitized_input['algolia_admin_api_key'] = sanitize_text_field( $submitted_admin_key );
+            } elseif ( isset( $existing_options['algolia_admin_api_key'] ) ) {
+                // Field is write-only (rendered empty); preserve existing key when not re-entered.
+                $sanitized_input['algolia_admin_api_key'] = sanitize_text_field( $existing_options['algolia_admin_api_key'] );
+            }
         }
         if ( isset( $input['algolia_soft_cache_ttl_hours'] ) ) {
             $sanitized_input['algolia_soft_cache_ttl_hours'] = max( 1, intval( $input['algolia_soft_cache_ttl_hours'] ) );
