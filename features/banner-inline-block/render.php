@@ -48,7 +48,6 @@ if ( ! function_exists( 'g4t_inline_banner_register_block_type' ) ) {
 			return;
 		}
 
-		$options     = get_option( 'go4taste_ads_options' );
 		$max_products = intval( apply_filters( 'g4t_ads_inline_banner_max_products', 0 ) );
 		if ( $max_products < 0 ) {
 			$max_products = 0;
@@ -58,8 +57,8 @@ if ( ! function_exists( 'g4t_inline_banner_register_block_type' ) ) {
 			$editor_handle,
 			'g4tAdsBlockData',
 			array(
-				'algoliaAppId'     => isset( $options['algolia_app_id'] ) ? esc_attr( $options['algolia_app_id'] ) : '',
-				'algoliaSearchKey' => isset( $options['algolia_api_key'] ) ? esc_attr( $options['algolia_api_key'] ) : '',
+				'algoliaAppId'     => g4t_ads_get_algolia_app_id(),
+				'algoliaSearchKey' => g4t_ads_get_algolia_search_key(),
 				'algoliaIndexName' => 'go4taste_product_list',
 				'maxProducts'      => $max_products,
 			)

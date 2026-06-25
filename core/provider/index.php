@@ -15,10 +15,8 @@ if ( ! function_exists( 'g4t_ads_provider_enqueue' ) ) {
 	 * @return void
 	 */
 	function g4t_ads_provider_enqueue() {
-		$options = g4t_core_get_ads_options();
-
-		$app_id  = isset( $options['algolia_app_id'] )  ? sanitize_text_field( (string) $options['algolia_app_id'] )  : '';
-		$api_key = isset( $options['algolia_api_key'] )  ? sanitize_text_field( (string) $options['algolia_api_key'] )  : '';
+		$app_id  = g4t_ads_get_algolia_app_id();
+		$api_key = g4t_ads_get_algolia_search_key();
 
 		if ( '' === $app_id || '' === $api_key ) {
 			return;

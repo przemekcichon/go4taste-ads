@@ -14,6 +14,7 @@ if ( ! function_exists( 'g4t_bootstrap_features' ) ) {
 	 */
 	function g4t_bootstrap_features() {
 		// Core boundaries (shared by features)
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'core/config/algolia-credentials.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'core/placements/registry.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'core/placements/payload.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'core/placements/render.php';

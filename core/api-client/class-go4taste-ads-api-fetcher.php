@@ -1372,11 +1372,10 @@ class Go4Taste_Ads_API_Fetcher {
     public function store_products_to_algolia($products) {
         error_log('[G4T Sync] store_products_to_algolia: processing ' . count($products) . ' products');
 
-        // Retrieve Algolia App ID and Admin API Key from settings.
+        // Retrieve Algolia App ID and Admin API Key (wp-config.php constant first, then DB).
         // Do not use esc_attr() on credentials: it can HTML-encode characters and corrupt keys.
-        $options = get_option('go4taste_ads_options');
-        $algolia_app_id = isset($options['algolia_app_id']) ? trim((string) $options['algolia_app_id']) : '';
-        $algolia_admin_api_key = isset($options['algolia_admin_api_key']) ? trim((string) $options['algolia_admin_api_key']) : '';
+        $algolia_app_id = function_exists('g4t_ads_get_algolia_app_id') ? g4t_ads_get_algolia_app_id() : '';
+        $algolia_admin_api_key = function_exists('g4t_ads_get_algolia_admin_key') ? g4t_ads_get_algolia_admin_key() : '';
 
         if (empty($algolia_app_id) || empty($algolia_admin_api_key)) {
             error_log('[G4T Sync] store_products_to_algolia: missing Algolia credentials');

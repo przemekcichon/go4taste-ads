@@ -75,9 +75,8 @@ function g4t_algolia_ad_server_fetch_product_data($product_id) {
             throw new RuntimeException('Algolia SearchClient class not available.');
         }
 
-        $options = get_option('go4taste_ads_options', array());
-        $app_id = isset($options['algolia_app_id']) ? sanitize_text_field((string) $options['algolia_app_id']) : '';
-        $search_key = isset($options['algolia_api_key']) ? sanitize_text_field((string) $options['algolia_api_key']) : '';
+        $app_id = g4t_ads_get_algolia_app_id();
+        $search_key = g4t_ads_get_algolia_search_key();
         if ('' === $app_id || '' === $search_key) {
             throw new RuntimeException('Missing Algolia read credentials.');
         }
