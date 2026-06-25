@@ -46,31 +46,8 @@ class Go4Taste_Ads_API_Fetcher {
     private $prestashop_specific_prices_cache = array();
 
     /**
-     * Force IPv4 for PrestaShop HTTP API calls in LocalWP.
-     *
-     * @since 1.2.0
-     * @param mixed $handle cURL handle.
-     * @return void
-     */
-    public function force_prestashop_ipv4_curl($handle) {
-        if ($handle instanceof \CurlHandle) {
-            curl_setopt($handle, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-        }
-    }
-
-    /**
-     * Format numeric price to Polish currency decimal format.
-     *
-     * @since 1.2.0
-     * @param float $price Price value.
-     * @return string
-     */
-    private function format_prestashop_price_standard($price) {
-        return number_format(max(0.0, (float) $price), 2, ',', '');
-    }
-
-    /**
-     * Perform authenticated PrestaShop Webservice GET request.
+     * Perform authenticated PrestaShop Webservice GET request with IPv4 forcing.
+     * Uses dedicated http_api_curl hook management to avoid conflicts with fetch_prestashop_webservice_product_ids.
      *
      * @since 1.2.0
      * @param string $endpoint Full endpoint URL.
@@ -79,7 +56,9 @@ class Go4Taste_Ads_API_Fetcher {
      * @return array|WP_Error
      */
     private function prestashop_webservice_get($endpoint, $api_key, $timeout = 15) {
-        add_filter('http_api_curl', array($this, 'force_prestashop_ipv4_curl'));
+        // Force IPv4 to avoid LocalWP IPv6 hangs.
+        // Use method callback to enable proper remove_action.
+        add_action('http_api_curl', array($this, 'handle_ipv4_curl'));
 
         $response = wp_remote_get(
             $endpoint,
@@ -93,9 +72,34 @@ class Go4Taste_Ads_API_Fetcher {
             )
         );
 
-        remove_filter('http_api_curl', array($this, 'force_prestashop_ipv4_curl'));
+        // Remove only the IPv4 callback for this specific request.
+        remove_action('http_api_curl', array($this, 'handle_ipv4_curl'));
 
         return $response;
+    }
+
+    /**
+     * Callback for forcing IPv4 via http_api_curl hook.
+     *
+     * @since 1.2.0
+     * @param mixed $handle cURL handle.
+     * @return void
+     */
+    public function handle_ipv4_curl($handle) {
+        if (is_resource($handle) || ($handle instanceof \CurlHandle)) {
+            @curl_setopt($handle, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+        }
+    }
+
+    /**
+     * Format numeric price to Polish currency decimal format.
+     *
+     * @since 1.2.0
+     * @param float $price Price value.
+     * @return string
+     */
+    private function format_prestashop_price_standard($price) {
+        return number_format(max(0.0, (float) $price), 2, ',', '');
     }
 
     /**
@@ -186,6 +190,7 @@ class Go4Taste_Ads_API_Fetcher {
     private function fetch_prestashop_specific_prices($product_id, $api_url, $api_key) {
         $product_id = trim((string) $product_id);
         if ('' === $product_id || '' === trim((string) $api_key) || '' === trim((string) $api_url)) {
+            error_log('[G4T Sync Debug] fetch_prestashop_specific_prices: missing params for product ' . $product_id);
             return array();
         }
 
@@ -205,20 +210,30 @@ class Go4Taste_Ads_API_Fetcher {
         );
 
         $endpoint = $this->build_prestashop_webservice_url($api_url, 'specific_prices?' . $query);
+        error_log('[G4T Sync Debug] fetch_prestashop_specific_prices: fetching ' . $endpoint);
         $response = $this->prestashop_webservice_get($endpoint, $api_key, 15);
         if (is_wp_error($response)) {
+            error_log('[G4T Sync Debug] fetch_prestashop_specific_prices WP_ERROR: ' . $response->get_error_message());
             $this->prestashop_specific_prices_cache[$cache_key] = array();
             return array();
         }
 
         $http_code = (int) wp_remote_retrieve_response_code($response);
+        error_log('[G4T Sync Debug] fetch_prestashop_specific_prices HTTP code: ' . $http_code);
         if ($http_code < 200 || $http_code >= 300) {
+            error_log('[G4T Sync Debug] fetch_prestashop_specific_prices: HTTP error ' . $http_code . ' for product ' . $product_id);
             $this->prestashop_specific_prices_cache[$cache_key] = array();
             return array();
         }
 
         $xml = $this->parse_prestashop_xml(wp_remote_retrieve_body($response));
-        if (false === $xml || !isset($xml->specific_prices->specific_price)) {
+        if (false === $xml) {
+            error_log('[G4T Sync Debug] fetch_prestashop_specific_prices: XML parse failed for product ' . $product_id);
+            $this->prestashop_specific_prices_cache[$cache_key] = array();
+            return array();
+        }
+        if (!isset($xml->specific_prices->specific_price)) {
+            error_log('[G4T Sync Debug] fetch_prestashop_specific_prices: no specific_prices element for product ' . $product_id);
             $this->prestashop_specific_prices_cache[$cache_key] = array();
             return array();
         }
