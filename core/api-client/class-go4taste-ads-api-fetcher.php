@@ -977,99 +977,132 @@ class Go4Taste_Ads_API_Fetcher {
             return false;
         }
 
-        $name = $this->get_prestashop_language_value(isset($product_node->name) ? $product_node->name : null);
-        $link_rewrite = $this->get_prestashop_language_value(isset($product_node->link_rewrite) ? $product_node->link_rewrite : null);
+        try {
+            $name = $this->get_prestashop_language_value(isset($product_node->name) ? $product_node->name : null);
+            $link_rewrite = $this->get_prestashop_language_value(isset($product_node->link_rewrite) ? $product_node->link_rewrite : null);
 
-        $image_id = isset($product_node->id_default_image) ? trim((string) $product_node->id_default_image) : '';
-        if ('' === $image_id && isset($product_node->id_default_image)) {
-            $image_attrs = $product_node->id_default_image->attributes('xlink', true);
-            if (isset($image_attrs['href'])) {
-                $image_href = trim((string) $image_attrs['href']);
-                if ('' !== $image_href) {
-                    $image_id = basename($image_href);
+            $image_id = isset($product_node->id_default_image) ? trim((string) $product_node->id_default_image) : '';
+            if ('' === $image_id && isset($product_node->id_default_image)) {
+                $image_attrs = $product_node->id_default_image->attributes('xlink', true);
+                if (isset($image_attrs['href'])) {
+                    $image_href = trim((string) $image_attrs['href']);
+                    if ('' !== $image_href) {
+                        $image_id = basename($image_href);
+                    }
                 }
             }
-        }
 
-        $raw_price = str_replace(',', '.', trim((string) $product_node->price));
-        $net_price = ('' !== $raw_price && is_numeric($raw_price)) ? (float) $raw_price : 0.0;
+            $raw_price = str_replace(',', '.', trim((string) $product_node->price));
+            $net_price = ('' !== $raw_price && is_numeric($raw_price)) ? (float) $raw_price : 0.0;
 
-        $tax_rules_group_id = isset($product_node->id_tax_rules_group) ? trim((string) $product_node->id_tax_rules_group) : '';
-        $tax_rate = 0.0;
-        if ('' !== $tax_rules_group_id) {
-            $tax_rate = $this->fetch_prestashop_webservice_tax_rate_from_group($tax_rules_group_id, $api_url, $api_key);
-        }
-
-        $gross_price = $net_price;
-        if ($tax_rate > 0) {
-            $gross_price = $net_price * (1 + ($tax_rate / 100));
-        }
-
-        $base_rounded_price = $this->format_prestashop_price_with_threshold($gross_price);
-
-        $specific_prices = $this->fetch_prestashop_specific_prices($product_id, $api_url, $api_key);
-        $selected_specific_price = $this->select_prestashop_specific_price_candidate($specific_prices, $product_id);
-
-        $discounted_gross_price = $gross_price;
-        if (is_array($selected_specific_price)) {
-            $discounted_gross_price = $this->calculate_prestashop_discounted_gross_price($net_price, $gross_price, $tax_rate, $selected_specific_price);
-            if ($discounted_gross_price >= $gross_price) {
-                $discounted_gross_price = $gross_price;
+            $tax_rules_group_id = isset($product_node->id_tax_rules_group) ? trim((string) $product_node->id_tax_rules_group) : '';
+            $tax_rate = 0.0;
+            if ('' !== $tax_rules_group_id) {
+                $tax_rate = $this->fetch_prestashop_webservice_tax_rate_from_group($tax_rules_group_id, $api_url, $api_key);
             }
-        }
 
-        $discounted_rounded_price = $base_rounded_price;
-        if (is_array($selected_specific_price)) {
-            $discounted_rounded_price = $this->format_prestashop_price_standard($discounted_gross_price);
-        }
-
-        $store_base_url = $this->normalize_prestashop_store_url($api_url);
-        $price_with_currency = $discounted_rounded_price . ' zł';
-        $price_without_reduction_with_currency = $base_rounded_price . ' zł';
-
-        $mapped_prices = apply_filters(
-            'go4taste/ads/prestashop_mapped_prices',
-            array(
-                'price' => $price_with_currency,
-                'price_without_reduction' => $price_without_reduction_with_currency,
-                'specific_price' => $selected_specific_price,
-            ),
-            $product_id,
-            $product_node
-        );
-
-        if (is_array($mapped_prices)) {
-            if (isset($mapped_prices['price']) && is_string($mapped_prices['price']) && '' !== trim($mapped_prices['price'])) {
-                $price_with_currency = $mapped_prices['price'];
+            $gross_price = $net_price;
+            if ($tax_rate > 0) {
+                $gross_price = $net_price * (1 + ($tax_rate / 100));
             }
-            if (isset($mapped_prices['price_without_reduction']) && is_string($mapped_prices['price_without_reduction']) && '' !== trim($mapped_prices['price_without_reduction'])) {
-                $price_without_reduction_with_currency = $mapped_prices['price_without_reduction'];
+
+            $base_rounded_price = $this->format_prestashop_price_with_threshold($gross_price);
+
+            $specific_prices = $this->fetch_prestashop_specific_prices($product_id, $api_url, $api_key);
+            $selected_specific_price = $this->select_prestashop_specific_price_candidate($specific_prices, $product_id);
+
+            $discounted_gross_price = $gross_price;
+            if (is_array($selected_specific_price)) {
+                $discounted_gross_price = $this->calculate_prestashop_discounted_gross_price($net_price, $gross_price, $tax_rate, $selected_specific_price);
+                if ($discounted_gross_price >= $gross_price) {
+                    // Promo rule doesn't lower price, fallback to base
+                    $discounted_gross_price = $gross_price;
+                }
             }
-        }
-        $product_link = '';
-        if ('' !== $link_rewrite) {
-            $product_link = $store_base_url . '/' . $link_rewrite . '.html';
-        }
+            // If no active specific_price, discounted_gross_price stays equal to base gross_price
 
-        $product_picture = '';
-        if ('' !== $image_id && '' !== $link_rewrite) {
-            $product_picture = $store_base_url . '/' . rawurlencode($image_id) . '-home_default/' . rawurlencode($link_rewrite) . '.jpg';
+            $discounted_rounded_price = $base_rounded_price;
+            if (is_array($selected_specific_price) && $discounted_gross_price < $gross_price) {
+                // Only format with standard formatting if there's actual discount
+                $discounted_rounded_price = $this->format_prestashop_price_standard($discounted_gross_price);
+            }
+
+            $store_base_url = $this->normalize_prestashop_store_url($api_url);
+            $price_with_currency = $discounted_rounded_price . ' zł';
+            $price_without_reduction_with_currency = $base_rounded_price . ' zł';
+
+            $mapped_prices = apply_filters(
+                'go4taste/ads/prestashop_mapped_prices',
+                array(
+                    'price' => $price_with_currency,
+                    'price_without_reduction' => $price_without_reduction_with_currency,
+                    'specific_price' => $selected_specific_price,
+                ),
+                $product_id,
+                $product_node
+            );
+
+            if (is_array($mapped_prices)) {
+                if (isset($mapped_prices['price']) && is_string($mapped_prices['price']) && '' !== trim($mapped_prices['price'])) {
+                    $price_with_currency = $mapped_prices['price'];
+                }
+                if (isset($mapped_prices['price_without_reduction']) && is_string($mapped_prices['price_without_reduction']) && '' !== trim($mapped_prices['price_without_reduction'])) {
+                    $price_without_reduction_with_currency = $mapped_prices['price_without_reduction'];
+                }
+            }
+            $product_link = '';
+            if ('' !== $link_rewrite) {
+                $product_link = $store_base_url . '/' . $link_rewrite . '.html';
+            }
+
+            $product_picture = '';
+            if ('' !== $image_id && '' !== $link_rewrite) {
+                $product_picture = $store_base_url . '/' . rawurlencode($image_id) . '-home_default/' . rawurlencode($link_rewrite) . '.jpg';
+            }
+
+            $mapped = new stdClass();
+            $mapped->id = $product_id;
+            $mapped->name = $name;
+            $mapped->price = $price_with_currency;
+            $mapped->price_without_reduction = $price_without_reduction_with_currency;
+            $mapped->link = $product_link;
+            $mapped->picture = $product_picture;
+            $mapped->category = '';
+            $mapped->reference = isset($product_node->reference) ? trim((string) $product_node->reference) : '';
+            $mapped->price_tax_exc = $price_with_currency;
+            $mapped->available_for_order = 1;
+            $mapped->low_stock_alert = 0;
+
+            // Debug: log mapped product for specific product (e.g., 206 with promotion)
+            if (in_array($product_id, array('206', '172'), true)) {
+                error_log('[G4T Sync Debug] Mapped product ' . $product_id . ': price=' . $mapped->price . ', price_without_reduction=' . $mapped->price_without_reduction);
+            }
+
+            return $mapped;
+        } catch (Throwable $e) {
+            // Fallback: return product with base price if any error occurs in specific price calculation
+            error_log('[G4T Sync Debug] map_prestashop_webservice_product Exception for product ' . $product_id . ': ' . $e->getMessage());
+            
+            // Build minimal product object with base price
+            $raw_price = str_replace(',', '.', trim((string) $product_node->price));
+            $net_price = ('' !== $raw_price && is_numeric($raw_price)) ? (float) $raw_price : 0.0;
+            $base_price_formatted = $this->format_prestashop_price_with_threshold($net_price) . ' zł';
+            
+            $mapped = new stdClass();
+            $mapped->id = $product_id;
+            $mapped->name = $this->get_prestashop_language_value(isset($product_node->name) ? $product_node->name : null);
+            $mapped->price = $base_price_formatted;
+            $mapped->price_without_reduction = $base_price_formatted;
+            $mapped->link = '';
+            $mapped->picture = '';
+            $mapped->category = '';
+            $mapped->reference = isset($product_node->reference) ? trim((string) $product_node->reference) : '';
+            $mapped->price_tax_exc = $base_price_formatted;
+            $mapped->available_for_order = 1;
+            $mapped->low_stock_alert = 0;
+
+            return $mapped;
         }
-
-        $mapped = new stdClass();
-        $mapped->id = $product_id;
-        $mapped->name = $name;
-        $mapped->price = $price_with_currency;
-        $mapped->price_without_reduction = $price_without_reduction_with_currency;
-        $mapped->link = $product_link;
-        $mapped->picture = $product_picture;
-        $mapped->category = '';
-        $mapped->reference = isset($product_node->reference) ? trim((string) $product_node->reference) : '';
-        $mapped->price_tax_exc = $price_with_currency;
-        $mapped->available_for_order = 1;
-        $mapped->low_stock_alert = 0;
-
-        return $mapped;
     }
 
     /**
@@ -1110,8 +1143,11 @@ class Go4Taste_Ads_API_Fetcher {
      */
     private function fetch_prestashop_webservice_product($product_id, $api_url, $api_key) {
         if ('' === trim((string) $api_key) || '' === trim((string) $api_url)) {
+            error_log('[G4T Sync Debug] fetch_prestashop_webservice_product: missing credentials for product ' . $product_id);
             return false;
         }
+
+        error_log('[G4T Sync Debug] fetch_prestashop_webservice_product START for product ' . $product_id);
 
         $endpoint = $this->build_prestashop_webservice_url($api_url, 'products/' . rawurlencode((string) $product_id));
         $response = wp_remote_get(
@@ -1329,37 +1365,51 @@ class Go4Taste_Ads_API_Fetcher {
      * @return void
      */
     public function store_products_to_algolia($products) {
+        error_log('[G4T Sync] store_products_to_algolia: processing ' . count($products) . ' products');
 
         // Retrieve Algolia App ID and Admin API Key from settings
         $options = get_option('go4taste_ads_options');
         $algolia_app_id = isset($options['algolia_app_id']) ? esc_attr($options['algolia_app_id']) : '';
         $algolia_admin_api_key = isset($options['algolia_admin_api_key']) ? esc_attr($options['algolia_admin_api_key']) : '';
 
-        // Create the Algolia client using your App ID and Admin API key
-        $client = SearchClient::create( $algolia_app_id, $algolia_admin_api_key );
-        
-        // Initialize the index
-        $index = $client->initIndex('go4taste_product_list');
-
-        // Prepare product data for indexing
-        $records = [];
-        foreach ($products as $product) {
-            $records[] = [
-                'objectID' => isset($product->id) ? $product->id : '',
-                'id' => isset($product->id) ? $product->id : '',
-                'name' => isset($product->name) ? $product->name : '',
-                'price' => isset($product->price) ? $product->price : '',
-                'price_without_reduction' => isset($product->price_without_reduction) ? $product->price_without_reduction : '',
-                'picture' => isset($product->picture) ? $product->picture : '',
-                'link' => isset($product->link) ? $product->link : '',
-                'category' => isset($product->category) ? $product->category : '',
-                'available_for_order' => isset($product->available_for_order) ? $product->available_for_order : 0,
-                'low_stock_alert' => isset($product->low_stock_alert) ? $product->low_stock_alert : 0,
-            ];
+        if (empty($algolia_app_id) || empty($algolia_admin_api_key)) {
+            error_log('[G4T Sync] store_products_to_algolia: missing Algolia credentials');
+            return;
         }
 
-        // Store the products in Algolia
-        $response = $index->saveObjects($records)->wait();
+        try {
+            // Create the Algolia client using your App ID and Admin API key
+            $client = SearchClient::create( $algolia_app_id, $algolia_admin_api_key );
+            
+            // Initialize the index
+            $index = $client->initIndex('go4taste_product_list');
+
+            // Prepare product data for indexing
+            $records = [];
+            foreach ($products as $product) {
+                $records[] = [
+                    'objectID' => isset($product->id) ? $product->id : '',
+                    'id' => isset($product->id) ? $product->id : '',
+                    'name' => isset($product->name) ? $product->name : '',
+                    'price' => isset($product->price) ? $product->price : '',
+                    'price_without_reduction' => isset($product->price_without_reduction) ? $product->price_without_reduction : '',
+                    'picture' => isset($product->picture) ? $product->picture : '',
+                    'link' => isset($product->link) ? $product->link : '',
+                    'category' => isset($product->category) ? $product->category : '',
+                    'available_for_order' => isset($product->available_for_order) ? $product->available_for_order : 0,
+                    'low_stock_alert' => isset($product->low_stock_alert) ? $product->low_stock_alert : 0,
+                ];
+            }
+
+            error_log('[G4T Sync] store_products_to_algolia: prepared ' . count($records) . ' records, sending to Algolia');
+
+            // Store the products in Algolia
+            $response = $index->saveObjects($records)->wait();
+            error_log('[G4T Sync] store_products_to_algolia: Algolia response received, success');
+        } catch (Throwable $e) {
+            error_log('[G4T Sync] store_products_to_algolia Exception: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            throw $e;
+        }
     }
 }
 
