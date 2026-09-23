@@ -80,7 +80,7 @@
     font-weight: bold;
 }
 
-.g4t-banner-metabox-preview a.g4t-ads-button {
+.g4t-banner-metabox-preview .g4t-ads-button {
     background-color: #28a745;
     color: #fff;
     padding: 8px 16px;
