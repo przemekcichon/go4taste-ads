@@ -74,7 +74,7 @@ a.g4t-ads-name-link:hover {
     font-weight: bold;
 }
 
-a.g4t-ads-button {
+.g4t-ads-button {
     background-color: #28a745;
     color: #fff;
     padding: 8px 16px;
@@ -98,6 +98,35 @@ a.g4t-ads-button {
 
 .g4t-ads-button.md {
     display: none;
+}
+
+/* Stretched link: the name link covers the whole sidebar card */
+.g4t-banner-sidebar-regular .g4t-ads-content {
+    position: relative;
+}
+
+.g4t-banner-sidebar-regular a.g4t-ads-name-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+.g4t-banner-sidebar-regular .g4t-ads-content:hover a.g4t-ads-name-link {
+    text-decoration: underline;
+}
+
+.g4t-banner-sidebar-regular .g4t-ads-content:hover .g4t-ads-button {
+    background-color: #218838;
+    color: #fff;
+}
+
+.g4t-banner-sidebar-regular a.g4t-ads-name-link:focus-visible {
+    outline: none;
+}
+
+.g4t-banner-sidebar-regular a.g4t-ads-name-link:focus-visible::after {
+    outline: 2px solid currentColor;
+    outline-offset: -2px;
 }
 
 /* Sticky banner for screens above 1023px */
@@ -148,15 +177,11 @@ a.g4t-ads-button {
         display: block;
     }
 
-    .g4t-banner-sidebar-regular a.g4t-ads-button {
-        width:fit-content;
-    }
-
     .g4t-banner-sidebar-regular .g4t-ads-button {
         padding: 6px 12px;
         font-size: 12px;
         margin-top: 0; /* Remove top margin in horizontal layout */
-        width: auto; /* Button width should auto adjust in horizontal layout */
+        width: fit-content; /* Button width should fit its label in horizontal layout */
     }
 
     .g4t-banner-sidebar-regular .g4t-ads-name {

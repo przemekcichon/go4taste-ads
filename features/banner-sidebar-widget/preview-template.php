@@ -9,18 +9,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @var int    $post_id      Post ID from edit form context.
  */
 
-$price = htmlentities( $product_data->price, ENT_QUOTES, 'utf-8' );
-$formatted_price = str_replace( array( ',', '&nbsp;zł', ' zł', 'zł' ), array( '.', '', '', '' ), $price );
-$formatted_price = html_entity_decode( $formatted_price );
-
-$price_tax_exc = htmlentities( $product_data->price_tax_exc, ENT_QUOTES, 'utf-8' );
-$formatted_price_tax_exc = str_replace( array( ',', '&nbsp;zł', ' zł', 'zł' ), array( '.', '', '', '' ), $price_tax_exc );
-$formatted_price_tax_exc = html_entity_decode( $formatted_price_tax_exc );
-
-$category             = esc_attr( $product_data->category );
-$category_with_spaces = str_replace( '-', ' ', $category );
-$formatted_category   = ucfirst( strtolower( $category_with_spaces ) );
-
 $img_url = isset( $product_data->picture ) ? (string) $product_data->picture : '';
 
 if ( '' === trim( $img_url ) ) {
@@ -67,7 +55,7 @@ if ( '' === trim( $img_url ) ) {
 				<?php endif; ?>
 			</div>
 		</div>
-		<a href="<?php echo esc_url( $product_data->link ); ?>" data-object-type="promotion" data-item-category2="<?php echo esc_attr( $formatted_category ); ?>" data-reference="<?php echo esc_attr( $product_data->reference ); ?>" data-price-tax-exc="<?php echo esc_attr( $formatted_price_tax_exc ); ?>" data-price="<?php echo esc_attr( $formatted_price ); ?>" data-item-name="<?php echo esc_attr( $product_data->name ); ?>" data-item-id="<?php echo esc_attr( $product_data->id ); ?>" data-creative-slot="sidebar-primary" data-creative-name="Product Widget Image" data-promotion-name="Go4Taste Product Ads" data-promotion-id="g4t-ads-<?php echo (int) $post_id; ?>-<?php echo esc_attr( $product_data->id ); ?>" class="g4t-ads-button lg">Kup w sklepie</a>
-		<a href="<?php echo esc_url( $product_data->link ); ?>" data-object-type="promotion" data-item-category2="<?php echo esc_attr( $formatted_category ); ?>" data-reference="<?php echo esc_attr( $product_data->reference ); ?>" data-price-tax-exc="<?php echo esc_attr( $formatted_price_tax_exc ); ?>" data-price="<?php echo esc_attr( $formatted_price ); ?>" data-item-name="<?php echo esc_attr( $product_data->name ); ?>" data-item-id="<?php echo esc_attr( $product_data->id ); ?>" data-creative-slot="sidebar-primary" data-creative-name="Product Widget Image" data-promotion-name="Go4Taste Product Ads" data-promotion-id="g4t-ads-<?php echo (int) $post_id; ?>-<?php echo esc_attr( $product_data->id ); ?>" class="g4t-ads-button md">Kup</a>
+		<span class="g4t-ads-button lg" aria-hidden="true">Kup w sklepie</span>
+		<span class="g4t-ads-button md" aria-hidden="true">Kup</span>
 	</div>
 </div>

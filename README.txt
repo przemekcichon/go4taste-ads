@@ -4,7 +4,7 @@ Donate link: https://go4taste.pl/techlab/
 Tags: ads, product, sidebar, widget, e-commerce
 Requires at least: 3.0.1
 Tested up to: 6.4
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -47,6 +47,11 @@ Product data is cached using WordPress transients. The cache duration can be con
 
 == Changelog ==
 
+= 1.1.1 =
+* Banners: the whole product card is a single link, the product name is the anchor
+* Inline banner: rebuilt block output, so the specific prices fallback is live
+* Sidebar widget CSS is versioned by file time to bust browser caches
+
 = 1.1.0 =
 * Added Algolia search integration for product selection
 * Added WP-CLI command for bulk product ID updates
@@ -57,6 +62,9 @@ Product data is cached using WordPress transients. The cache duration can be con
 * Initial release with sidebar widget and PrestaShop API support
 
 == Upgrade Notice ==
+
+= 1.1.1 =
+Whole-card product links in banners and a price display fix in the inline banner.
 
 = 1.1.0 =
 Adds Algolia search, WP-CLI commands, and configurable caching.

@@ -69,7 +69,7 @@ if ( '' === trim( $img_url ) ) {
 		</div>
 		<div class="g4t-ads-details">
 			<div class="g4t-ads-name">
-				<a href="<?php echo esc_url( $product_data->link ); ?>" class="g4t-ads-name-link"><?php echo esc_html( $product_data->name ); ?></a>
+				<a href="<?php echo esc_url( $product_data->link ); ?>" data-object-type="promotion" data-item-category2="<?php echo esc_attr( $formatted_category ); ?>" data-reference="<?php echo esc_attr( $product_data->reference ); ?>" data-price-tax-exc="<?php echo esc_attr( $formatted_price_tax_exc ); ?>" data-price="<?php echo esc_attr( $formatted_price ); ?>" data-item-name="<?php echo esc_attr( $product_data->name ); ?>" data-item-id="<?php echo esc_attr( $product_data->id ); ?>" data-creative-slot="sidebar-primary" data-creative-name="Product Widget Image" data-promotion-name="Go4Taste Product Ads" data-promotion-id="g4t-ads-<?php echo $post->ID; ?>-<?php echo esc_attr( $product_data->id ); ?>" class="g4t-ads-name-link"><?php echo esc_html( $product_data->name ); ?></a>
 			</div>
 			<div class="g4t-ads-prices">
 				<?php if ( $display_price != $display_price_without_reduction ) : ?>
@@ -80,7 +80,7 @@ if ( '' === trim( $img_url ) ) {
 				<?php endif; ?>
 			</div>
 		</div>
-		<a href="<?php echo esc_url( $product_data->link ); ?>" data-object-type="promotion" data-item-category2="<?php echo esc_attr( $formatted_category ); ?>" data-reference="<?php echo esc_attr( $product_data->reference ); ?>" data-price-tax-exc="<?php echo esc_attr( $formatted_price_tax_exc ); ?>" data-price="<?php echo esc_attr( $formatted_price ); ?>" data-item-name="<?php echo esc_attr( $product_data->name ); ?>" data-item-id="<?php echo esc_attr( $product_data->id ); ?>" data-creative-slot="sidebar-primary" data-creative-name="Product Widget Image" data-promotion-name="Go4Taste Product Ads" data-promotion-id="g4t-ads-<?php echo $post->ID; ?>-<?php echo esc_attr( $product_data->id ); ?>" class="g4t-ads-button lg">Kup w sklepie</a>
-		<a href="<?php echo esc_url( $product_data->link ); ?>" data-object-type="promotion" data-item-category2="<?php echo esc_attr( $formatted_category ); ?>" data-reference="<?php echo esc_attr( $product_data->reference ); ?>" data-price-tax-exc="<?php echo esc_attr( $formatted_price_tax_exc ); ?>" data-price="<?php echo esc_attr( $formatted_price ); ?>" data-item-name="<?php echo esc_attr( $product_data->name ); ?>" data-item-id="<?php echo esc_attr( $product_data->id ); ?>" data-creative-slot="sidebar-primary" data-creative-name="Product Widget Image" data-promotion-name="Go4Taste Product Ads" data-promotion-id="g4t-ads-<?php echo $post->ID; ?>-<?php echo esc_attr( $product_data->id ); ?>" class="g4t-ads-button md">Kup</a>
+		<span class="g4t-ads-button lg" aria-hidden="true">Kup w sklepie</span>
+		<span class="g4t-ads-button md" aria-hidden="true">Kup</span>
 	</div>
 </div>

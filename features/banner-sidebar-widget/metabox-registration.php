@@ -22,12 +22,14 @@ if ( ! function_exists( 'g4t_promoted_product_metabox_enqueue_preview_styles' ) 
 		$preview_relative = 'features/banner-sidebar-widget/assets/css/go4taste-ads-metabox-preview.css';
 		$preview_url      = plugins_url( $preview_relative, $plugin_entry );
 		$version          = defined( 'GO4TASTE_ADS_VERSION' ) ? GO4TASTE_ADS_VERSION : null;
+		$preview_path     = __DIR__ . '/assets/css/go4taste-ads-metabox-preview.css';
+		$preview_version  = file_exists( $preview_path ) ? (string) filemtime( $preview_path ) : $version;
 
 		wp_enqueue_style(
 			'go4taste-ads-metabox-preview',
 			$preview_url,
 			array(),
-			$version,
+			$preview_version,
 			'all'
 		);
 
