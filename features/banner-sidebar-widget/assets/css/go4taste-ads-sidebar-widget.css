@@ -126,7 +126,7 @@ a.g4t-ads-name-link:hover {
 
 .g4t-banner-sidebar-regular a.g4t-ads-name-link:focus-visible::after {
     outline: 2px solid currentColor;
-    outline-offset: 2px;
+    outline-offset: -2px;
 }
 
 /* Sticky banner for screens above 1023px */

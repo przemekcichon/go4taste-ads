@@ -90,7 +90,7 @@
 
 .g4t-banner-inline a.g4t-ads-name-link:focus-visible::after {
 	outline: 2px solid currentColor;
-	outline-offset: 2px;
+	outline-offset: -2px;
 }
 
 .g4t-banner-inline .g4t-ads-prices {
