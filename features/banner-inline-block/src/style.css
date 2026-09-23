@@ -32,6 +32,7 @@
 }
 
 .g4t-banner-inline .g4t-ads-content {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -72,8 +73,24 @@
 	font-style: normal;
 }
 
-.g4t-banner-inline a.g4t-ads-name-link:hover {
+/* Stretched link: the name link covers the whole card */
+.g4t-banner-inline a.g4t-ads-name-link::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+}
+
+.g4t-banner-inline .g4t-ads-content:hover a.g4t-ads-name-link {
 	text-decoration: underline;
+}
+
+.g4t-banner-inline a.g4t-ads-name-link:focus-visible {
+	outline: none;
+}
+
+.g4t-banner-inline a.g4t-ads-name-link:focus-visible::after {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
 }
 
 .g4t-banner-inline .g4t-ads-prices {
@@ -92,7 +109,7 @@
 	font-weight: bold;
 }
 
-.g4t-banner-inline a.g4t-ads-button {
+.g4t-banner-inline .g4t-ads-button {
 	background-color: #28a745;
 	color: #fff;
 	padding: 8px 16px;
@@ -109,7 +126,8 @@
 	font-weight: 600;
 }
 
-.g4t-banner-inline a.g4t-ads-button:hover {
+/* Card hover drives the button hover; the editor preview keeps its own hover (editor.css) */
+.g4t-banner-inline .g4t-ads-content:not(.g4t-ads-content--editor):hover .g4t-ads-button {
 	background-color: var(--btn-hover-bg, #218838) !important;
 	color: var(--btn-hover-color, #fff) !important;
 	border-color: var(--btn-hover-border-color, currentColor) !important;

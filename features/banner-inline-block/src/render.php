@@ -190,9 +190,7 @@ $ga4_items = array();
 					<span class="g4t-ads-sale-price"><?php echo esc_html( $display_price ); ?></span>
 				</div>
 			</div>
-			<a href="<?php echo esc_url( $product_data->link ); ?>"
-			   class="g4t-ads-button"<?php echo $btn_style; ?>
-			>Kup w sklepie</a>
+			<span class="g4t-ads-button" aria-hidden="true"<?php echo $btn_style; ?>>Kup w sklepie</span>
 		</div>
 		<?php endforeach; ?>
 	</div>
