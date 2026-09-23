@@ -28,7 +28,7 @@ foreach ( $products_attr as $product_entry ) {
 	if ( empty( $product_id ) ) {
 		continue;
 	}
-	$data = apply_filters( 'go4taste_ads_get_product_data', null, $product_id );
+	$data = g4t_core_fetch_product_data( $product_id, $options );
 	if ( $data ) {
 		$products_data[] = $data;
 	}
@@ -130,8 +130,14 @@ $ga4_items = array();
 <div <?php echo $wrapper_attrs; ?>>
 	<div class="g4t-ads-inline-products"<?php echo $products_style; ?>>
 		<?php foreach ( $products_data as $product_data ) :
+			$display_price = isset( $product_data->price ) ? (string) $product_data->price : '';
+			$display_price_without_reduction = isset( $product_data->price_without_reduction ) ? trim( (string) $product_data->price_without_reduction ) : '';
+			if ( '' === $display_price_without_reduction ) {
+				$display_price_without_reduction = $display_price;
+			}
+
 			// Format price
-			$price           = htmlentities( $product_data->price, ENT_QUOTES, 'utf-8' );
+			$price           = htmlentities( $display_price, ENT_QUOTES, 'utf-8' );
 			$formatted_price = str_replace( array( ',', '&nbsp;zł' ), array( '.', '' ), $price );
 			$formatted_price = html_entity_decode( $formatted_price );
 
@@ -178,10 +184,10 @@ $ga4_items = array();
 					</a>
 				</div>
 				<div class="g4t-ads-prices">
-					<?php if ( $product_data->price != $product_data->price_without_reduction ) : ?>
-						<span class="g4t-ads-old-price"><?php echo esc_html( $product_data->price_without_reduction ); ?></span>
+					<?php if ( $display_price != $display_price_without_reduction ) : ?>
+						<span class="g4t-ads-old-price"><?php echo esc_html( $display_price_without_reduction ); ?></span>
 					<?php endif; ?>
-					<span class="g4t-ads-sale-price"><?php echo esc_html( $product_data->price ); ?></span>
+					<span class="g4t-ads-sale-price"><?php echo esc_html( $display_price ); ?></span>
 				</div>
 			</div>
 			<a href="<?php echo esc_url( $product_data->link ); ?>"
