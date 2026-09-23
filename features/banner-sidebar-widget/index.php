@@ -35,7 +35,9 @@ if ( ! function_exists( 'g4t_banner_sidebar_widget_enqueue_assets' ) ) {
 		$plugin_entry   = $plugin_root . '/go4taste-ads.php';
 		$style_relative = 'features/banner-sidebar-widget/assets/css/go4taste-ads-sidebar-widget.css';
 		$style_url      = plugins_url( $style_relative, $plugin_entry );
-		$version        = defined( 'GO4TASTE_ADS_VERSION' ) ? GO4TASTE_ADS_VERSION : null;
+		$style_path     = __DIR__ . '/assets/css/go4taste-ads-sidebar-widget.css';
+		// Version by file mtime so every CSS change busts the long-lived browser cache.
+		$version        = file_exists( $style_path ) ? (string) filemtime( $style_path ) : ( defined( 'GO4TASTE_ADS_VERSION' ) ? GO4TASTE_ADS_VERSION : null );
 
 		wp_enqueue_style(
 			'go4taste-ads-sidebar-widget',

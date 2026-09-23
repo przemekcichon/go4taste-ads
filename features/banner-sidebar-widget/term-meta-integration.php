@@ -228,12 +228,14 @@ if ( ! function_exists( 'g4t_banner_sidebar_widget_enqueue_term_meta_assets' ) )
 		$plugin_root  = dirname( __DIR__, 2 );
 		$plugin_entry = $plugin_root . '/go4taste-ads.php';
 		$version      = defined( 'GO4TASTE_ADS_VERSION' ) ? GO4TASTE_ADS_VERSION : null;
+		$preview_path    = __DIR__ . '/assets/css/go4taste-ads-metabox-preview.css';
+		$preview_version = file_exists( $preview_path ) ? (string) filemtime( $preview_path ) : $version;
 
 		wp_enqueue_style(
 			'go4taste-ads-metabox-preview',
 			plugins_url( 'features/banner-sidebar-widget/assets/css/go4taste-ads-metabox-preview.css', $plugin_entry ),
 			array(),
-			$version,
+			$preview_version,
 			'all'
 		);
 
