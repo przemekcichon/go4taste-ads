@@ -4,7 +4,7 @@ Donate link: https://go4taste.pl/techlab/
 Tags: ads, product, sidebar, widget, e-commerce
 Requires at least: 3.0.1
 Tested up to: 6.4
-Stable tag: 1.1.1
+Stable tag: 1.1.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -47,6 +47,10 @@ Product data is cached using WordPress transients. The cache duration can be con
 
 == Changelog ==
 
+= 1.1.2 =
+* Algolia provider is enqueued on the front end only where a surface requests it (recipe creator)
+* algoliasearch pinned to 4.27.0
+
 = 1.1.1 =
 * Banners: the whole product card is a single link, the product name is the anchor
 * Inline banner: rebuilt block output, so the specific prices fallback is live
@@ -62,6 +66,9 @@ Product data is cached using WordPress transients. The cache duration can be con
 * Initial release with sidebar widget and PrestaShop API support
 
 == Upgrade Notice ==
+
+= 1.1.2 =
+Front-end pages no longer load the Algolia client unless needed. Update go4taste-recipes-plugin first.
 
 = 1.1.1 =
 Whole-card product links in banners and a price display fix in the inline banner.
