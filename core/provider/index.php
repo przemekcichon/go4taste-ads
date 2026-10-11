@@ -6,11 +6,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 if ( ! function_exists( 'g4t_ads_provider_enqueue' ) ) {
 	/**
-	 * Enqueue G4TAdsProvider JS and localize Algolia credentials.
+	 * Register G4TAdsProvider JS and localize Algolia credentials.
 	 *
-	 * Called on both admin_enqueue_scripts and wp_enqueue_scripts so every
-	 * surface — metabox, term edit, global settings, frontend creator — gets
-	 * the shared provider without owning credentials.
+	 * Called on both admin_enqueue_scripts and wp_enqueue_scripts. In admin the
+	 * provider is enqueued for every picker surface (metabox, term edit, global
+	 * settings). On the front end it is only registered; a surface that needs
+	 * it (the recipe creator) calls wp_enqueue_script( 'g4t-ads-provider' ), so
+	 * no other page loads the Algolia client or the search key.
 	 *
 	 * @return void
 	 */
@@ -25,15 +27,16 @@ if ( ! function_exists( 'g4t_ads_provider_enqueue' ) ) {
 		$plugin_entry = dirname( __DIR__, 2 ) . '/go4taste-ads.php';
 		$version      = defined( 'GO4TASTE_ADS_VERSION' ) ? GO4TASTE_ADS_VERSION : null;
 
-		wp_enqueue_script(
+		// Full build, not lite: the provider uses getObject().
+		wp_register_script(
 			'algolia-search-client',
-			'https://cdn.jsdelivr.net/npm/algoliasearch@4',
+			'https://cdn.jsdelivr.net/npm/algoliasearch@4.27.0/dist/algoliasearch.umd.js',
 			array(),
 			null,
 			true
 		);
 
-		wp_enqueue_script(
+		wp_register_script(
 			'g4t-ads-provider',
 			plugins_url( 'core/provider/algolia-provider.js', $plugin_entry ),
 			array( 'algolia-search-client' ),
@@ -50,6 +53,10 @@ if ( ! function_exists( 'g4t_ads_provider_enqueue' ) ) {
 				'indexName' => 'go4taste_product_list',
 			)
 		);
+
+		if ( is_admin() ) {
+			wp_enqueue_script( 'g4t-ads-provider' );
+		}
 	}
 }
 
